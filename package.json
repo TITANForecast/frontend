@@ -14,6 +14,8 @@
     "@types/node": "^22.13.0",
     "@types/react": "19.0.8",
     "@types/react-dom": "19.0.3",
+    "ag-charts-community": "^12.2.0",
+    "ag-charts-react": "^12.2.0",
     "ag-grid-community": "^34.2.0",
     "ag-grid-enterprise": "^34.2.0",
     "ag-grid-react": "^34.2.0",

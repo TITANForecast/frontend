@@ -17,6 +17,7 @@ import DashboardCard09 from "./dashboard-card-09";
 import DashboardCard10 from "./dashboard-card-10";
 import DashboardCard11 from "./dashboard-card-11";
 import EChartsDemo from "@/components/echarts-demo";
+import EChartsComprehensiveDemo from "@/components/echarts-comprehensive-demo";
 import AgGridExamplesPage from "../ag-grid-examples/page";
 
 export default function Dashboard() {
@@ -88,6 +89,19 @@ export default function Dashboard() {
           </p>
         </div>
         <EChartsDemo />
+      </div>
+
+      {/* ECharts Comprehensive Examples */}
+      <div className="mt-8">
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">
+            Advanced ECharts Examples
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            Comprehensive chart library with 8 different chart types including area, scatter, radar, gauge, funnel, heatmap, treemap, and sankey diagrams
+          </p>
+        </div>
+        <EChartsComprehensiveDemo />
       </div>
 
       {/* AG-Grid Section */}
