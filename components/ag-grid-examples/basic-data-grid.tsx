@@ -33,7 +33,7 @@ const sampleData: Employee[] = [
     salary: 95000,
     startDate: "2022-01-15",
     email: "john.doe@company.com",
-    status: "Active"
+    status: "Active",
   },
   {
     id: 2,
@@ -43,7 +43,7 @@ const sampleData: Employee[] = [
     salary: 78000,
     startDate: "2021-03-22",
     email: "jane.smith@company.com",
-    status: "Active"
+    status: "Active",
   },
   {
     id: 3,
@@ -53,7 +53,7 @@ const sampleData: Employee[] = [
     salary: 120000,
     startDate: "2020-07-10",
     email: "mike.johnson@company.com",
-    status: "Active"
+    status: "Active",
   },
   {
     id: 4,
@@ -63,7 +63,7 @@ const sampleData: Employee[] = [
     salary: 65000,
     startDate: "2023-02-01",
     email: "sarah.wilson@company.com",
-    status: "Active"
+    status: "Active",
   },
   {
     id: 5,
@@ -73,7 +73,7 @@ const sampleData: Employee[] = [
     salary: 55000,
     startDate: "2023-06-15",
     email: "david.brown@company.com",
-    status: "Inactive"
+    status: "Inactive",
   },
   {
     id: 6,
@@ -83,7 +83,7 @@ const sampleData: Employee[] = [
     salary: 72000,
     startDate: "2022-09-05",
     email: "lisa.davis@company.com",
-    status: "Active"
+    status: "Active",
   },
   {
     id: 7,
@@ -93,7 +93,7 @@ const sampleData: Employee[] = [
     salary: 88000,
     startDate: "2021-11-20",
     email: "tom.wilson@company.com",
-    status: "Active"
+    status: "Active",
   },
   {
     id: 8,
@@ -103,8 +103,8 @@ const sampleData: Employee[] = [
     salary: 75000,
     startDate: "2022-04-12",
     email: "emily.chen@company.com",
-    status: "Active"
-  }
+    status: "Active",
+  },
 ];
 
 const BasicDataGrid: React.FC = () => {
@@ -133,79 +133,78 @@ const BasicDataGrid: React.FC = () => {
     {
       field: "id",
       headerName: "ID",
-      width: 80,
+      width: 80, // Keep fixed width for ID
       sortable: true,
-      filter: "agNumberColumnFilter"
+      filter: "agNumberColumnFilter",
     },
     {
       field: "name",
       headerName: "Name",
-      width: 150,
+      minWidth: 150, // Use minWidth instead of width
       sortable: true,
       filter: "agTextColumnFilter",
-      pinned: "left"
+      pinned: "left",
     },
     {
       field: "department",
       headerName: "Department",
-      width: 130,
+      minWidth: 130,
       sortable: true,
-      filter: "agSetColumnFilter",
-      filterParams: {
-        values: ["Engineering", "Marketing", "Sales", "HR", "Finance", "Design"]
-      }
+      filter: "agTextColumnFilter",
     },
     {
       field: "position",
       headerName: "Position",
-      width: 180,
+      minWidth: 180,
       sortable: true,
-      filter: "agTextColumnFilter"
+      filter: "agTextColumnFilter",
     },
     {
       field: "salary",
       headerName: "Salary",
-      width: 120,
+      minWidth: 120,
       sortable: true,
       filter: "agNumberColumnFilter",
-      valueFormatter: (params) => `$${params.value.toLocaleString()}`
+      valueFormatter: (params) => `$${params.value.toLocaleString()}`,
     },
     {
       field: "startDate",
       headerName: "Start Date",
-      width: 130,
+      minWidth: 130,
       sortable: true,
-      filter: "agDateColumnFilter"
+      filter: "agDateColumnFilter",
     },
     {
       field: "email",
       headerName: "Email",
-      width: 200,
+      minWidth: 200,
       sortable: true,
-      filter: "agTextColumnFilter"
+      filter: "agTextColumnFilter",
     },
     {
       field: "status",
       headerName: "Status",
-      width: 100,
+      minWidth: 100,
       sortable: true,
-      filter: "agSetColumnFilter",
-      filterParams: {
-        values: ["Active", "Inactive"]
-      },
+      filter: "agTextColumnFilter",
       cellRenderer: (params: any) => {
         const status = params.value;
         const color = status === "Active" ? "text-green-600" : "text-red-600";
-        return `<span class="${color} font-medium">${status}</span>`;
-      }
-    }
+        return (
+          <div className="h-full flex items-center">
+            <span className={`${color} font-medium`}>{status}</span>
+          </div>
+        );
+      },
+    },
   ];
 
   const defaultColDef: ColDef = {
     resizable: true,
     sortable: true,
     filter: true,
-    floatingFilter: true
+    floatingFilter: true,
+    flex: 1, // This makes columns expand to fill available space
   };
 
   const onGridReady = (params: GridReadyEvent) => {
@@ -215,7 +214,7 @@ const BasicDataGrid: React.FC = () => {
   const exportToCsv = () => {
     if (gridApi) {
       gridApi.exportDataAsCsv({
-        fileName: "employees.csv"
+        fileName: "employees.csv",
       });
     }
   };
@@ -226,21 +225,33 @@ const BasicDataGrid: React.FC = () => {
     }
   };
 
+  const autoSizeColumns = () => {
+    if (gridApi) {
+      gridApi.autoSizeAllColumns();
+    }
+  };
+
   return (
     <div className="w-full">
       {/* Controls */}
       <div className="mb-4 flex gap-2">
         <button
           onClick={exportToCsv}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          className="px-2 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
         >
           Export CSV
         </button>
         <button
           onClick={clearFilters}
-          className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+          className="px-2 py-1 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
         >
           Clear Filters
+        </button>
+        <button
+          onClick={autoSizeColumns}
+          className="px-2 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+        >
+          Auto Size Columns
         </button>
       </div>
 

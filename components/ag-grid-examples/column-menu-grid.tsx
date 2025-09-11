@@ -3,13 +3,13 @@
 import React, { useState, useEffect } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { ColDef, GridApi, GridReadyEvent } from "ag-grid-community";
-import { 
-  AllCommunityModule, 
+import {
+  AllCommunityModule,
   ModuleRegistry,
   MenuModule,
   ColumnsToolPanelModule,
   FiltersToolPanelModule,
-  SetFilterModule
+  SetFilterModule,
 } from "ag-grid-enterprise";
 
 // Import AG Grid CSS
@@ -21,7 +21,7 @@ ModuleRegistry.registerModules([
   MenuModule,
   ColumnsToolPanelModule,
   FiltersToolPanelModule,
-  SetFilterModule
+  SetFilterModule,
 ]);
 
 // Financial data interface
@@ -66,7 +66,7 @@ const financialData: FinancialData[] = [
     beta: 1.2,
     high52: 198.23,
     low52: 124.17,
-    lastUpdated: "2024-01-15T16:00:00Z"
+    lastUpdated: "2024-01-15T16:00:00Z",
   },
   {
     id: 2,
@@ -84,9 +84,9 @@ const financialData: FinancialData[] = [
     dividend: 3.0,
     yield: 0.79,
     beta: 0.9,
-    high52: 384.30,
+    high52: 384.3,
     low52: 309.45,
-    lastUpdated: "2024-01-15T16:00:00Z"
+    lastUpdated: "2024-01-15T16:00:00Z",
   },
   {
     id: 3,
@@ -106,7 +106,7 @@ const financialData: FinancialData[] = [
     beta: 1.1,
     high52: 151.55,
     low52: 102.21,
-    lastUpdated: "2024-01-15T16:00:00Z"
+    lastUpdated: "2024-01-15T16:00:00Z",
   },
   {
     id: 4,
@@ -126,7 +126,7 @@ const financialData: FinancialData[] = [
     beta: 1.3,
     high52: 170.83,
     low52: 101.15,
-    lastUpdated: "2024-01-15T16:00:00Z"
+    lastUpdated: "2024-01-15T16:00:00Z",
   },
   {
     id: 5,
@@ -145,8 +145,8 @@ const financialData: FinancialData[] = [
     yield: 0.0,
     beta: 2.1,
     high52: 299.29,
-    low52: 138.80,
-    lastUpdated: "2024-01-15T16:00:00Z"
+    low52: 138.8,
+    lastUpdated: "2024-01-15T16:00:00Z",
   },
   {
     id: 6,
@@ -166,7 +166,7 @@ const financialData: FinancialData[] = [
     beta: 1.0,
     high52: 182.63,
     low52: 135.19,
-    lastUpdated: "2024-01-15T16:00:00Z"
+    lastUpdated: "2024-01-15T16:00:00Z",
   },
   {
     id: 7,
@@ -186,7 +186,7 @@ const financialData: FinancialData[] = [
     beta: 0.7,
     high52: 175.96,
     low52: 152.11,
-    lastUpdated: "2024-01-15T16:00:00Z"
+    lastUpdated: "2024-01-15T16:00:00Z",
   },
   {
     id: 8,
@@ -206,8 +206,8 @@ const financialData: FinancialData[] = [
     beta: 0.9,
     high52: 290.96,
     low52: 201.12,
-    lastUpdated: "2024-01-15T16:00:00Z"
-  }
+    lastUpdated: "2024-01-15T16:00:00Z",
+  },
 ];
 
 const ColumnMenuGrid: React.FC = () => {
@@ -233,18 +233,22 @@ const ColumnMenuGrid: React.FC = () => {
 
   // Custom change renderer with color coding
   const ChangeRenderer = (params: any) => {
-    const { change, changePercent } = params.data;
+    const { change, changePercent } = params.data || {};
     const isPositive = change >= 0;
     const colorClass = isPositive ? "text-green-600" : "text-red-600";
     const bgClass = isPositive ? "bg-green-100" : "bg-red-100";
 
     return (
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center space-x-2 h-full">
         <span className={`font-semibold ${colorClass}`}>
-          {isPositive ? "+" : ""}{change.toFixed(2)}
+          {isPositive ? "+" : ""}
+          {change.toFixed(2)}
         </span>
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${bgClass} ${colorClass}`}>
-          {isPositive ? "+" : ""}{changePercent.toFixed(2)}%
+        <span
+          className={`px-2 py-1 rounded-full text-xs font-medium ${bgClass} ${colorClass}`}
+        >
+          {isPositive ? "+" : ""}
+          {changePercent.toFixed(2)}%
         </span>
       </div>
     );
@@ -283,7 +287,7 @@ const ColumnMenuGrid: React.FC = () => {
       pinned: "left",
       filter: "agTextColumnFilter",
       tooltipField: "symbol",
-      headerTooltip: "Stock ticker symbol"
+      headerTooltip: "Stock ticker symbol",
     },
     {
       field: "company",
@@ -291,23 +295,23 @@ const ColumnMenuGrid: React.FC = () => {
       width: 200,
       filter: "agTextColumnFilter",
       tooltipField: "company",
-      headerTooltip: "Company name"
+      headerTooltip: "Company name",
     },
     {
       field: "sector",
       headerName: "Sector",
       width: 150,
-      filter: "agSetColumnFilter",
+      filter: "agTextColumnFilter",
       tooltipField: "sector",
-      headerTooltip: "Business sector classification"
+      headerTooltip: "Business sector classification",
     },
     {
       field: "industry",
       headerName: "Industry",
       width: 180,
-      filter: "agSetColumnFilter",
+      filter: "agTextColumnFilter",
       tooltipField: "industry",
-      headerTooltip: "Specific industry within the sector"
+      headerTooltip: "Specific industry within the sector",
     },
     {
       field: "marketCap",
@@ -316,7 +320,7 @@ const ColumnMenuGrid: React.FC = () => {
       filter: "agNumberColumnFilter",
       valueFormatter: MarketCapFormatter,
       tooltipValueGetter: (params) => `$${params.value.toLocaleString()}`,
-      headerTooltip: "Total market capitalization"
+      headerTooltip: "Total market capitalization",
     },
     {
       field: "price",
@@ -325,7 +329,7 @@ const ColumnMenuGrid: React.FC = () => {
       filter: "agNumberColumnFilter",
       valueFormatter: (params) => `$${params.value.toFixed(2)}`,
       tooltipField: "price",
-      headerTooltip: "Current stock price"
+      headerTooltip: "Current stock price",
     },
     {
       field: "change",
@@ -333,8 +337,9 @@ const ColumnMenuGrid: React.FC = () => {
       width: 150,
       filter: "agNumberColumnFilter",
       cellRenderer: ChangeRenderer,
-      tooltipValueGetter: (params) => `${params.data.change} (${params.data.changePercent}%)`,
-      headerTooltip: "Price change from previous close"
+      tooltipValueGetter: (params) =>
+        `${params.data?.change || 0} (${params.data?.changePercent || 0}%)`,
+      headerTooltip: "Price change from previous close",
     },
     {
       field: "volume",
@@ -343,7 +348,7 @@ const ColumnMenuGrid: React.FC = () => {
       filter: "agNumberColumnFilter",
       valueFormatter: VolumeFormatter,
       tooltipValueGetter: (params) => params.value.toLocaleString(),
-      headerTooltip: "Trading volume"
+      headerTooltip: "Trading volume",
     },
     {
       field: "pe",
@@ -352,7 +357,7 @@ const ColumnMenuGrid: React.FC = () => {
       filter: "agNumberColumnFilter",
       valueFormatter: (params) => params.value.toFixed(1),
       tooltipField: "pe",
-      headerTooltip: "Price-to-earnings ratio"
+      headerTooltip: "Price-to-earnings ratio",
     },
     {
       field: "eps",
@@ -361,25 +366,27 @@ const ColumnMenuGrid: React.FC = () => {
       filter: "agNumberColumnFilter",
       valueFormatter: (params) => `$${params.value.toFixed(2)}`,
       tooltipField: "eps",
-      headerTooltip: "Earnings per share"
+      headerTooltip: "Earnings per share",
     },
     {
       field: "dividend",
       headerName: "Dividend",
       width: 100,
       filter: "agNumberColumnFilter",
-      valueFormatter: (params) => params.value > 0 ? `$${params.value.toFixed(2)}` : "N/A",
+      valueFormatter: (params) =>
+        params.value > 0 ? `$${params.value.toFixed(2)}` : "N/A",
       tooltipField: "dividend",
-      headerTooltip: "Annual dividend per share"
+      headerTooltip: "Annual dividend per share",
     },
     {
       field: "yield",
       headerName: "Yield",
       width: 80,
       filter: "agNumberColumnFilter",
-      valueFormatter: (params) => params.value > 0 ? `${params.value.toFixed(2)}%` : "N/A",
+      valueFormatter: (params) =>
+        params.value > 0 ? `${params.value.toFixed(2)}%` : "N/A",
       tooltipField: "yield",
-      headerTooltip: "Dividend yield percentage"
+      headerTooltip: "Dividend yield percentage",
     },
     {
       field: "beta",
@@ -388,7 +395,7 @@ const ColumnMenuGrid: React.FC = () => {
       filter: "agNumberColumnFilter",
       valueFormatter: (params) => params.value.toFixed(2),
       tooltipField: "beta",
-      headerTooltip: "Stock volatility relative to market"
+      headerTooltip: "Stock volatility relative to market",
     },
     {
       field: "high52",
@@ -397,7 +404,7 @@ const ColumnMenuGrid: React.FC = () => {
       filter: "agNumberColumnFilter",
       valueFormatter: (params) => `$${params.value.toFixed(2)}`,
       tooltipField: "high52",
-      headerTooltip: "52-week high price"
+      headerTooltip: "52-week high price",
     },
     {
       field: "low52",
@@ -406,7 +413,7 @@ const ColumnMenuGrid: React.FC = () => {
       filter: "agNumberColumnFilter",
       valueFormatter: (params) => `$${params.value.toFixed(2)}`,
       tooltipField: "low52",
-      headerTooltip: "52-week low price"
+      headerTooltip: "52-week low price",
     },
     {
       field: "lastUpdated",
@@ -418,8 +425,8 @@ const ColumnMenuGrid: React.FC = () => {
         return date.toLocaleString();
       },
       tooltipField: "lastUpdated",
-      headerTooltip: "Last data update timestamp"
-    }
+      headerTooltip: "Last data update timestamp",
+    },
   ];
 
   const defaultColDef: ColDef = {
@@ -428,7 +435,7 @@ const ColumnMenuGrid: React.FC = () => {
     filter: true,
     floatingFilter: true,
     menuTabs: ["generalMenuTab", "filterMenuTab", "columnsMenuTab"],
-    tooltipComponent: "defaultTooltipComponent"
+    tooltipComponent: "defaultTooltipComponent",
   };
 
   const onGridReady = (params: GridReadyEvent) => {
@@ -438,7 +445,7 @@ const ColumnMenuGrid: React.FC = () => {
   const exportToCsv = () => {
     if (gridApi) {
       gridApi.exportDataAsCsv({
-        fileName: "financial-data.csv"
+        fileName: "financial-data.csv",
       });
     }
   };
@@ -504,17 +511,17 @@ const ColumnMenuGrid: React.FC = () => {
                   labelDefault: "Columns",
                   labelKey: "columns",
                   iconKey: "columns",
-                  toolPanel: "agColumnsToolPanel"
+                  toolPanel: "agColumnsToolPanel",
                 },
                 {
                   id: "filters",
                   labelDefault: "Filters",
                   labelKey: "filters",
                   iconKey: "filter",
-                  toolPanel: "agFiltersToolPanel"
-                }
+                  toolPanel: "agFiltersToolPanel",
+                },
               ],
-              defaultToolPanel: "columns"
+              defaultToolPanel: "columns",
             }}
             tooltipShowDelay={500}
             tooltipHideDelay={200}
@@ -529,13 +536,32 @@ const ColumnMenuGrid: React.FC = () => {
           Column Menu & Tooltip Features:
         </h3>
         <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-          <li>• <strong>Column Menu:</strong> Right-click column headers for sorting, filtering, and column management</li>
-          <li>• <strong>Tooltips:</strong> Hover over cells and headers for detailed information</li>
-          <li>• <strong>Side Panel:</strong> Use the side panel to manage columns and filters</li>
-          <li>• <strong>Range Selection:</strong> Select ranges of cells for analysis</li>
-          <li>• <strong>Column Resizing:</strong> Drag column borders to resize</li>
-          <li>• <strong>Column Pinning:</strong> Pin important columns to the left</li>
-          <li>• <strong>Custom Formatters:</strong> Special formatting for financial data</li>
+          <li>
+            • <strong>Column Menu:</strong> Right-click column headers for
+            sorting, filtering, and column management
+          </li>
+          <li>
+            • <strong>Tooltips:</strong> Hover over cells and headers for
+            detailed information
+          </li>
+          <li>
+            • <strong>Side Panel:</strong> Use the side panel to manage columns
+            and filters
+          </li>
+          <li>
+            • <strong>Range Selection:</strong> Select ranges of cells for
+            analysis
+          </li>
+          <li>
+            • <strong>Column Resizing:</strong> Drag column borders to resize
+          </li>
+          <li>
+            • <strong>Column Pinning:</strong> Pin important columns to the left
+          </li>
+          <li>
+            • <strong>Custom Formatters:</strong> Special formatting for
+            financial data
+          </li>
         </ul>
       </div>
     </div>

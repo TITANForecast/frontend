@@ -16,9 +16,8 @@ import DashboardCard08 from "./dashboard-card-08";
 import DashboardCard09 from "./dashboard-card-09";
 import DashboardCard10 from "./dashboard-card-10";
 import DashboardCard11 from "./dashboard-card-11";
-import GridExample from "@/components/simple-grid";
 import EChartsDemo from "@/components/echarts-demo";
-// import OlympicGrid from "@/components/olympic-grid";
+import AgGridExamplesPage from "../ag-grid-examples/page";
 
 export default function Dashboard() {
   return (
@@ -101,8 +100,7 @@ export default function Dashboard() {
             Advanced data grid with sorting, filtering, and rounded corners
           </p>
         </div>
-        <GridExample />
-        {/* <OlympicGrid /> */}
+        <AgGridExamplesPage />
       </div>
     </div>
   );
