@@ -169,14 +169,16 @@ const RowSelectionGrid: React.FC = () => {
   // Custom checkbox renderer for row selection
   const CheckboxRenderer = (params: any) => {
     return (
-      <input
-        type="checkbox"
-        checked={params.node.isSelected()}
-        onChange={(e) => {
-          params.node.setSelected(e.target.checked);
-        }}
-        className="w-4 h-4"
-      />
+      <div className="h-full flex items-center justify-center">
+        <input
+          type="checkbox"
+          checked={params.node.isSelected()}
+          onChange={(e) => {
+            params.node.setSelected(e.target.checked);
+          }}
+          className="w-4 h-4"
+        />
+      </div>
     );
   };
 
@@ -193,7 +195,7 @@ const RowSelectionGrid: React.FC = () => {
     const config = priorityConfig[priority as keyof typeof priorityConfig];
 
     return (
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center space-x-2 h-full">
         <span className="text-lg">{config.icon}</span>
         <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
           {priority}
@@ -213,9 +215,11 @@ const RowSelectionGrid: React.FC = () => {
     };
 
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusConfig[status as keyof typeof statusConfig]}`}>
-        {status}
-      </span>
+      <div className="h-full flex items-center">
+        <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusConfig[status as keyof typeof statusConfig]}`}>
+          {status}
+        </span>
+      </div>
     );
   };
 
@@ -226,7 +230,7 @@ const RowSelectionGrid: React.FC = () => {
     const isOverdue = actualHours > estimatedHours;
 
     return (
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center space-x-2 h-full">
         <div className="w-16 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
           <div
             className={`h-2 rounded-full ${
@@ -262,7 +266,7 @@ const RowSelectionGrid: React.FC = () => {
       pinned: "left",
       filter: "agTextColumnFilter",
       cellRenderer: (params: any) => (
-        <div>
+        <div className="h-full flex flex-col justify-center">
           <div className="font-medium text-gray-900 dark:text-gray-100">
             {params.value}
           </div>
@@ -282,14 +286,14 @@ const RowSelectionGrid: React.FC = () => {
       field: "priority",
       headerName: "Priority",
       width: 120,
-      filter: "agSetColumnFilter",
+      filter: "agTextColumnFilter",
       cellRenderer: PriorityRenderer
     },
     {
       field: "status",
       headerName: "Status",
       width: 120,
-      filter: "agSetColumnFilter",
+      filter: "agTextColumnFilter",
       cellRenderer: StatusRenderer
     },
     {
@@ -312,7 +316,7 @@ const RowSelectionGrid: React.FC = () => {
       width: 200,
       filter: "agTextColumnFilter",
       cellRenderer: (params: any) => (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1 h-full items-center">
           {params.value.map((tag: string, index: number) => (
             <span
               key={index}
@@ -364,7 +368,7 @@ const RowSelectionGrid: React.FC = () => {
 
   const selectHighPriority = () => {
     if (gridApi) {
-      gridApi.forEachNode((node: RowNode) => {
+      gridApi.forEachNode((node) => {
         if (node.data.priority === "High" || node.data.priority === "Critical") {
           node.setSelected(true);
         }
@@ -374,7 +378,7 @@ const RowSelectionGrid: React.FC = () => {
 
   const selectInProgress = () => {
     if (gridApi) {
-      gridApi.forEachNode((node: RowNode) => {
+      gridApi.forEachNode((node) => {
         if (node.data.status === "In Progress") {
           node.setSelected(true);
         }
@@ -449,25 +453,25 @@ const RowSelectionGrid: React.FC = () => {
         <div className="flex gap-2 flex-wrap">
           <button
             onClick={selectAll}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            className="px-2 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
           >
             Select All
           </button>
           <button
             onClick={deselectAll}
-            className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+            className="px-2 py-1 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
           >
             Deselect All
           </button>
           <button
             onClick={selectHighPriority}
-            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+            className="px-2 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
           >
             Select High Priority
           </button>
           <button
             onClick={selectInProgress}
-            className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition-colors"
+            className="px-2 py-1 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition-colors"
           >
             Select In Progress
           </button>
@@ -478,7 +482,7 @@ const RowSelectionGrid: React.FC = () => {
           <button
             onClick={() => updateStatus("In Progress")}
             disabled={selectedRows.length === 0}
-            className={`px-4 py-2 rounded-md transition-colors ${
+            className={`px-2 py-1 rounded-md transition-colors ${
               selectedRows.length === 0
                 ? "bg-gray-400 text-gray-200 cursor-not-allowed"
                 : "bg-blue-600 text-white hover:bg-blue-700"
@@ -489,7 +493,7 @@ const RowSelectionGrid: React.FC = () => {
           <button
             onClick={() => updateStatus("Done")}
             disabled={selectedRows.length === 0}
-            className={`px-4 py-2 rounded-md transition-colors ${
+            className={`px-2 py-1 rounded-md transition-colors ${
               selectedRows.length === 0
                 ? "bg-gray-400 text-gray-200 cursor-not-allowed"
                 : "bg-green-600 text-white hover:bg-green-700"
@@ -500,7 +504,7 @@ const RowSelectionGrid: React.FC = () => {
           <button
             onClick={exportSelected}
             disabled={selectedRows.length === 0}
-            className={`px-4 py-2 rounded-md transition-colors ${
+            className={`px-2 py-1 rounded-md transition-colors ${
               selectedRows.length === 0
                 ? "bg-gray-400 text-gray-200 cursor-not-allowed"
                 : "bg-purple-600 text-white hover:bg-purple-700"
@@ -511,7 +515,7 @@ const RowSelectionGrid: React.FC = () => {
           <button
             onClick={deleteSelected}
             disabled={selectedRows.length === 0}
-            className={`px-4 py-2 rounded-md transition-colors ${
+            className={`px-2 py-1 rounded-md transition-colors ${
               selectedRows.length === 0
                 ? "bg-gray-400 text-gray-200 cursor-not-allowed"
                 : "bg-red-600 text-white hover:bg-red-700"
@@ -521,40 +525,7 @@ const RowSelectionGrid: React.FC = () => {
           </button>
         </div>
       </div>
-
-      {/* Selection Summary */}
-      {selectedRows.length > 0 && (
-        <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 rounded-lg">
-          <h3 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">
-            Selected Tasks ({selectionCount})
-          </h3>
-          {summary && (
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <h4 className="font-medium text-blue-700 dark:text-blue-300 mb-1">By Priority:</h4>
-                <div className="space-y-1">
-                  {Object.entries(summary.priorities).map(([priority, count]) => (
-                    <div key={priority} className="text-blue-600 dark:text-blue-400">
-                      {priority}: {count}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <h4 className="font-medium text-blue-700 dark:text-blue-300 mb-1">By Status:</h4>
-                <div className="space-y-1">
-                  {Object.entries(summary.statuses).map(([status, count]) => (
-                    <div key={status} className="text-blue-600 dark:text-blue-400">
-                      {status}: {count}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
+      
       {/* Grid */}
       <div className="w-full h-96">
         <div

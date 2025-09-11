@@ -2,7 +2,12 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { AgGridReact } from "ag-grid-react";
-import { ColDef, GridApi, GridReadyEvent, CellValueChangedEvent } from "ag-grid-community";
+import {
+  ColDef,
+  GridApi,
+  GridReadyEvent,
+  CellValueChangedEvent,
+} from "ag-grid-community";
 import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
 
 // Import AG Grid CSS
@@ -33,7 +38,7 @@ const initialProducts: Product[] = [
     stock: 50,
     description: "High-quality wireless headphones with noise cancellation",
     isActive: true,
-    lastUpdated: "2024-01-15"
+    lastUpdated: "2024-01-15",
   },
   {
     id: 2,
@@ -43,7 +48,7 @@ const initialProducts: Product[] = [
     stock: 25,
     description: "Precision gaming mouse with RGB lighting",
     isActive: true,
-    lastUpdated: "2024-01-16"
+    lastUpdated: "2024-01-16",
   },
   {
     id: 3,
@@ -53,7 +58,7 @@ const initialProducts: Product[] = [
     stock: 15,
     description: "Cherry MX switches mechanical keyboard",
     isActive: true,
-    lastUpdated: "2024-01-17"
+    lastUpdated: "2024-01-17",
   },
   {
     id: 4,
@@ -63,7 +68,7 @@ const initialProducts: Product[] = [
     stock: 100,
     description: "High-speed USB-C cable for data transfer",
     isActive: false,
-    lastUpdated: "2024-01-18"
+    lastUpdated: "2024-01-18",
   },
   {
     id: 5,
@@ -73,8 +78,8 @@ const initialProducts: Product[] = [
     stock: 30,
     description: "Portable Bluetooth speaker with 360-degree sound",
     isActive: true,
-    lastUpdated: "2024-01-19"
-  }
+    lastUpdated: "2024-01-19",
+  },
 ];
 
 const EditableGrid: React.FC = () => {
@@ -102,8 +107,14 @@ const EditableGrid: React.FC = () => {
 
   // Custom cell editor for dropdown
   const CategoryEditor = (props: any) => {
-    const categories = ["Electronics", "Accessories", "Cables", "Software", "Books"];
-    
+    const categories = [
+      "Electronics",
+      "Accessories",
+      "Cables",
+      "Software",
+      "Books",
+    ];
+
     return (
       <select
         value={props.value}
@@ -114,7 +125,7 @@ const EditableGrid: React.FC = () => {
         className="w-full h-full border-0 outline-none bg-transparent"
         autoFocus
       >
-        {categories.map(category => (
+        {categories.map((category) => (
           <option key={category} value={category}>
             {category}
           </option>
@@ -145,7 +156,7 @@ const EditableGrid: React.FC = () => {
       headerName: "ID",
       width: 80,
       editable: false,
-      sortable: true
+      sortable: true,
     },
     {
       field: "name",
@@ -156,17 +167,8 @@ const EditableGrid: React.FC = () => {
       filter: "agTextColumnFilter",
       cellEditor: "agTextCellEditor",
       cellEditorParams: {
-        maxLength: 50
+        maxLength: 50,
       },
-      valueValidator: (params) => {
-        if (!params.newValue || params.newValue.trim().length === 0) {
-          return { valid: false, message: "Product name is required" };
-        }
-        if (params.newValue.length > 50) {
-          return { valid: false, message: "Product name must be 50 characters or less" };
-        }
-        return { valid: true };
-      }
     },
     {
       field: "category",
@@ -174,11 +176,11 @@ const EditableGrid: React.FC = () => {
       width: 150,
       editable: true,
       sortable: true,
-      filter: "agSetColumnFilter",
+      filter: "agTextColumnFilter",
       cellEditor: CategoryEditor,
       cellEditorParams: {
-        values: ["Electronics", "Accessories", "Cables", "Software", "Books"]
-      }
+        values: ["Electronics", "Accessories", "Cables", "Software", "Books"],
+      },
     },
     {
       field: "price",
@@ -191,18 +193,9 @@ const EditableGrid: React.FC = () => {
       cellEditorParams: {
         min: 0,
         max: 10000,
-        precision: 2
+        precision: 2,
       },
       valueFormatter: (params) => `$${params.value.toFixed(2)}`,
-      valueValidator: (params) => {
-        if (params.newValue < 0) {
-          return { valid: false, message: "Price must be positive" };
-        }
-        if (params.newValue > 10000) {
-          return { valid: false, message: "Price must be less than $10,000" };
-        }
-        return { valid: true };
-      }
     },
     {
       field: "stock",
@@ -214,17 +207,8 @@ const EditableGrid: React.FC = () => {
       cellEditor: "agNumberCellEditor",
       cellEditorParams: {
         min: 0,
-        max: 1000
+        max: 1000,
       },
-      valueValidator: (params) => {
-        if (params.newValue < 0) {
-          return { valid: false, message: "Stock must be non-negative" };
-        }
-        if (params.newValue > 1000) {
-          return { valid: false, message: "Stock must be less than 1000" };
-        }
-        return { valid: true };
-      }
     },
     {
       field: "description",
@@ -237,14 +221,8 @@ const EditableGrid: React.FC = () => {
       cellEditorParams: {
         maxLength: 200,
         rows: 3,
-        cols: 50
+        cols: 50,
       },
-      valueValidator: (params) => {
-        if (params.newValue && params.newValue.length > 200) {
-          return { valid: false, message: "Description must be 200 characters or less" };
-        }
-        return { valid: true };
-      }
     },
     {
       field: "isActive",
@@ -252,11 +230,11 @@ const EditableGrid: React.FC = () => {
       width: 100,
       editable: true,
       sortable: true,
-      filter: "agSetColumnFilter",
+      filter: "agTextColumnFilter",
       cellEditor: BooleanEditor,
       cellRenderer: (params: any) => {
         return params.value ? "✓" : "✗";
-      }
+      },
     },
     {
       field: "lastUpdated",
@@ -264,15 +242,15 @@ const EditableGrid: React.FC = () => {
       width: 130,
       editable: false,
       sortable: true,
-      filter: "agDateColumnFilter"
-    }
+      filter: "agDateColumnFilter",
+    },
   ];
 
   const defaultColDef: ColDef = {
     resizable: true,
     sortable: true,
     filter: true,
-    floatingFilter: true
+    floatingFilter: true,
   };
 
   const onGridReady = (params: GridReadyEvent) => {
@@ -281,19 +259,19 @@ const EditableGrid: React.FC = () => {
 
   const onCellValueChanged = useCallback((event: CellValueChangedEvent) => {
     const { data, colDef, newValue, oldValue } = event;
-    
+
     if (newValue !== oldValue) {
       setHasChanges(true);
-      
+
       // Update the lastUpdated field
       const updatedData = {
         ...data,
-        lastUpdated: new Date().toISOString().split('T')[0]
+        lastUpdated: new Date().toISOString().split("T")[0],
       };
-      
+
       // Update the products array
-      setProducts(prevProducts => 
-        prevProducts.map(product => 
+      setProducts((prevProducts) =>
+        prevProducts.map((product) =>
           product.id === data.id ? updatedData : product
         )
       );
@@ -301,7 +279,7 @@ const EditableGrid: React.FC = () => {
   }, []);
 
   const addNewProduct = () => {
-    const newId = Math.max(...products.map(p => p.id)) + 1;
+    const newId = Math.max(...products.map((p) => p.id)) + 1;
     const newProduct: Product = {
       id: newId,
       name: "",
@@ -310,19 +288,19 @@ const EditableGrid: React.FC = () => {
       stock: 0,
       description: "",
       isActive: true,
-      lastUpdated: new Date().toISOString().split('T')[0]
+      lastUpdated: new Date().toISOString().split("T")[0],
     };
-    
-    setProducts(prev => [...prev, newProduct]);
+
+    setProducts((prev) => [...prev, newProduct]);
     setHasChanges(true);
-    
+
     // Focus on the new row
     setTimeout(() => {
       if (gridApi) {
-        gridApi.setFocusedCell(products.length, 'name');
+        gridApi.setFocusedCell(products.length, "name");
         gridApi.startEditingCell({
           rowIndex: products.length,
-          colKey: 'name'
+          colKey: "name",
         });
       }
     }, 100);
@@ -343,7 +321,7 @@ const EditableGrid: React.FC = () => {
   const exportToCsv = () => {
     if (gridApi) {
       gridApi.exportDataAsCsv({
-        fileName: "products.csv"
+        fileName: "products.csv",
       });
     }
   };
@@ -354,16 +332,16 @@ const EditableGrid: React.FC = () => {
       <div className="mb-4 flex gap-2 flex-wrap">
         <button
           onClick={addNewProduct}
-          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+          className="px-2 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
         >
           Add New Product
         </button>
         <button
           onClick={saveChanges}
           disabled={!hasChanges}
-          className={`px-4 py-2 rounded-md transition-colors ${
-            hasChanges 
-              ? "bg-blue-600 text-white hover:bg-blue-700" 
+          className={`px-2 py-1 rounded-md transition-colors ${
+            hasChanges
+              ? "bg-blue-600 text-white hover:bg-blue-700"
               : "bg-gray-400 text-gray-200 cursor-not-allowed"
           }`}
         >
@@ -372,9 +350,9 @@ const EditableGrid: React.FC = () => {
         <button
           onClick={resetChanges}
           disabled={!hasChanges}
-          className={`px-4 py-2 rounded-md transition-colors ${
-            hasChanges 
-              ? "bg-yellow-600 text-white hover:bg-yellow-700" 
+          className={`px-2 py-1 rounded-md transition-colors ${
+            hasChanges
+              ? "bg-yellow-600 text-white hover:bg-yellow-700"
               : "bg-gray-400 text-gray-200 cursor-not-allowed"
           }`}
         >
@@ -382,7 +360,7 @@ const EditableGrid: React.FC = () => {
         </button>
         <button
           onClick={exportToCsv}
-          className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
+          className="px-2 py-1 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
         >
           Export CSV
         </button>
