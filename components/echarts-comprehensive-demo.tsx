@@ -257,9 +257,19 @@ const EChartsComprehensiveDemo = () => {
     },
     legend: {
       data: ['Q1 Performance', 'Q2 Performance'],
-      textStyle: { color: isDark ? '#d1d5db' : '#6b7280' }
+      textStyle: { color: isDark ? '#d1d5db' : '#6b7280' },
+      top: '10%'
+    },
+    grid: {
+      left: '5%',
+      right: '5%',
+      top: '20%',
+      bottom: '5%',
+      containLabel: true
     },
     radar: {
+      center: ['50%', '60%'],
+      radius: '70%',
       indicator: [
         { name: 'Sales', max: 100 },
         { name: 'Marketing', max: 100 },
@@ -269,7 +279,25 @@ const EChartsComprehensiveDemo = () => {
         { name: 'Operations', max: 100 }
       ],
       name: {
-        textStyle: { color: isDark ? '#d1d5db' : '#6b7280' }
+        textStyle: { 
+          color: isDark ? '#d1d5db' : '#6b7280',
+          fontSize: 12
+        }
+      },
+      axisLine: {
+        lineStyle: {
+          color: isDark ? '#6b7280' : '#d1d5db'
+        }
+      },
+      splitLine: {
+        lineStyle: {
+          color: isDark ? '#374151' : '#f3f4f6'
+        }
+      },
+      splitArea: {
+        areaStyle: {
+          color: isDark ? '#1f2937' : '#f9fafb'
+        }
       }
     },
     series: [
@@ -281,7 +309,11 @@ const EChartsComprehensiveDemo = () => {
           color: colors.primary
         },
         areaStyle: {
-          opacity: 0.2
+          opacity: 0.3
+        },
+        lineStyle: {
+          color: colors.primary,
+          width: 2
         }
       }
     ]
@@ -665,9 +697,11 @@ const EChartsComprehensiveDemo = () => {
       {/* Active Chart Display */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
         <ReactECharts 
+          key={activeChart} // Force re-render when switching charts
           option={chartOptions[activeChart as keyof typeof chartOptions].option} 
           style={{ height: '500px' }}
           theme={isDark ? 'dark' : 'light'}
+          notMerge={true} // Prevent chart merging
         />
       </div>
 
