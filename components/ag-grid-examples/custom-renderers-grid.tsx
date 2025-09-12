@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import { AgGridReact } from "ag-grid-react";
 import {
   ColDef,
@@ -107,15 +108,18 @@ const userData: User[] = [
 
 // Custom Avatar Cell Renderer
 const AvatarRenderer = (params: ICellRendererParams) => {
+  const [imgSrc, setImgSrc] = useState(params.value);
+
   return (
     <div className="flex items-center space-x-3 h-full">
-      <img
-        src={params.value}
+      <Image
+        src={imgSrc}
         alt="Avatar"
+        width={32}
+        height={32}
         className="w-8 h-8 rounded-full object-cover"
-        onError={(e) => {
-          e.currentTarget.src =
-            "https://via.placeholder.com/40x40/6B7280/FFFFFF?text=U";
+        onError={() => {
+          setImgSrc("https://via.placeholder.com/40x40/6B7280/FFFFFF?text=U");
         }}
       />
       <span className="font-medium text-gray-900 dark:text-gray-100">
