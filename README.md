@@ -158,6 +158,30 @@ The workflow uses these environment variables:
 - **Image Optimization**: Disabled for S3 compatibility
 - **Organization Access**: Any TITANForecast repository can use this pipeline
 
+### 🔧 Linting Configuration
+
+#### Current Status
+- **ESLint disabled during builds** in `next.config.js` with `eslint.ignoreDuringBuilds: true`
+- **Linting step commented out** in GitHub Actions workflow
+- **Developer working on fixes** in separate branch
+
+#### To Re-enable Linting
+1. **Fix code quality issues** in the codebase
+2. **Remove `eslint.ignoreDuringBuilds: true`** from `next.config.js`
+3. **Uncomment linting step** in `.github/workflows/deploy-release.yml`:
+   ```yaml
+   - name: Run linting
+     run: npm run lint
+   ```
+4. **Test locally** with `npm run build` to ensure no linting errors
+5. **Deploy and verify** the workflow passes
+
+#### Linting Issues to Address
+- **Unescaped entities**: Apostrophes and quotes in JSX
+- **React Hook dependencies**: Missing dependencies in useEffect
+- **Image optimization**: Replace `<img>` with Next.js `<Image>`
+- **ESLint configuration**: Install missing dependencies
+
 ---
 
 ## Deploy on Vercel (Alternative)

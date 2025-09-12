@@ -36,17 +36,14 @@ jobs:
         cache: 'npm'
         cache-dependency-path: 'package-lock.json'
 
-           - name: Install dependencies
-             run: npm ci
+    - name: Install dependencies
+      run: npm ci
 
-          #  TODO: Re-enable linting once developer fixes code quality issues
-          #  - name: Run linting
-          #    run: npm run lint
-          #  Note: Currently disabled in next.config.js with eslint.ignoreDuringBuilds: true
-          #  Developer is working on linting fixes in separate branch
+           # - name: Run linting
+           #   run: npm run lint
 
-           - name: Build static site
-             run: npm run build
+    - name: Build static site
+      run: npm run build
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
