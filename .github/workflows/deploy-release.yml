@@ -1,4 +1,4 @@
-name: Deploy Release
+name: Deploy App Frontend Release
 
 on:
   push:
@@ -14,8 +14,8 @@ on:
 env:
   AWS_REGION: us-east-1
   NODE_VERSION: '20'
-  S3_BUCKET: 'titan-static-site-8fbf908b'
-  CLOUDFRONT_DISTRIBUTION_ID: 'E1F8WGVOCZWT1K'
+  S3_BUCKET: 'titan-app-static-site-8fbf908b'
+  CLOUDFRONT_DISTRIBUTION_ID: 'EX6Y4ZPOCGMW6'
 
 jobs:
   # Build and test the frontend application
@@ -43,7 +43,7 @@ jobs:
       run: npm run lint
 
     - name: Build static site
-      run: npm run build
+      run: npm run build:static
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
@@ -78,7 +78,7 @@ jobs:
 
     - name: Deploy to S3
       run: |
-        echo "🚀 Deploying frontend app to S3..."
+        echo "🚀 Deploying app frontend to S3..."
         
         # Deploy static assets with long cache (1 year)
         aws s3 sync out/ s3://${{ env.S3_BUCKET }}/ \
@@ -118,10 +118,11 @@ jobs:
     - name: Get deployment URL
       run: |
         URL=$(aws cloudfront get-distribution --id ${{ env.CLOUDFRONT_DISTRIBUTION_ID }} --query 'Distribution.DomainName' --output text)
-        echo "🌐 Frontend App URL: https://$URL"
+        echo "🌐 App Frontend URL: https://$URL"
+        echo "🌐 App Domain: https://app.titanforecast.com"
         echo "📦 S3 Bucket: ${{ env.S3_BUCKET }}"
         echo "🏷️  Release Tag: ${{ github.ref_name }}"
-        echo "::notice::Frontend app deployed successfully! URL: https://$URL"
+        echo "::notice::App frontend deployed successfully! URL: https://$URL"
 
   # Security scan
   security-scan:
