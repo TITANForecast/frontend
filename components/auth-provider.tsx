@@ -25,13 +25,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // Redirect logic
-    if (!isLoading) {
-      if (!isAuthenticated && pathname !== "/") {
-        router.push("/");
-      } else if (isAuthenticated && pathname === "/") {
-        router.push("/dashboard");
-      }
+    // Only redirect to dashboard when authenticated and on login page
+    if (!isLoading && isAuthenticated && pathname === "/") {
+      router.push("/dashboard");
     }
   }, [isAuthenticated, isLoading, pathname, router]);
 
