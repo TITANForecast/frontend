@@ -72,23 +72,65 @@ export default function DashboardCardAGKPIGauge({
         color: isDark ? "#ffffff" : "#000000",
       },
       value: value,
+      label: {
+        formatter({ value }: { value: number }) {
+          // Add appropriate symbol to the value based on gauge type
+          if (name.includes("GP %")) {
+            return `$${value.toFixed(0)}`;
+          } else if (name.includes("$/RO")) {
+            return `$${value.toFixed(0)}`;
+          } else if (name.includes("Hrs/RO")) {
+            return `${value.toFixed(2)}`;
+          } else if (name.includes("ELR")) {
+            return `$${value.toFixed(0)}`;
+          }
+          return `${value.toFixed(0)}`;
+        },
+      },
       startAngle: 270,
       endAngle: 540,
       tooltip: {
         enabled: true,
         renderer: ({ value }: { value: number }) => {
-          const status = value >= 70 ? "EXCEEDING LIMIT" : "WITHIN LIMIT";
-          const risk =
-            value >= 85 ? "HIGH RISK" : value >= 65 ? "MODERATE RISK" : "SAFE";
+          // Determine status and risk based on zones
+          let status, risk, zoneInfo;
+
+          if (value <= redZone[1]) {
+            status = "BELOW TARGET";
+            risk = "HIGH RISK";
+            zoneInfo = `Red Zone (${redZone[0]} - ${redZone[1]})`;
+          } else if (value <= yellowZone[1]) {
+            status = "WITHIN RANGE";
+            risk = "MODERATE RISK";
+            zoneInfo = `Yellow Zone (${yellowZone[0]} - ${yellowZone[1]})`;
+          } else {
+            status = "EXCEEDING TARGET";
+            risk = "SAFE";
+            zoneInfo = `Green Zone (${greenZone[0]} - ${greenZone[1]})`;
+          }
+
+          // Format value based on gauge type
+          let formattedValue;
+          if (name.includes("GP %")) {
+            formattedValue = `$${value.toFixed(0)}`;
+          } else if (name.includes("$/RO")) {
+            formattedValue = `$${value.toFixed(0)}`;
+          } else if (name.includes("Hrs/RO")) {
+            formattedValue = `${value.toFixed(2)}`;
+          } else if (name.includes("ELR")) {
+            formattedValue = `$${value.toFixed(0)}`;
+          } else {
+            formattedValue = value.toString();
+          }
 
           return {
-            heading: "Current Speed",
-            title: `${value} mph`,
+            heading: name,
+            title: formattedValue,
             data: [
               { label: "Status", value: status },
               { label: "Risk Level", value: risk },
-              { label: "Speed Limit", value: "70 mph" },
-              { label: "Safety Zone", value: "≤ 65 mph" },
+              { label: "Zone", value: zoneInfo },
+              { label: "Range", value: `${min} - ${max}` },
             ],
           };
         },
@@ -97,12 +139,25 @@ export default function DashboardCardAGKPIGauge({
         min: min,
         max: max,
         interval: {
-          step: 10,
+          step: (max - min) / 5, // Dynamic step based on range
         },
         fillOpacity: 0.85,
         label: {
           fontSize: 12,
           color: isDark ? "#ffffff" : "#000000",
+          formatter: ({ value }: { value: number }) => {
+            // Add appropriate symbol to scale labels based on gauge type
+            if (name.includes("GP %")) {
+              return `$${value.toFixed(0)}`;
+            } else if (name.includes("$/RO")) {
+              return `$${value.toFixed(0)}`;
+            } else if (name.includes("Hrs/RO")) {
+              return value.toFixed(2);
+            } else if (name.includes("ELR")) {
+              return `$${value.toFixed(0)}`;
+            }
+            return value.toString();
+          },
         },
       },
       segmentation: {
@@ -121,11 +176,6 @@ export default function DashboardCardAGKPIGauge({
         ],
       },
       innerRadiusRatio: 0.8,
-      secondaryLabel: {
-        text: "mph",
-        fontSize: 12,
-        color: isDark ? "#ffffff" : "#000000",
-      },
       cornerRadius: 40,
     };
 

@@ -61,14 +61,6 @@ export default function Dashboard() {
 
       {/* KPI Gauges Section */}
       <div className="mb-8">
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">
-            Key Performance Indicators
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            Real-time performance monitoring with enhanced tooltips and enterprise features
-          </p>
-        </div>
         <div className="grid grid-cols-12 gap-6">
           {/* Labor GP % */}
           <DashboardCardAGKPIGauge
