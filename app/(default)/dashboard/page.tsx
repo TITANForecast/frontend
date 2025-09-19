@@ -22,7 +22,6 @@ import DashboardCardWarrantyOpportunity from "./dashboard-card-warranty-opportun
 import DashboardCardTechnicianProduction from "./dashboard-card-technician-production";
 import DashboardCardOpcodes from "./dashboard-card-opcodes";
 import DashboardCardAdvisorElr from "./dashboard-card-advisor-elr";
-import DashboardCardKPIGauge from "./dashboard-card-kpi-gauge";
 import DashboardCardAGKPIGauge from "./dashboard-card-ag-kpi-gauge";
 import EChartsDemo from "@/components/echarts-demo";
 import EChartsComprehensiveDemo from "@/components/echarts-comprehensive-demo";
@@ -67,12 +66,12 @@ export default function Dashboard() {
             Key Performance Indicators
           </h2>
           <p className="text-gray-600 dark:text-gray-400">
-            Real-time performance monitoring with color-coded zones
+            Real-time performance monitoring with enhanced tooltips and enterprise features
           </p>
         </div>
         <div className="grid grid-cols-12 gap-6">
           {/* Labor GP % */}
-          <DashboardCardKPIGauge
+          <DashboardCardAGKPIGauge
             value={85.5}
             name="Labor GP %"
             min={66}
@@ -83,7 +82,7 @@ export default function Dashboard() {
             className="col-span-12 md:col-span-6 lg:col-span-3"
           />
           {/* Labor $/RO */}
-          <DashboardCardKPIGauge
+          <DashboardCardAGKPIGauge
             value={222}
             name="Labor $/RO"
             min={192}
@@ -94,7 +93,7 @@ export default function Dashboard() {
             className="col-span-12 md:col-span-6 lg:col-span-3"
           />
           {/* Hrs/RO */}
-          <DashboardCardKPIGauge
+          <DashboardCardAGKPIGauge
             value={1.29}
             name="Hrs/RO"
             min={1.10}
@@ -105,64 +104,6 @@ export default function Dashboard() {
             className="col-span-12 md:col-span-6 lg:col-span-3"
           />
           {/* ELR Total */}
-          <DashboardCardKPIGauge
-            value={177.5}
-            name="ELR Total"
-            min={140}
-            max={200}
-            redZone={[140, 152]}
-            yellowZone={[152, 164]}
-            greenZone={[164, 200]}
-            className="col-span-12 md:col-span-6 lg:col-span-3"
-          />
-        </div>
-      </div>
-
-      {/* AG Charts KPI Gauges Section */}
-      <div className="mb-8">
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">
-            AG Charts KPI Gauges
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            Alternative gauge implementation using AG Charts with enhanced tooltips
-          </p>
-        </div>
-        <div className="grid grid-cols-12 gap-6">
-          {/* Labor GP % - AG Charts */}
-          <DashboardCardAGKPIGauge
-            value={85.5}
-            name="Labor GP %"
-            min={66}
-            max={96}
-            redZone={[66, 78]}
-            yellowZone={[78, 84]}
-            greenZone={[84, 96]}
-            className="col-span-12 md:col-span-6 lg:col-span-3"
-          />
-          {/* Labor $/RO - AG Charts */}
-          <DashboardCardAGKPIGauge
-            value={222}
-            name="Labor $/RO"
-            min={192}
-            max={272}
-            redZone={[192, 208]}
-            yellowZone={[208, 240]}
-            greenZone={[240, 272]}
-            className="col-span-12 md:col-span-6 lg:col-span-3"
-          />
-          {/* Hrs/RO - AG Charts */}
-          <DashboardCardAGKPIGauge
-            value={1.29}
-            name="Hrs/RO"
-            min={1.10}
-            max={1.60}
-            redZone={[1.10, 1.20]}
-            yellowZone={[1.20, 1.40]}
-            greenZone={[1.40, 1.60]}
-            className="col-span-12 md:col-span-6 lg:col-span-3"
-          />
-          {/* ELR Total - AG Charts */}
           <DashboardCardAGKPIGauge
             value={177.5}
             name="ELR Total"

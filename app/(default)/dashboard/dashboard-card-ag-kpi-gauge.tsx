@@ -68,7 +68,7 @@ export default function DashboardCardAGKPIGauge({
       },
       title: {
         text: name,
-        fontSize: 14,
+        fontSize: 20,
         color: isDark ? "#ffffff" : "#000000",
       },
       value: value,
@@ -101,7 +101,7 @@ export default function DashboardCardAGKPIGauge({
         },
         fillOpacity: 0.85,
         label: {
-          fontSize: 10,
+          fontSize: 12,
           color: isDark ? "#ffffff" : "#000000",
         },
       },
@@ -112,6 +112,13 @@ export default function DashboardCardAGKPIGauge({
       },
       bar: {
         fillOpacity: 0.8,
+        fills: [
+          { color: "#ef5452" },
+          { color: "#F38B06" },
+          { color: "#e1cc00" },
+          { color: "#92B83C" },
+          { color: "#459d55" },
+        ],
       },
       innerRadiusRatio: 0.8,
       secondaryLabel: {
@@ -120,21 +127,6 @@ export default function DashboardCardAGKPIGauge({
         color: isDark ? "#ffffff" : "#000000",
       },
       cornerRadius: 40,
-      targets: [
-        {
-          value: 70,
-          shape: "triangle" as const,
-          placement: "inside" as const,
-          spacing: 12,
-          size: 16,
-          strokeWidth: 2,
-          text: "LIMIT",
-          label: {
-            fontSize: 12,
-            color: isDark ? "#ffffff" : "#000000",
-          },
-        },
-      ],
     };
 
     try {
