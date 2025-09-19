@@ -80,32 +80,10 @@ jobs:
 
     - name: Deploy to S3
       run: |
-        echo "🚀 Deploying app frontend to S3..."
+        echo "🚀 Deploying website to S3..."
         
-        # Deploy static assets with long cache (1 year)
-        aws s3 sync out/ s3://${{ env.S3_BUCKET }}/ \
-          --delete \
-          --cache-control "public, max-age=31536000, immutable" \
-          --exclude "*.html" \
-          --exclude "*.json" \
-          --exclude "index.txt" \
-          --exclude "404.txt" \
-          --exclude "*/index.txt" \
-          --exclude "*/404.txt"
-
-        # Deploy HTML and JSON files with shorter cache (1 hour)
-        aws s3 sync out/ s3://${{ env.S3_BUCKET }}/ \
-          --delete \
-          --cache-control "public, max-age=3600" \
-          --include "*.html" \
-          --include "*.json" \
-          --exclude "*"
-
-        # Set correct content type for index.html
-        aws s3 cp s3://${{ env.S3_BUCKET }}/index.html s3://${{ env.S3_BUCKET }}/index.html \
-          --content-type "text/html" \
-          --cache-control "public, max-age=3600" \
-          --metadata-directive "REPLACE"
+        # Simple deployment that matches our manual process
+        aws s3 sync out/ s3://${{ env.S3_BUCKET }}/ --delete
 
         echo "✅ S3 deployment completed"
 
