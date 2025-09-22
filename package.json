@@ -21,6 +21,7 @@
     "ag-grid-community": "^34.2.0",
     "ag-grid-enterprise": "^34.2.0",
     "ag-grid-react": "^34.2.0",
+    "aws-amplify": "^6.15.6",
     "chart.js": "^4.4.7",
     "chartjs-adapter-moment": "^1.0.1",
     "clsx": "^2.1.1",
