@@ -1,13 +1,40 @@
-export const metadata = {
-  title: "Sign Up - TitanForecast",
-  description: "Page description",
-};
+"use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import AuthHeader from "../auth-header";
 import AuthImage from "../auth-image";
+import { useAuth } from "@/components/auth-provider";
 
 export default function SignUp() {
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [role, setRole] = useState("Designer");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+  const router = useRouter();
+  const { signup } = useAuth();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+    setSuccess(false);
+
+    try {
+      await signup(email, password, name);
+      setSuccess(true);
+      // User will need to check their email for verification
+    } catch (error: any) {
+      setError(error.message || "Signup failed. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <main className="bg-white dark:bg-gray-900">
       <div className="relative md:flex">
@@ -20,8 +47,23 @@ export default function SignUp() {
               <h1 className="text-3xl text-gray-800 dark:text-gray-100 font-bold mb-6">
                 Create your Account
               </h1>
+
+              {/* Success Message */}
+              {success && (
+                <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
+                  Account created successfully! Please check your email for verification instructions.
+                </div>
+              )}
+
+              {/* Error Message */}
+              {error && (
+                <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                  {error}
+                </div>
+              )}
+
               {/* Form */}
-              <form>
+              <form onSubmit={handleSubmit}>
                 <div className="space-y-4">
                   <div>
                     <label
@@ -34,6 +76,9 @@ export default function SignUp() {
                       id="email"
                       className="form-input w-full"
                       type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
                     />
                   </div>
                   <div>
@@ -47,6 +92,9 @@ export default function SignUp() {
                       id="name"
                       className="form-input w-full"
                       type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
                     />
                   </div>
                   <div>
@@ -56,10 +104,15 @@ export default function SignUp() {
                     >
                       Your Role <span className="text-maroon-600">*</span>
                     </label>
-                    <select id="role" className="form-select w-full">
-                      <option>Designer</option>
-                      <option>Developer</option>
-                      <option>Accountant</option>
+                    <select 
+                      id="role" 
+                      className="form-select w-full"
+                      value={role}
+                      onChange={(e) => setRole(e.target.value)}
+                    >
+                      <option value="Designer">Designer</option>
+                      <option value="Developer">Developer</option>
+                      <option value="Accountant">Accountant</option>
                     </select>
                   </div>
                   <div>
@@ -74,6 +127,9 @@ export default function SignUp() {
                       className="form-input w-full"
                       type="password"
                       autoComplete="on"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
                     />
                   </div>
                 </div>
@@ -86,12 +142,13 @@ export default function SignUp() {
                       </span>
                     </label>
                   </div>
-                   <Link
-                     className="btn bg-maroon-800 text-white hover:bg-maroon-900 dark:bg-maroon-800 dark:text-white dark:hover:bg-maroon-900 ml-3 whitespace-nowrap shadow-lg hover:shadow-xl transition-all duration-200"
-                     href="/"
+                   <button
+                     type="submit"
+                     disabled={isLoading}
+                     className="btn bg-maroon-800 text-white hover:bg-maroon-900 dark:bg-maroon-800 dark:text-white dark:hover:bg-maroon-900 ml-3 whitespace-nowrap shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                    >
-                     Sign Up
-                   </Link>
+                     {isLoading ? "Creating Account..." : "Sign Up"}
+                   </button>
                 </div>
               </form>
               {/* Footer */}

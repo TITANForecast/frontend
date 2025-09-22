@@ -7,7 +7,7 @@ import { Eye, EyeOff, Lock, User } from "lucide-react";
 import { useAuth } from "./auth-provider";
 
 export default function LoginForm() {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -20,15 +20,14 @@ export default function LoginForm() {
     setIsLoading(true);
     setError("");
 
-    // Simple credential check
-    if (username === "titan" && password === "forecast") {
-      // Use the auth context login function - it will automatically redirect
-      login();
-    } else {
-      setError("Invalid credentials. Please try again.");
+    try {
+      await login(email, password);
+      // The AuthProvider will handle the redirect to dashboard
+    } catch (error: any) {
+      setError(error.message || "Invalid credentials. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   return (
@@ -57,13 +56,13 @@ export default function LoginForm() {
 
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Username Field */}
+          {/* Email Field */}
           <div>
             <label
-              htmlFor="username"
+              htmlFor="email"
               className="block text-sm font-medium text-gray-300 mb-2"
             >
-              Username
+              Email
             </label>
             <div className="relative">
               <User
@@ -71,12 +70,12 @@ export default function LoginForm() {
                 size={18}
               />
               <input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-maroon-600 focus:border-transparent text-white placeholder-gray-400 transition-all duration-200"
-                placeholder="Enter your username"
+                placeholder="Enter your email"
                 required
               />
             </div>

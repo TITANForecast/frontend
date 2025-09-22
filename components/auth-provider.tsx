@@ -2,26 +2,32 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { Auth } from "aws-amplify";
+import "@/lib/amplify";
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  login: () => void;
-  logout: () => void;
+  user: any;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string, name: string) => Promise<void>;
+  logout: () => Promise<void>;
+  confirmSignup: (email: string, code: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  confirmPassword: (email: string, code: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
     // Check authentication status on mount
-    const authStatus = localStorage.getItem("titan-auth");
-    setIsAuthenticated(authStatus === "true");
-    setIsLoading(false);
+    checkAuthStatus();
   }, []);
 
   useEffect(() => {
@@ -31,15 +37,77 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, isLoading, pathname, router]);
 
-  const login = () => {
-    localStorage.setItem("titan-auth", "true");
-    setIsAuthenticated(true);
+  const checkAuthStatus = async () => {
+    try {
+      const currentUser = await Auth.currentAuthenticatedUser();
+      setUser(currentUser);
+      setIsAuthenticated(true);
+    } catch (error) {
+      setUser(null);
+      setIsAuthenticated(false);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const logout = () => {
-    localStorage.removeItem("titan-auth");
-    setIsAuthenticated(false);
-    router.push("/");
+  const login = async (email: string, password: string) => {
+    try {
+      const user = await Auth.signIn(email, password);
+      setUser(user);
+      setIsAuthenticated(true);
+    } catch (error: any) {
+      throw new Error(error.message || "Login failed");
+    }
+  };
+
+  const signup = async (email: string, password: string, name: string) => {
+    try {
+      await Auth.signUp({
+        username: email,
+        password,
+        attributes: {
+          email,
+          name,
+        },
+      });
+    } catch (error: any) {
+      throw new Error(error.message || "Signup failed");
+    }
+  };
+
+  const confirmSignup = async (email: string, code: string) => {
+    try {
+      await Auth.confirmSignUp(email, code);
+    } catch (error: any) {
+      throw new Error(error.message || "Email verification failed");
+    }
+  };
+
+  const resetPassword = async (email: string) => {
+    try {
+      await Auth.forgotPassword(email);
+    } catch (error: any) {
+      throw new Error(error.message || "Password reset failed");
+    }
+  };
+
+  const confirmPassword = async (email: string, code: string, newPassword: string) => {
+    try {
+      await Auth.forgotPasswordSubmit(email, code, newPassword);
+    } catch (error: any) {
+      throw new Error(error.message || "Password reset confirmation failed");
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await Auth.signOut();
+      setUser(null);
+      setIsAuthenticated(false);
+      router.push("/");
+    } catch (error: any) {
+      throw new Error(error.message || "Logout failed");
+    }
   };
 
   if (isLoading) {
@@ -51,7 +119,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ 
+      isAuthenticated, 
+      user, 
+      login, 
+      signup, 
+      logout, 
+      confirmSignup, 
+      resetPassword, 
+      confirmPassword 
+    }}>
       {children}
     </AuthContext.Provider>
   );
