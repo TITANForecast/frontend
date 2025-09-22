@@ -17,6 +17,10 @@ export default function SignIn() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent double submission
+    if (isLoading) return;
+    
     setIsLoading(true);
     setError("");
 
@@ -52,7 +56,7 @@ export default function SignIn() {
               )}
 
               {/* Form */}
-              <form onSubmit={handleSubmit}>
+              <form onSubmit={handleSubmit} className={isLoading ? "pointer-events-none opacity-75" : ""}>
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium mb-1" htmlFor="email">Email Address</label>
@@ -87,7 +91,14 @@ export default function SignIn() {
                     disabled={isLoading}
                     className="btn bg-gray-900 text-gray-100 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white ml-3 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isLoading ? "Signing in..." : "Sign In"}
+                    {isLoading ? (
+                      <div className="flex items-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                        Signing in...
+                      </div>
+                    ) : (
+                      "Sign In"
+                    )}
                   </button>
                 </div>
               </form>
