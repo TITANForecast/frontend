@@ -4,6 +4,11 @@
 
 This document outlines the implementation plan for integrating AWS Cognito authentication into the TITAN frontend while preserving our beautiful custom UI. This implementation follows the minimal viable approach established in the infrastructure documentation and addresses the requirements outlined in [Issue #11](https://github.com/TITANForecast/frontend/issues/11).
 
+> **📋 Infrastructure Details**: For complete information about the Cognito service configuration, deployment, and management, see the **[Infrastructure Repository](https://github.com/TITANForecast/infrastructure)** and related issues:
+> - [Cognito Implementation](https://github.com/TITANForecast/infrastructure/issues/21)
+> - [SES Email Setup](https://github.com/TITANForecast/infrastructure/issues/25)
+> - [Email Templates](https://github.com/TITANForecast/infrastructure/issues/26)
+
 ## Current State Analysis
 
 ### Existing Authentication Implementation
