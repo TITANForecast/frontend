@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Auth } from "aws-amplify";
+import { signIn, signUp, signOut, getCurrentUser, confirmSignUp, forgotPassword, forgotPasswordSubmit } from "aws-amplify/auth";
 import "@/lib/amplify";
 
 interface AuthContextType {
@@ -39,7 +39,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkAuthStatus = async () => {
     try {
-      const currentUser = await Auth.currentAuthenticatedUser();
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Auth check timeout')), 5000)
+      );
+      
+      const currentUser = await Promise.race([
+        getCurrentUser(),
+        timeoutPromise
+      ]);
+      
       setUser(currentUser);
       setIsAuthenticated(true);
     } catch (error) {
@@ -52,9 +61,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      const user = await Auth.signIn(email, password);
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Login timeout - please try again')), 10000)
+      );
+      
+      const user = await Promise.race([
+        signIn({ username: email, password }),
+        timeoutPromise
+      ]);
+      
       setUser(user);
       setIsAuthenticated(true);
+      
+      // Immediately redirect to dashboard
+      router.push("/dashboard");
     } catch (error: any) {
       throw new Error(error.message || "Login failed");
     }
@@ -62,12 +83,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signup = async (email: string, password: string, name: string) => {
     try {
-      await Auth.signUp({
+      await signUp({
         username: email,
         password,
-        attributes: {
-          email,
-          name,
+        options: {
+          userAttributes: {
+            email,
+            name,
+          },
         },
       });
     } catch (error: any) {
@@ -77,7 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const confirmSignup = async (email: string, code: string) => {
     try {
-      await Auth.confirmSignUp(email, code);
+      await confirmSignUp({ username: email, confirmationCode: code });
     } catch (error: any) {
       throw new Error(error.message || "Email verification failed");
     }
@@ -85,7 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const resetPassword = async (email: string) => {
     try {
-      await Auth.forgotPassword(email);
+      await forgotPassword({ username: email });
     } catch (error: any) {
       throw new Error(error.message || "Password reset failed");
     }
@@ -93,7 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const confirmPassword = async (email: string, code: string, newPassword: string) => {
     try {
-      await Auth.forgotPasswordSubmit(email, code, newPassword);
+      await forgotPasswordSubmit({ username: email, confirmationCode: code, newPassword });
     } catch (error: any) {
       throw new Error(error.message || "Password reset confirmation failed");
     }
@@ -101,7 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await Auth.signOut();
+      await signOut();
       setUser(null);
       setIsAuthenticated(false);
       router.push("/");
