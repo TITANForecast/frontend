@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { signIn, signUp, signOut, getCurrentUser, confirmSignUp, forgotPassword, forgotPasswordSubmit } from "aws-amplify/auth";
+import { signIn, signUp, signOut, getCurrentUser, confirmSignUp, resetPassword as cognitoResetPassword, confirmResetPassword } from "aws-amplify/auth";
 import "@/lib/amplify";
 
 interface AuthContextType {
@@ -20,7 +20,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         timeoutPromise
       ]);
       
-      setUser(currentUser);
+      setUser(currentUser as any);
       setIsAuthenticated(true);
     } catch (error) {
       setUser(null);
@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         timeoutPromise
       ]);
       
-      setUser(user);
+      setUser(user as any);
       setIsAuthenticated(true);
       
       // Immediately redirect to dashboard
@@ -108,7 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const resetPassword = async (email: string) => {
     try {
-      await forgotPassword({ username: email });
+      await cognitoResetPassword({ username: email });
     } catch (error: any) {
       throw new Error(error.message || "Password reset failed");
     }
@@ -116,7 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const confirmPassword = async (email: string, code: string, newPassword: string) => {
     try {
-      await forgotPasswordSubmit({ username: email, confirmationCode: code, newPassword });
+      await confirmResetPassword({ username: email, confirmationCode: code, newPassword });
     } catch (error: any) {
       throw new Error(error.message || "Password reset confirmation failed");
     }

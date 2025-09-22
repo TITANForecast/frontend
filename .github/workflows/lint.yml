@@ -19,6 +19,10 @@ on:
 
 env:
   NODE_VERSION: '20'
+  # Cognito Authentication
+  NEXT_PUBLIC_AWS_REGION: us-east-1
+  NEXT_PUBLIC_COGNITO_USER_POOL_ID: ${{ secrets.NEXT_PUBLIC_COGNITO_USER_POOL_ID }}
+  NEXT_PUBLIC_COGNITO_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_COGNITO_CLIENT_ID }}
 
 jobs:
   # Check if there are relevant changes

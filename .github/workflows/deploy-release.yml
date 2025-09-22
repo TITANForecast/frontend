@@ -23,6 +23,10 @@ env:
   NODE_VERSION: '20'
   S3_BUCKET: 'titan-app-static-site-8fbf908b'
   CLOUDFRONT_DISTRIBUTION_ID: 'EX6Y4ZPOCGMW6'
+  # Cognito Authentication
+  NEXT_PUBLIC_AWS_REGION: us-east-1
+  NEXT_PUBLIC_COGNITO_USER_POOL_ID: ${{ secrets.NEXT_PUBLIC_COGNITO_USER_POOL_ID }}
+  NEXT_PUBLIC_COGNITO_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_COGNITO_CLIENT_ID }}
 
 jobs:
   # Check if there are relevant changes
