@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
 import { Eye, EyeOff, Lock, User } from "lucide-react";
 import { useAuth } from "./auth-provider";
@@ -120,7 +121,21 @@ export default function LoginForm() {
           {/* Error Message */}
           {error && (
             <div className="text-maroon-300 text-sm text-center bg-maroon-900/20 border border-maroon-800/50 rounded-lg p-3">
-              {error}
+              <div className="mb-2">{error}</div>
+              <div className="text-xs space-x-4">
+                <Link 
+                  href="/signup" 
+                  className="text-maroon-200 hover:text-maroon-100 underline"
+                >
+                  Create Account
+                </Link>
+                <Link 
+                  href="/reset-password" 
+                  className="text-maroon-200 hover:text-maroon-100 underline"
+                >
+                  Forgot Password?
+                </Link>
+              </div>
             </div>
           )}
 
@@ -140,6 +155,19 @@ export default function LoginForm() {
             )}
           </button>
         </form>
+
+        {/* Footer Links */}
+        <div className="mt-6 text-center">
+          <div className="text-sm text-gray-400">
+            Don't have an account?{" "}
+            <Link 
+              href="/signup" 
+              className="text-maroon-400 hover:text-maroon-300 font-medium transition-colors"
+            >
+              Sign Up
+            </Link>
+          </div>
+        </div>
       </div>
 
       <style jsx>{`

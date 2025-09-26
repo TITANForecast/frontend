@@ -77,7 +77,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Immediately redirect to dashboard
       router.push("/dashboard");
     } catch (error: any) {
-      throw new Error(error.message || "Login failed");
+      // Provide more helpful error messages
+      if (error.message?.includes('UserNotFoundException')) {
+        throw new Error("No account found with this email address. Please check your email or create a new account.");
+      } else if (error.message?.includes('NotAuthorizedException')) {
+        throw new Error("Incorrect password. Please try again or reset your password.");
+      } else if (error.message?.includes('UserNotConfirmedException')) {
+        // Redirect to verification page for unverified users
+        router.push(`/verify?email=${encodeURIComponent(email)}`);
+        throw new Error("Please verify your email address before signing in. Check your email for a verification code.");
+      } else if (error.message?.includes('TooManyRequestsException')) {
+        throw new Error("Too many login attempts. Please wait a moment and try again.");
+      } else {
+        throw new Error(error.message || "Login failed. Please try again.");
+      }
     }
   };
 

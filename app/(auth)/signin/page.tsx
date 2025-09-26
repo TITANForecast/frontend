@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link'
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import AuthHeader from '../auth-header'
 import AuthImage from '../auth-image'
 import { useAuth } from '@/components/auth-provider'
@@ -12,8 +12,16 @@ export default function SignIn() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [verified, setVerified] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login } = useAuth();
+
+  useEffect(() => {
+    if (searchParams.get('verified') === 'true') {
+      setVerified(true);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,10 +56,31 @@ export default function SignIn() {
             <div className="max-w-sm mx-auto w-full px-4 py-8">
               <h1 className="text-3xl text-gray-800 dark:text-gray-100 font-bold mb-6">Welcome back!</h1>
               
+              {/* Success Message */}
+              {verified && (
+                <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
+                  Email verified successfully! You can now sign in.
+                </div>
+              )}
+
               {/* Error Message */}
               {error && (
                 <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-                  {error}
+                  <div className="mb-2">{error}</div>
+                  <div className="text-sm">
+                    <Link 
+                      href="/signup" 
+                      className="text-red-600 hover:text-red-800 underline mr-4"
+                    >
+                      Create Account
+                    </Link>
+                    <Link 
+                      href="/reset-password" 
+                      className="text-red-600 hover:text-red-800 underline"
+                    >
+                      Forgot Password?
+                    </Link>
+                  </div>
                 </div>
               )}
 
