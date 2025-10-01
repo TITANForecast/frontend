@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import AuthHeader from '../auth-header'
 import AuthImage from '../auth-image'
 import { useAuth } from '@/components/auth-provider'
@@ -12,6 +13,7 @@ export default function ResetPassword() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const { resetPassword } = useAuth();
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,6 +24,10 @@ export default function ResetPassword() {
     try {
       await resetPassword(email);
       setSuccess(true);
+      // Redirect to confirmation page after 2 seconds
+      setTimeout(() => {
+        router.push(`/reset-password-confirm?email=${encodeURIComponent(email)}`);
+      }, 2000);
     } catch (error: any) {
       setError(error.message || "Password reset failed. Please try again.");
     } finally {
@@ -46,7 +52,7 @@ export default function ResetPassword() {
               {/* Success Message */}
               {success && (
                 <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
-                  Password reset email sent! Please check your email for instructions.
+                  Password reset email sent! Redirecting to confirmation page...
                 </div>
               )}
 
