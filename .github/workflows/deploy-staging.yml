@@ -44,13 +44,22 @@ jobs:
     - name: Check for relevant changes
       id: changes
       run: |
-        # Check if there are any changes to application code
-        if git diff --quiet HEAD~1 HEAD -- app/ components/ lib/ public/ package.json package-lock.json next.config.js tsconfig.json postcss.config.js; then
-          echo "No relevant application code changes detected"
-          echo "has-changes=false" >> $GITHUB_OUTPUT
-        else
-          echo "Relevant application code changes detected"
+        # For tag pushes and workflow dispatch, always deploy
+        if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref_type }}" = "tag" ]; then
+          echo "Tag deployment detected - always deploy"
           echo "has-changes=true" >> $GITHUB_OUTPUT
+        elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "Manual deployment detected - always deploy"
+          echo "has-changes=true" >> $GITHUB_OUTPUT
+        else
+          # For pull requests, check if there are any changes to application code
+          if git diff --quiet HEAD~1 HEAD -- app/ components/ lib/ public/ package.json package-lock.json next.config.js tsconfig.json postcss.config.js; then
+            echo "No relevant application code changes detected"
+            echo "has-changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "Relevant application code changes detected"
+            echo "has-changes=true" >> $GITHUB_OUTPUT
+          fi
         fi
 
   # Build and test the frontend application
