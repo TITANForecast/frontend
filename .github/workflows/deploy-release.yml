@@ -6,6 +6,11 @@ on:
       - main
     tags:
       - 'v*'
+    paths-ignore:
+      - 'docs/**'
+      - '.github/workflows/**'
+      - 'README.md'
+      - '*.md'
   workflow_dispatch:
     inputs:
       tag:
@@ -18,10 +23,39 @@ env:
   NODE_VERSION: '20'
   S3_BUCKET: 'titan-app-static-site-8fbf908b'
   CLOUDFRONT_DISTRIBUTION_ID: 'EX6Y4ZPOCGMW6'
+  # Cognito Authentication
+  NEXT_PUBLIC_AWS_REGION: us-east-1
+  NEXT_PUBLIC_COGNITO_USER_POOL_ID: ${{ secrets.NEXT_PUBLIC_COGNITO_USER_POOL_ID }}
+  NEXT_PUBLIC_COGNITO_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_COGNITO_CLIENT_ID }}
 
 jobs:
+  # Check if there are relevant changes
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      has-changes: ${{ steps.changes.outputs.has-changes }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Check for relevant changes
+      id: changes
+      run: |
+        # Check if there are any changes to application code
+        if git diff --quiet HEAD~1 HEAD -- app/ components/ lib/ public/ package.json package-lock.json next.config.js tsconfig.json postcss.config.js; then
+          echo "No relevant application code changes detected"
+          echo "has-changes=false" >> $GITHUB_OUTPUT
+        else
+          echo "Relevant application code changes detected"
+          echo "has-changes=true" >> $GITHUB_OUTPUT
+        fi
+
   # Build and test the frontend application
   build:
+    needs: check-changes
+    if: needs.check-changes.outputs.has-changes == 'true'
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -56,7 +90,8 @@ jobs:
 
   # Deploy to S3 and CloudFront
   deploy:
-    needs: build
+    needs: [check-changes, build]
+    if: needs.check-changes.outputs.has-changes == 'true'
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -110,6 +145,8 @@ jobs:
 
   # Security scan
   security-scan:
+    needs: check-changes
+    if: needs.check-changes.outputs.has-changes == 'true'
     runs-on: ubuntu-latest
     permissions:
       id-token: write
