@@ -23,8 +23,9 @@ export default function VerifyEmail() {
         const emailParam = searchParams.get('email');
         const codeParam = searchParams.get('code');
         
+        // For CONFIRM_WITH_LINK, Cognito includes the verification code in the URL
         if (!emailParam || !codeParam) {
-          setError("Invalid verification link. Please try signing up again.");
+          setError("Invalid verification link. Please check your email and try clicking the link again.");
           setIsVerifying(false);
           return;
         }
@@ -49,7 +50,16 @@ export default function VerifyEmail() {
       }
     };
 
-    verifyEmail();
+    // Only run verification if we have the required parameters
+    const emailParam = searchParams.get('email');
+    const codeParam = searchParams.get('code');
+    
+    if (emailParam && codeParam) {
+      verifyEmail();
+    } else {
+      setError("Invalid verification link. Please check your email and try clicking the link again.");
+      setIsVerifying(false);
+    }
   }, [searchParams, confirmSignup, router]);
 
   return (

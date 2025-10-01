@@ -83,8 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else if (error.message?.includes('NotAuthorizedException')) {
         throw new Error("Incorrect password. Please try again or reset your password.");
       } else if (error.message?.includes('UserNotConfirmedException')) {
-        // Redirect to verification page for unverified users
-        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+        // Don't redirect automatically - let user see the error message
         throw new Error("Please verify your email address before signing in. Check your email for a verification link.");
       } else if (error.message?.includes('TooManyRequestsException')) {
         throw new Error("Too many login attempts. Please wait a moment and try again.");
