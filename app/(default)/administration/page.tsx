@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { fetchAuthSession } from 'aws-amplify/auth';
 import { UserRole } from '@/lib/types/auth';
 import { useAuth } from '@/components/auth-provider-multitenancy';
 import { useRouter } from 'next/navigation';
@@ -29,13 +30,24 @@ interface Dealer {
 }
 
 export default function AdministrationPage() {
-  const { user, token, hasRole } = useAuth();
+  const { user, hasRole } = useAuth();
   const router = useRouter();
   const [users, setUsers] = useState<UserWithDealers[]>([]);
   const [dealers, setDealers] = useState<Dealer[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [showCreateDealerModal, setShowCreateDealerModal] = useState(false);
+  
+  // Helper function to get Cognito token
+  const getAuthToken = async (): Promise<string | null> => {
+    try {
+      const session = await fetchAuthSession();
+      return session.tokens?.idToken?.toString() || null;
+    } catch (error) {
+      console.error('Failed to get auth token:', error);
+      return null;
+    }
+  };
 
   // Form state for new user
   const [newUser, setNewUser] = useState({
@@ -65,9 +77,10 @@ export default function AdministrationPage() {
     }
 
     loadData();
-  }, [hasRole, router, token]);
+  }, [hasRole, router]);
 
   const loadData = async () => {
+    const token = await getAuthToken();
     if (!token) return;
 
     try {
@@ -104,6 +117,7 @@ export default function AdministrationPage() {
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const token = await getAuthToken();
     if (!token) return;
 
     try {
@@ -142,6 +156,7 @@ export default function AdministrationPage() {
   const handleCreateDealer = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const token = await getAuthToken();
     if (!token) return;
 
     try {
