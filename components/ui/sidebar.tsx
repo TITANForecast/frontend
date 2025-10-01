@@ -7,6 +7,8 @@ import { useWindowWidth } from "@/components/utils/use-window-width";
 import SidebarLinkGroup from "./sidebar-link-group";
 import SidebarLink from "./sidebar-link";
 import Logo from "./logo";
+import { useAuth } from "@/components/auth-provider-multitenancy";
+import { UserRole } from "@/lib/types/auth";
 import {
   LayoutDashboard,
   FileText,
@@ -19,6 +21,7 @@ import {
   Info,
   Settings,
   ChevronDown,
+  UserCog,
 } from "lucide-react";
 
 // Navigation constants
@@ -222,6 +225,13 @@ const NAVIGATION_ITEMS: NavItem[] = [
     icon: <Info size={16} />,
   },
   {
+    id: "administration",
+    title: "Administration",
+    href: "/administration",
+    segment: "administration",
+    icon: <UserCog size={16} />,
+  },
+  {
     id: "settings",
     title: "Settings",
     segment: "settings",
@@ -241,6 +251,9 @@ export default function Sidebar({
   const breakpoint = useWindowWidth();
   const expandOnly =
     !sidebarExpanded && breakpoint && breakpoint >= 1024 && breakpoint < 1536;
+  
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === UserRole.SUPER_ADMIN;
 
   // Helper function to render navigation items
   const renderNavItem = (item: NavItem) => {
@@ -428,7 +441,13 @@ export default function Sidebar({
               </span>
             </h3>
             <ul className="mt-3">
-              {NAVIGATION_ITEMS.map((item) => renderNavItem(item))}
+              {NAVIGATION_ITEMS.map((item) => {
+                // Hide Administration menu for non-super admins
+                if (item.id === "administration" && !isSuperAdmin) {
+                  return null;
+                }
+                return renderNavItem(item);
+              })}
             </ul>
           </div>
         </div>

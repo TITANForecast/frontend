@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { signIn, signUp, signOut, getCurrentUser, confirmSignUp, resetPassword as cognitoResetPassword, confirmResetPassword } from "aws-amplify/auth";
+import { signIn, signUp, signOut, getCurrentUser, resetPassword as cognitoResetPassword, confirmResetPassword } from "aws-amplify/auth";
 import "@/lib/amplify";
 
 interface AuthContextType {
@@ -11,7 +11,6 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
-  confirmSignup: (email: string, code: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   confirmPassword: (email: string, code: string, newPassword: string) => Promise<void>;
 }
@@ -82,9 +81,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error("No account found with this email address. Please check your email or create a new account.");
       } else if (error.message?.includes('NotAuthorizedException')) {
         throw new Error("Incorrect password. Please try again or reset your password.");
-      } else if (error.message?.includes('UserNotConfirmedException')) {
-        // Don't redirect automatically - let user see the error message
-        throw new Error("Please verify your email address before signing in. Check your email for a verification link.");
       } else if (error.message?.includes('TooManyRequestsException')) {
         throw new Error("Too many login attempts. Please wait a moment and try again.");
       } else {
@@ -110,13 +106,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const confirmSignup = async (email: string, code: string) => {
-    try {
-      await confirmSignUp({ username: email, confirmationCode: code });
-    } catch (error: any) {
-      throw new Error(error.message || "Email verification failed");
-    }
-  };
 
   const resetPassword = async (email: string) => {
     try {
@@ -160,7 +149,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       login, 
       signup, 
       logout, 
-      confirmSignup, 
       resetPassword, 
       confirmPassword 
     }}>
