@@ -29,7 +29,7 @@ export default function SignUp() {
       setSuccess(true);
       // Redirect to verification page with email parameter
       setTimeout(() => {
-        router.push(`/verify?email=${encodeURIComponent(email)}`);
+        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
       }, 2000);
     } catch (error: any) {
       setError(error.message || "Signup failed. Please try again.");
@@ -54,7 +54,7 @@ export default function SignUp() {
               {/* Success Message */}
               {success && (
                 <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
-                  Account created successfully! Redirecting to verification page...
+                  Account created successfully! Check your email for a verification link. Redirecting...
                 </div>
               )}
 
