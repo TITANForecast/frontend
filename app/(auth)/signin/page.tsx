@@ -13,6 +13,7 @@ export default function SignIn() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [verified, setVerified] = useState(false);
+  const [reset, setReset] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuth();
@@ -20,6 +21,9 @@ export default function SignIn() {
   useEffect(() => {
     if (searchParams.get('verified') === 'true') {
       setVerified(true);
+    }
+    if (searchParams.get('reset') === 'true') {
+      setReset(true);
     }
   }, [searchParams]);
 
@@ -60,6 +64,13 @@ export default function SignIn() {
               {verified && (
                 <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
                   Email verified successfully! You can now sign in.
+                </div>
+              )}
+
+              {/* Reset Success Message */}
+              {reset && (
+                <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
+                  Password reset successfully! You can now sign in with your new password.
                 </div>
               )}
 
