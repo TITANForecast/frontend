@@ -1,0 +1,173 @@
+name: Deploy App Frontend to Staging
+
+on:
+  push:
+    branches:
+      - develop
+      - staging
+    paths-ignore:
+      - 'docs/**'
+      - '.github/workflows/**'
+      - 'README.md'
+      - '*.md'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to deploy to staging'
+        required: true
+        default: 'develop'
+        type: choice
+        options:
+          - develop
+          - staging
+          - main
+
+env:
+  AWS_REGION: us-east-1
+  NODE_VERSION: '20'
+  S3_BUCKET: 'titan-app-staging-static-site-8fbf908b'
+  CLOUDFRONT_DISTRIBUTION_ID: 'EPU19VCKNO5DI'
+  # Cognito Authentication
+  NEXT_PUBLIC_AWS_REGION: us-east-1
+  NEXT_PUBLIC_COGNITO_USER_POOL_ID: ${{ secrets.NEXT_PUBLIC_COGNITO_USER_POOL_ID }}
+  NEXT_PUBLIC_COGNITO_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_COGNITO_CLIENT_ID }}
+
+jobs:
+  # Check if there are relevant changes
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      has-changes: ${{ steps.changes.outputs.has-changes }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Check for relevant changes
+      id: changes
+      run: |
+        # Check if there are any changes to application code
+        if git diff --quiet HEAD~1 HEAD -- app/ components/ lib/ public/ package.json package-lock.json next.config.js tsconfig.json postcss.config.js; then
+          echo "No relevant application code changes detected"
+          echo "has-changes=false" >> $GITHUB_OUTPUT
+        else
+          echo "Relevant application code changes detected"
+          echo "has-changes=true" >> $GITHUB_OUTPUT
+        fi
+
+  # Build and test the frontend application
+  build:
+    needs: check-changes
+    if: needs.check-changes.outputs.has-changes == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: 'package-lock.json'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run linting
+      run: npm run lint
+
+    - name: Build static site
+      run: npm run build:static
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-staging-build-${{ github.ref_name || github.sha }}
+        path: out/
+        retention-days: 7
+
+  # Deploy to S3 and CloudFront
+  deploy:
+    needs: [check-changes, build]
+    if: needs.check-changes.outputs.has-changes == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: frontend-staging-build-${{ github.ref_name || github.sha }}
+        path: out/
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_GITHUB_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Deploy to S3
+      run: |
+        echo "🚀 Deploying website to staging S3..."
+        
+        # Simple deployment that matches our manual process
+        aws s3 sync out/ s3://${{ env.S3_BUCKET }}/ --delete
+
+        echo "✅ Staging S3 deployment completed"
+
+    - name: Invalidate CloudFront
+      run: |
+        echo "🔄 Invalidating staging CloudFront cache..."
+        aws cloudfront create-invalidation \
+          --distribution-id ${{ env.CLOUDFRONT_DISTRIBUTION_ID }} \
+          --paths "/*"
+        echo "✅ Staging CloudFront cache invalidation initiated"
+
+    - name: Get deployment URL
+      run: |
+        URL=$(aws cloudfront get-distribution --id ${{ env.CLOUDFRONT_DISTRIBUTION_ID }} --query 'Distribution.DomainName' --output text)
+        echo "🌐 Staging App Frontend URL: https://$URL"
+        echo "🌐 Staging App Domain: https://app-staging.titanforecast.com"
+        echo "📦 Staging S3 Bucket: ${{ env.S3_BUCKET }}"
+        echo "🏷️  Branch: ${{ github.ref_name }}"
+        echo "📝 Commit: ${{ github.sha }}"
+        echo "::notice::Staging app frontend deployed successfully! URL: https://$URL"
+
+  # Security scan
+  security-scan:
+    needs: check-changes
+    if: needs.check-changes.outputs.has-changes == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'table'
+        exit-code: '0'
+
+    - name: Security scan summary
+      run: |
+        echo "✅ Security scan completed successfully"
+        echo "📊 Vulnerability scan results are shown above"
+        echo "🏷️  Branch: ${{ github.ref_name }}"
+        echo "📝 Commit: ${{ github.sha }}"
