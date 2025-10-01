@@ -2,26 +2,32 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { signIn, signUp, signOut, getCurrentUser, confirmSignUp, resetPassword as cognitoResetPassword, confirmResetPassword } from "aws-amplify/auth";
+import "@/lib/amplify";
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  login: () => void;
-  logout: () => void;
+  user: any;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string, name: string) => Promise<void>;
+  logout: () => Promise<void>;
+  confirmSignup: (email: string, code: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  confirmPassword: (email: string, code: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
     // Check authentication status on mount
-    const authStatus = localStorage.getItem("titan-auth");
-    setIsAuthenticated(authStatus === "true");
-    setIsLoading(false);
+    checkAuthStatus();
   }, []);
 
   useEffect(() => {
@@ -31,15 +37,112 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, isLoading, pathname, router]);
 
-  const login = () => {
-    localStorage.setItem("titan-auth", "true");
-    setIsAuthenticated(true);
+  const checkAuthStatus = async () => {
+    try {
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Auth check timeout')), 5000)
+      );
+      
+      const currentUser = await Promise.race([
+        getCurrentUser(),
+        timeoutPromise
+      ]);
+      
+      setUser(currentUser as any);
+      setIsAuthenticated(true);
+    } catch (error) {
+      setUser(null);
+      setIsAuthenticated(false);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const logout = () => {
-    localStorage.removeItem("titan-auth");
-    setIsAuthenticated(false);
-    router.push("/");
+  const login = async (email: string, password: string) => {
+    try {
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Login timeout - please try again')), 10000)
+      );
+      
+      const user = await Promise.race([
+        signIn({ username: email, password }),
+        timeoutPromise
+      ]);
+      
+      setUser(user as any);
+      setIsAuthenticated(true);
+      
+      // Immediately redirect to dashboard
+      router.push("/dashboard");
+    } catch (error: any) {
+      // Provide more helpful error messages
+      if (error.message?.includes('UserNotFoundException')) {
+        throw new Error("No account found with this email address. Please check your email or create a new account.");
+      } else if (error.message?.includes('NotAuthorizedException')) {
+        throw new Error("Incorrect password. Please try again or reset your password.");
+      } else if (error.message?.includes('UserNotConfirmedException')) {
+        // Don't redirect automatically - let user see the error message
+        throw new Error("Please verify your email address before signing in. Check your email for a verification link.");
+      } else if (error.message?.includes('TooManyRequestsException')) {
+        throw new Error("Too many login attempts. Please wait a moment and try again.");
+      } else {
+        throw new Error(error.message || "Login failed. Please try again.");
+      }
+    }
+  };
+
+  const signup = async (email: string, password: string, name: string) => {
+    try {
+      await signUp({
+        username: email,
+        password,
+        options: {
+          userAttributes: {
+            email,
+            name,
+          },
+        },
+      });
+    } catch (error: any) {
+      throw new Error(error.message || "Signup failed");
+    }
+  };
+
+  const confirmSignup = async (email: string, code: string) => {
+    try {
+      await confirmSignUp({ username: email, confirmationCode: code });
+    } catch (error: any) {
+      throw new Error(error.message || "Email verification failed");
+    }
+  };
+
+  const resetPassword = async (email: string) => {
+    try {
+      await cognitoResetPassword({ username: email });
+    } catch (error: any) {
+      throw new Error(error.message || "Password reset failed");
+    }
+  };
+
+  const confirmPassword = async (email: string, code: string, newPassword: string) => {
+    try {
+      await confirmResetPassword({ username: email, confirmationCode: code, newPassword });
+    } catch (error: any) {
+      throw new Error(error.message || "Password reset confirmation failed");
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await signOut();
+      setUser(null);
+      setIsAuthenticated(false);
+      router.push("/");
+    } catch (error: any) {
+      throw new Error(error.message || "Logout failed");
+    }
   };
 
   if (isLoading) {
@@ -51,7 +154,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ 
+      isAuthenticated, 
+      user, 
+      login, 
+      signup, 
+      logout, 
+      confirmSignup, 
+      resetPassword, 
+      confirmPassword 
+    }}>
       {children}
     </AuthContext.Provider>
   );
