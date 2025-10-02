@@ -1,0 +1,73 @@
+{
+  "family": "titan-frontend-production",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/titan-frontend-production-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/titan-frontend-production-ecs-task-role",
+  "containerDefinitions": [
+    {
+      "name": "titan-frontend-production",
+      "image": "ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/titan-frontend-production:latest",
+      "portMappings": [
+        {
+          "containerPort": 3000,
+          "hostPort": 3000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "NODE_ENV",
+          "value": "production"
+        },
+        {
+          "name": "PORT",
+          "value": "3000"
+        },
+        {
+          "name": "HOSTNAME",
+          "value": "0.0.0.0"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "NEXT_PUBLIC_AWS_REGION",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:ACCOUNT_ID:secret:titan-frontend/production/config:NEXT_PUBLIC_AWS_REGION::"
+        },
+        {
+          "name": "NEXT_PUBLIC_COGNITO_USER_POOL_ID",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:ACCOUNT_ID:secret:titan-frontend/production/config:NEXT_PUBLIC_COGNITO_USER_POOL_ID::"
+        },
+        {
+          "name": "NEXT_PUBLIC_COGNITO_CLIENT_ID",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:ACCOUNT_ID:secret:titan-frontend/production/config:NEXT_PUBLIC_COGNITO_CLIENT_ID::"
+        },
+        {
+          "name": "NEXT_PUBLIC_APP_URL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:ACCOUNT_ID:secret:titan-frontend/production/config:NEXT_PUBLIC_APP_URL::"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/titan-frontend-production",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "curl -f http://localhost:3000/ || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      },
+      "essential": true
+    }
+  ]
+}
