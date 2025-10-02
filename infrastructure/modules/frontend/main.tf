@@ -37,10 +37,16 @@ data "aws_lb" "main" {
   name = var.alb_name
 }
 
-# Data source for existing ALB listener
+# Data source for existing ALB listener (HTTP)
 data "aws_lb_listener" "main" {
   load_balancer_arn = data.aws_lb.main.arn
   port              = 80
+}
+
+# Data source for existing ALB listener (HTTPS)
+data "aws_lb_listener" "https" {
+  load_balancer_arn = data.aws_lb.main.arn
+  port              = 443
 }
 
 # Data source for existing security groups
@@ -72,6 +78,7 @@ data "aws_security_groups" "ecs" {
 resource "aws_ecr_repository" "frontend" {
   name                 = "${var.project_name}-${var.environment}"
   image_tag_mutability = "MUTABLE"
+  force_delete         = true
 
   image_scanning_configuration {
     scan_on_push = true
@@ -107,10 +114,10 @@ resource "aws_lb_target_group" "frontend" {
   })
 }
 
-# ALB Listener Rule for frontend
+# ALB Listener Rule for frontend (HTTP)
 resource "aws_lb_listener_rule" "frontend" {
   listener_arn = var.listener_arn
-  priority     = 150
+  priority     = var.listener_rule_priority
 
   action {
     type             = "forward"
@@ -125,6 +132,27 @@ resource "aws_lb_listener_rule" "frontend" {
 
   tags = merge(var.tags, {
     Name = "${var.project_name}-${var.environment}-listener-rule"
+  })
+}
+
+# ALB Listener Rule for frontend (HTTPS)
+resource "aws_lb_listener_rule" "frontend_https" {
+  listener_arn = data.aws_lb_listener.https.arn
+  priority     = var.listener_rule_priority
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.frontend.arn
+  }
+
+  condition {
+    host_header {
+      values = [var.domain_name]
+    }
+  }
+
+  tags = merge(var.tags, {
+    Name = "${var.project_name}-${var.environment}-listener-rule-https"
   })
 }
 
@@ -234,6 +262,7 @@ resource "aws_ecs_service" "frontend" {
 
   depends_on = [
     aws_lb_listener_rule.frontend,
+    aws_lb_listener_rule.frontend_https,
     aws_iam_role_policy_attachment.ecs_execution_role_policy
   ]
 

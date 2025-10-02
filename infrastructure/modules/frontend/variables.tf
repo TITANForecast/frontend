@@ -126,6 +126,12 @@ variable "alb_security_group_id" {
   type        = string
 }
 
+variable "listener_rule_priority" {
+  description = "Priority for the ALB listener rule"
+  type        = number
+  default     = 150
+}
+
 variable "tags" {
   description = "A map of tags to assign to the resources"
   type        = map(string)

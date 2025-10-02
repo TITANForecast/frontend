@@ -28,6 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Check authentication status on mount
     checkAuthStatus();
+    
   }, []);
 
   useEffect(() => {

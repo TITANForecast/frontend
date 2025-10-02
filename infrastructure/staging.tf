@@ -23,7 +23,8 @@ module "frontend_staging" {
   health_check_path  = "/"
 
   # Target group configuration
-  target_group_name = "titan-frontend-staging-tg"
+         target_group_name = "titan-frontend-staging-tg"
+         listener_rule_priority = 160
 
   # Cognito configuration (shared with production)
   cognito_user_pool_id = var.cognito_user_pool_id

@@ -11,6 +11,15 @@ ENVIRONMENT=${2:-production}
 SECRET_NAME="titan-frontend/${ENVIRONMENT}/config"
 AWS_REGION="us-east-1"
 
+# Validate environment
+if [[ "$ENVIRONMENT" != "production" && "$ENVIRONMENT" != "staging" ]]; then
+    echo -e "${RED}❌ Invalid environment. Must be 'production' or 'staging'${NC}"
+    echo "Usage: $0 [get|set|update] [environment]"
+    echo "Example: $0 get staging"
+    echo "Example: $0 set production"
+    exit 1
+fi
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
