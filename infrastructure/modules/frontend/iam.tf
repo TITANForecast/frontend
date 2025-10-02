@@ -15,9 +15,9 @@ resource "aws_iam_role" "ecs_execution_role" {
     ]
   })
 
-  tags = {
+  tags = merge(var.tags, {
     Name = "${var.project_name}-${var.environment}-ecs-execution-role"
-  }
+  })
 }
 
 # ECS Task Role
@@ -37,9 +37,9 @@ resource "aws_iam_role" "ecs_task_role" {
     ]
   })
 
-  tags = {
+  tags = merge(var.tags, {
     Name = "${var.project_name}-${var.environment}-ecs-task-role"
-  }
+  })
 }
 
 # Attach AWS managed policy for ECS execution

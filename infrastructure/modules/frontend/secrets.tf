@@ -3,9 +3,9 @@ resource "aws_secretsmanager_secret" "frontend_config" {
   name        = "${var.project_name}/${var.environment}/config"
   description = "Frontend application configuration secrets"
 
-  tags = {
+  tags = merge(var.tags, {
     Name = "${var.project_name}-${var.environment}-secrets"
-  }
+  })
 }
 
 # Secret values (these should be provided via terraform.tfvars or environment variables)

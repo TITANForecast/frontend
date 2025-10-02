@@ -1,99 +1,57 @@
-output "ecr_repository_url" {
-  description = "URL of the ECR repository"
-  value       = aws_ecr_repository.frontend.repository_url
+# Production outputs
+output "production_ecr_repository_url" {
+  description = "URL of the production ECR repository"
+  value       = module.frontend_production.ecr_repository_url
 }
 
-output "ecs_cluster_name" {
-  description = "Name of the ECS cluster"
-  value       = data.aws_ecs_cluster.main.cluster_name
+output "production_application_url" {
+  description = "URL of the production application"
+  value       = module.frontend_production.application_url
 }
 
-output "ecs_cluster_arn" {
-  description = "ARN of the ECS cluster"
-  value       = data.aws_ecs_cluster.main.arn
+output "production_ecs_service_name" {
+  description = "Name of the production ECS service"
+  value       = module.frontend_production.ecs_service_name
 }
 
-output "ecs_service_name" {
-  description = "Name of the ECS service"
-  value       = aws_ecs_service.frontend.name
+output "production_target_group_arn" {
+  description = "ARN of the production target group"
+  value       = module.frontend_production.target_group_arn
 }
 
-output "ecs_service_arn" {
-  description = "ARN of the ECS service"
-  value       = aws_ecs_service.frontend.id
+# Staging outputs
+output "staging_ecr_repository_url" {
+  description = "URL of the staging ECR repository"
+  value       = module.frontend_staging.ecr_repository_url
 }
 
-output "target_group_arn" {
-  description = "ARN of the target group"
-  value       = aws_lb_target_group.frontend.arn
+output "staging_application_url" {
+  description = "URL of the staging application"
+  value       = module.frontend_staging.application_url
 }
 
-output "target_group_name" {
-  description = "Name of the target group"
-  value       = aws_lb_target_group.frontend.name
+output "staging_ecs_service_name" {
+  description = "Name of the staging ECS service"
+  value       = module.frontend_staging.ecs_service_name
 }
 
-output "alb_dns_name" {
-  description = "DNS name of the existing load balancer"
-  value       = data.aws_lb.main.dns_name
+output "staging_target_group_arn" {
+  description = "ARN of the staging target group"
+  value       = module.frontend_staging.target_group_arn
 }
 
-output "alb_zone_id" {
-  description = "Zone ID of the existing load balancer"
-  value       = data.aws_lb.main.zone_id
-}
-
-output "alb_arn" {
-  description = "ARN of the existing load balancer"
-  value       = data.aws_lb.main.arn
-}
-
-output "domain_name" {
-  description = "Domain name of the application"
-  value       = var.domain_name
-}
-
-output "application_url" {
-  description = "URL of the application"
-  value       = "https://${var.domain_name}"
-}
-
-output "security_group_ecs_id" {
-  description = "ID of the ECS security group"
-  value       = aws_security_group.ecs_tasks.id
-}
-
-output "execution_role_arn" {
-  description = "ARN of the ECS execution role"
-  value       = aws_iam_role.ecs_execution_role.arn
-}
-
-output "task_role_arn" {
-  description = "ARN of the ECS task role"
-  value       = aws_iam_role.ecs_task_role.arn
-}
-
+# Shared infrastructure outputs
 output "vpc_id" {
   description = "ID of the VPC"
   value       = data.aws_vpc.main.id
 }
 
-output "private_subnet_ids" {
-  description = "IDs of the private subnets"
-  value       = data.aws_subnets.private.ids
+output "alb_dns_name" {
+  description = "DNS name of the ALB"
+  value       = data.aws_lb.main.dns_name
 }
 
-output "public_subnet_ids" {
-  description = "IDs of the public subnets"
-  value       = data.aws_subnets.public.ids
-}
-
-output "secrets_manager_secret_arn" {
-  description = "ARN of the Secrets Manager secret"
-  value       = aws_secretsmanager_secret.frontend_config.arn
-}
-
-output "secrets_manager_secret_name" {
-  description = "Name of the Secrets Manager secret"
-  value       = aws_secretsmanager_secret.frontend_config.name
+output "alb_zone_id" {
+  description = "Zone ID of the ALB"
+  value       = data.aws_lb.main.zone_id
 }

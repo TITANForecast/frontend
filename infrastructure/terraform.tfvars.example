@@ -1,32 +1,7 @@
 # AWS Configuration
 aws_region = "us-east-1"
 project_name = "titan-frontend"
-environment = "production"
-
-# Domain Configuration
-domain_name = "app.titanforecast.com"
-
-# Existing Infrastructure References
-ecs_cluster_name = "titan-cluster"
-alb_name = "titan-alb"
-target_group_name = "titan-frontend-tg"
-listener_arn = "arn:aws:elasticloadbalancing:us-east-1:ACCOUNT_ID:listener/app/titan-alb/ALB_ID/80"
-
-# ECS Configuration
-cpu = 512
-memory = 1024
-desired_count = 2
-min_capacity = 1
-max_capacity = 10
-
-# Application Configuration
-container_port = 3000
-health_check_path = "/"
 
 # Cognito Configuration (reference existing Cognito from main infrastructure)
 cognito_user_pool_id = "us-east-1_xxxxxxxxx"
 cognito_client_id = "xxxxxxxxxxxxxxxxxxxxxxxxxx"
-
-# GitHub Configuration
-github_repository = "TITANForecast/frontend"
-github_branch = "main"
