@@ -145,3 +145,13 @@ logs
 # package-lock.json
 # yarn.lock
 # pnpm-lock.yaml
+
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+.terraformrc
+terraform.rc
