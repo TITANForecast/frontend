@@ -5,22 +5,26 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation';
 import AuthHeader from '../auth-header'
 import AuthImage from '../auth-image'
-import { useAuth } from '@/components/auth-provider'
+import { useAuth } from '@/components/auth-provider-multitenancy'
 
 export default function SignIn() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [verified, setVerified] = useState(false);
+  const [registered, setRegistered] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
   const [reset, setReset] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuth();
 
   useEffect(() => {
-    if (searchParams.get('verified') === 'true') {
-      setVerified(true);
+    if (searchParams.get('registered') === 'true') {
+      setRegistered(true);
+    }
+    if (searchParams.get('confirmed') === 'true') {
+      setConfirmed(true);
     }
     if (searchParams.get('reset') === 'true') {
       setReset(true);
@@ -60,34 +64,48 @@ export default function SignIn() {
             <div className="max-w-sm mx-auto w-full px-4 py-8">
               <h1 className="text-3xl text-gray-800 dark:text-gray-100 font-bold mb-6">Welcome back!</h1>
               
-              {/* Success Message */}
-              {verified && (
-                <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
-                  Email verified successfully! You can now sign in.
+              {/* Registration Success Message */}
+              {registered && (
+                <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded dark:bg-green-900/30 dark:border-green-800 dark:text-green-400">
+                  Account created successfully! Please check your email to confirm.
+                </div>
+              )}
+
+              {/* Email Confirmed Success Message */}
+              {confirmed && (
+                <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded dark:bg-green-900/30 dark:border-green-800 dark:text-green-400">
+                  ✅ Email confirmed! You can now sign in.
                 </div>
               )}
 
               {/* Reset Success Message */}
               {reset && (
-                <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
+                <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded dark:bg-green-900/30 dark:border-green-800 dark:text-green-400">
                   Password reset successfully! You can now sign in with your new password.
                 </div>
               )}
 
               {/* Error Message */}
               {error && (
-                <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded dark:bg-red-900/30 dark:border-red-800 dark:text-red-400">
                   <div className="mb-2">{error}</div>
-                  <div className="text-sm">
+                  {error.includes('not confirmed') && (
+                    <div className="text-sm mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded">
+                      <strong>Need to confirm your email?</strong>
+                      <br />
+                      Check your email for the confirmation code, then <Link href="/signup" className="underline font-semibold">go back to signup</Link> to enter it.
+                    </div>
+                  )}
+                  <div className="text-sm mt-2">
                     <Link 
                       href="/signup" 
-                      className="text-red-600 hover:text-red-800 underline mr-4"
+                      className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 underline mr-4"
                     >
                       Create Account
                     </Link>
                     <Link 
                       href="/reset-password" 
-                      className="text-red-600 hover:text-red-800 underline"
+                      className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 underline"
                     >
                       Forgot Password?
                     </Link>

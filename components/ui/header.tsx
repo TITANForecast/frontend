@@ -8,6 +8,7 @@ import Notifications from '@/components/dropdown-notifications'
 import DropdownHelp from '@/components/dropdown-help'
 import ThemeToggle from '@/components/theme-toggle'
 import DropdownProfile from '@/components/dropdown-profile'
+import DealerDropdown from '@/components/dealer-dropdown'
 
 export default function Header({
   variant = 'default',
@@ -45,6 +46,10 @@ export default function Header({
 
           {/* Header: Right side */}
           <div className="flex items-center space-x-3">
+            {/* Dealer Switcher Dropdown */}
+            <DealerDropdown align="right" />
+            {/*  Divider */}
+            <hr className="w-px h-6 bg-gray-200 dark:bg-gray-700/60 border-none" />
             <div>
               <button
                 className={`w-8 h-8 flex items-center justify-center hover:bg-gray-100 lg:hover:bg-gray-200 dark:hover:bg-gray-700/50 dark:lg:hover:bg-gray-800 rounded-full ml-3 ${searchModalOpen && 'bg-gray-200 dark:bg-gray-800'}`}
