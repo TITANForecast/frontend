@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation';
-import AuthHeader from '../auth-header'
-import AuthImage from '../auth-image'
-import { useAuth } from '@/components/auth-provider-multitenancy'
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
+import { Eye, EyeOff, Lock, User } from "lucide-react";
+import { useAuth } from "@/components/auth-provider-multitenancy";
 
 export default function SignIn() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [registered, setRegistered] = useState(false);
@@ -20,23 +21,23 @@ export default function SignIn() {
   const { login } = useAuth();
 
   useEffect(() => {
-    if (searchParams.get('registered') === 'true') {
+    if (searchParams.get("registered") === "true") {
       setRegistered(true);
     }
-    if (searchParams.get('confirmed') === 'true') {
+    if (searchParams.get("confirmed") === "true") {
       setConfirmed(true);
     }
-    if (searchParams.get('reset') === 'true') {
+    if (searchParams.get("reset") === "true") {
       setReset(true);
     }
   }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Prevent double submission
     if (isLoading) return;
-    
+
     setIsLoading(true);
     setError("");
 
@@ -51,141 +52,208 @@ export default function SignIn() {
   };
 
   return (
-    <main className="bg-white dark:bg-gray-900">
+    <div
+      className="min-h-screen flex items-center justify-center relative overflow-hidden bg-gray-900 bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: "url('/images/background.png')" }}
+    >
+      {/* Gradient overlay */}
+      <div className="absolute inset-0 backdrop-blur-xs"></div>
 
-      <div className="relative md:flex">
-
-        {/* Content */}
-        <div className="md:w-1/2">
-          <div className="min-h-[100dvh] h-full flex flex-col after:flex-1">
-
-            <AuthHeader />
-
-            <div className="max-w-sm mx-auto w-full px-4 py-8">
-              <h1 className="text-3xl text-gray-800 dark:text-gray-100 font-bold mb-6">Welcome back!</h1>
-              
-              {/* Registration Success Message */}
-              {registered && (
-                <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded dark:bg-green-900/30 dark:border-green-800 dark:text-green-400">
-                  Account created successfully! Please check your email to confirm.
-                </div>
-              )}
-
-              {/* Email Confirmed Success Message */}
-              {confirmed && (
-                <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded dark:bg-green-900/30 dark:border-green-800 dark:text-green-400">
-                  ✅ Email confirmed! You can now sign in.
-                </div>
-              )}
-
-              {/* Reset Success Message */}
-              {reset && (
-                <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded dark:bg-green-900/30 dark:border-green-800 dark:text-green-400">
-                  Password reset successfully! You can now sign in with your new password.
-                </div>
-              )}
-
-              {/* Error Message */}
-              {error && (
-                <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded dark:bg-red-900/30 dark:border-red-800 dark:text-red-400">
-                  <div className="mb-2">{error}</div>
-                  {error.includes('not confirmed') && (
-                    <div className="text-sm mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded">
-                      <strong>Need to confirm your email?</strong>
-                      <br />
-                      Check your email for the confirmation code, then <Link href="/signup" className="underline font-semibold">go back to signup</Link> to enter it.
-                    </div>
-                  )}
-                  <div className="text-sm mt-2">
-                    <Link 
-                      href="/signup" 
-                      className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 underline mr-4"
-                    >
-                      Create Account
-                    </Link>
-                    <Link 
-                      href="/reset-password" 
-                      className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 underline"
-                    >
-                      Forgot Password?
-                    </Link>
-                  </div>
-                </div>
-              )}
-
-              {/* Form */}
-              <form onSubmit={handleSubmit} className={isLoading ? "pointer-events-none opacity-75" : ""}>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1" htmlFor="email">Email Address</label>
-                    <input 
-                      id="email" 
-                      className="form-input w-full" 
-                      type="email" 
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1" htmlFor="password">Password</label>
-                    <input 
-                      id="password" 
-                      className="form-input w-full" 
-                      type="password" 
-                      autoComplete="on" 
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="flex items-center justify-between mt-6">
-                  <div className="mr-1">
-                    <Link className="text-sm underline hover:no-underline" href="/reset-password">Forgot Password?</Link>
-                  </div>
-                  <button 
-                    type="submit"
-                    disabled={isLoading}
-                    className="btn bg-gray-900 text-gray-100 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white ml-3 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isLoading ? (
-                      <div className="flex items-center">
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
-                        Signing in...
-                      </div>
-                    ) : (
-                      "Sign In"
-                    )}
-                  </button>
-                </div>
-              </form>
-              {/* Footer */}
-              <div className="pt-5 mt-6 border-t border-gray-100 dark:border-gray-700/60">
-                <div className="text-sm">
-                  Don't you have an account? <Link className="font-medium text-violet-500 hover:text-violet-600 dark:hover:text-violet-400" href="/signup">Sign Up</Link>
-                </div>
-                {/* Warning */}
-                <div className="mt-5">
-                  <div className="bg-yellow-500/20 text-yellow-700 px-3 py-2 rounded-lg">
-                    <svg className="inline w-3 h-3 shrink-0 fill-current mr-2" viewBox="0 0 12 12">
-                      <path d="M10.28 1.28L3.989 7.575 1.695 5.28A1 1 0 00.28 6.695l3 3a1 1 0 001.414 0l7-7A1 1 0 0010.28 1.28z" />
-                    </svg>
-                    <span className="text-sm">
-                      To support you during the pandemic super pro features are free until March 31st.
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
+      {/* Login card */}
+      <div className="relative z-10 w-full max-w-md p-8">
+        {/* Logo/Title */}
+        <div className="text-center mb-8">
+          <div className="flex justify-center mb-4">
+            <Image
+              src="/images/logo.png"
+              alt="TITAN Forecast Platform"
+              width={1000}
+              height={1000}
+              className="w-full h-auto"
+              priority
+            />
           </div>
         </div>
 
-        <AuthImage />
+        {/* Login Form */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Registration Success Message */}
+          {registered && (
+            <div className="text-green-300 text-sm text-center bg-green-900/20 border border-green-800/50 rounded-lg p-3">
+              Account created successfully! Please check your email to confirm.
+            </div>
+          )}
 
+          {/* Email Confirmed Success Message */}
+          {confirmed && (
+            <div className="text-green-300 text-sm text-center bg-green-900/20 border border-green-800/50 rounded-lg p-3">
+              ✅ Email confirmed! You can now sign in.
+            </div>
+          )}
+
+          {/* Reset Success Message */}
+          {reset && (
+            <div className="text-green-300 text-sm text-center bg-green-900/20 border border-green-800/50 rounded-lg p-3">
+              Password reset successfully! You can now sign in with your new
+              password.
+            </div>
+          )}
+
+          {/* Email Field */}
+          <div>
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-gray-300 mb-2"
+            >
+              Email
+            </label>
+            <div className="relative">
+              <User
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={18}
+              />
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-maroon-600 focus:border-transparent text-white placeholder-gray-400 transition-all duration-200"
+                placeholder="Enter your email"
+                required
+              />
+            </div>
+          </div>
+
+          {/* Password Field */}
+          <div>
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-gray-300 mb-2"
+            >
+              Password
+            </label>
+            <div className="relative">
+              <Lock
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={18}
+              />
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full pl-10 pr-12 py-3 bg-gray-700/50 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-maroon-600 focus:border-transparent text-white placeholder-gray-400 transition-all duration-200"
+                placeholder="Enter your password"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300 transition-colors"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="text-maroon-300 text-sm text-center bg-maroon-900/20 border border-maroon-800/50 rounded-lg p-3">
+              <div className="mb-2">{error}</div>
+              {error.includes("not confirmed") && (
+                <div className="text-xs mb-2 p-2 bg-maroon-900/30 rounded">
+                  <strong>Need to confirm your email?</strong>
+                  <br />
+                  Check your email for the confirmation code, then{" "}
+                  <Link
+                    href="/signup"
+                    className="text-maroon-200 hover:text-maroon-100 underline font-semibold"
+                  >
+                    go back to signup
+                  </Link>{" "}
+                  to enter it.
+                </div>
+              )}
+              <div className="text-xs space-x-4">
+                <Link
+                  href="/signup"
+                  className="text-maroon-200 hover:text-maroon-100 underline"
+                >
+                  Create Account
+                </Link>
+                <Link
+                  href="/reset-password"
+                  className="text-maroon-200 hover:text-maroon-100 underline"
+                >
+                  Forgot Password?
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {/* Login Button */}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full py-3 px-4 bg-maroon-800 hover:bg-maroon-900 disabled:bg-gray-600 text-white font-semibold rounded-lg transition-all duration-200 transform hover:scale-[1.02] disabled:scale-100 focus:outline-none focus:ring-2 focus:ring-maroon-600 focus:ring-offset-2 focus:ring-offset-gray-800 shadow-lg hover:shadow-xl"
+          >
+            {isLoading ? (
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
+                Signing in...
+              </div>
+            ) : (
+              "Sign In"
+            )}
+          </button>
+        </form>
+
+        {/* Footer Links */}
+        <div className="mt-6 text-center">
+          <div className="text-sm text-gray-400">
+            Don't have an account?{" "}
+            <Link
+              href="/signup"
+              className="text-maroon-400 hover:text-maroon-300 font-medium transition-colors"
+            >
+              Sign Up
+            </Link>
+          </div>
+        </div>
       </div>
 
-    </main>
-  )
+      <style jsx>{`
+        .hexagon-pattern {
+          background-image: radial-gradient(
+              circle at 25px 25px,
+              rgba(255, 255, 255, 0.1) 2px,
+              transparent 2px
+            ),
+            radial-gradient(
+              circle at 75px 75px,
+              rgba(255, 255, 255, 0.05) 2px,
+              transparent 2px
+            );
+          background-size: 100px 100px;
+          background-position: 0 0, 50px 50px;
+          width: 100%;
+          height: 100%;
+          animation: float 20s ease-in-out infinite;
+        }
+
+        @keyframes float {
+          0%,
+          100% {
+            transform: translateY(0px) rotate(0deg);
+          }
+          33% {
+            transform: translateY(-10px) rotate(1deg);
+          }
+          66% {
+            transform: translateY(10px) rotate(-1deg);
+          }
+        }
+      `}</style>
+    </div>
+  );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "./auth-provider-multitenancy";
-import LoginForm from "./login-form";
+import SignIn from "@/app/(auth)/signin/page";
 import OnboardingRequired from "./onboarding-required";
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -9,7 +9,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
 
   // Not authenticated - show login
   if (!isAuthenticated) {
-    return <LoginForm />;
+    return <SignIn />;
   }
 
   // Authenticated but no user data (not in local database)

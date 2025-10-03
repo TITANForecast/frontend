@@ -101,8 +101,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         setCurrentDealer(null);
       }
-    } catch (error) {
-      console.error("Auth check error:", error);
+    } catch (error: any) {
+      // Only log unexpected errors (not the normal "user not authenticated" state)
+      const errorMessage = error?.message || error?.name || String(error);
+      if (!errorMessage.includes('UserUnAuthenticatedException') && 
+          !errorMessage.includes('User needs to be authenticated')) {
+        console.error("Auth check error:", error);
+      }
       setUser(null);
       setCognitoUser(null);
       setIsAuthenticated(false);
