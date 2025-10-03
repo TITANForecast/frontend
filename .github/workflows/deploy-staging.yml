@@ -1,4 +1,4 @@
-name: Deploy App Frontend to Staging
+name: Deploy Frontend to ECS Staging
 
 on:
   push:
@@ -22,8 +22,9 @@ on:
 env:
   AWS_REGION: us-east-1
   NODE_VERSION: '20'
-  S3_BUCKET: 'titan-app-staging-static-site-8fbf908b'
-  CLOUDFRONT_DISTRIBUTION_ID: 'EPU19VCKNO5DI'
+  ECR_REPOSITORY: 'titan-frontend-staging'
+  ECS_CLUSTER: 'titan-cluster'
+  ECS_SERVICE: 'titan-frontend-staging'
   # Cognito Authentication
   NEXT_PUBLIC_AWS_REGION: us-east-1
   NEXT_PUBLIC_COGNITO_USER_POOL_ID: ${{ secrets.NEXT_PUBLIC_COGNITO_USER_POOL_ID }}
@@ -88,17 +89,59 @@ jobs:
     - name: Run linting
       run: npm run lint
 
-    - name: Build static site
-      run: npm run build:static
-
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
       with:
-        name: frontend-staging-build-${{ github.sha }}
-        path: out/
-        retention-days: 7
+        role-to-assume: ${{ secrets.AWS_GITHUB_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
 
-  # Deploy to S3 and CloudFront
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Get environment variables from AWS Secrets Manager
+      id: get-secrets
+      run: |
+        SECRET_NAME="titan-frontend/staging/config"
+        SECRET_VALUE=$(aws secretsmanager get-secret-value --secret-id "$SECRET_NAME" --region ${{ env.AWS_REGION }} --query 'SecretString' --output text)
+        
+        if [ -z "$SECRET_VALUE" ]; then
+          echo "❌ Failed to retrieve secrets from AWS Secrets Manager"
+          exit 1
+        fi
+        
+        # Extract individual environment variables
+        NEXT_PUBLIC_AWS_REGION=$(echo "$SECRET_VALUE" | jq -r '.NEXT_PUBLIC_AWS_REGION')
+        NEXT_PUBLIC_COGNITO_USER_POOL_ID=$(echo "$SECRET_VALUE" | jq -r '.NEXT_PUBLIC_COGNITO_USER_POOL_ID')
+        NEXT_PUBLIC_COGNITO_CLIENT_ID=$(echo "$SECRET_VALUE" | jq -r '.NEXT_PUBLIC_COGNITO_CLIENT_ID')
+        NEXT_PUBLIC_APP_URL=$(echo "$SECRET_VALUE" | jq -r '.NEXT_PUBLIC_APP_URL')
+        
+        echo "NEXT_PUBLIC_AWS_REGION=$NEXT_PUBLIC_AWS_REGION" >> $GITHUB_OUTPUT
+        echo "NEXT_PUBLIC_COGNITO_USER_POOL_ID=$NEXT_PUBLIC_COGNITO_USER_POOL_ID" >> $GITHUB_OUTPUT
+        echo "NEXT_PUBLIC_COGNITO_CLIENT_ID=$NEXT_PUBLIC_COGNITO_CLIENT_ID" >> $GITHUB_OUTPUT
+        echo "NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL" >> $GITHUB_OUTPUT
+
+    - name: Build, tag, and push image to Amazon ECR
+      id: build-image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+        NEXT_PUBLIC_AWS_REGION: ${{ steps.get-secrets.outputs.NEXT_PUBLIC_AWS_REGION }}
+        NEXT_PUBLIC_COGNITO_USER_POOL_ID: ${{ steps.get-secrets.outputs.NEXT_PUBLIC_COGNITO_USER_POOL_ID }}
+        NEXT_PUBLIC_COGNITO_CLIENT_ID: ${{ steps.get-secrets.outputs.NEXT_PUBLIC_COGNITO_CLIENT_ID }}
+        NEXT_PUBLIC_APP_URL: ${{ steps.get-secrets.outputs.NEXT_PUBLIC_APP_URL }}
+      run: |
+        # Build a docker container with build arguments and push it to ECR
+        docker build --platform linux/amd64 \
+          --build-arg NEXT_PUBLIC_AWS_REGION="$NEXT_PUBLIC_AWS_REGION" \
+          --build-arg NEXT_PUBLIC_COGNITO_USER_POOL_ID="$NEXT_PUBLIC_COGNITO_USER_POOL_ID" \
+          --build-arg NEXT_PUBLIC_COGNITO_CLIENT_ID="$NEXT_PUBLIC_COGNITO_CLIENT_ID" \
+          --build-arg NEXT_PUBLIC_APP_URL="$NEXT_PUBLIC_APP_URL" \
+          -t $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG
+        echo "image=$ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+  # Deploy to ECS
   deploy:
     needs: [check-changes, build]
     if: needs.check-changes.outputs.has-changes == 'true'
@@ -111,41 +154,38 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Download build artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: frontend-staging-build-${{ github.sha }}
-        path: out/
-
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
         role-to-assume: ${{ secrets.AWS_GITHUB_ROLE_ARN }}
         aws-region: ${{ env.AWS_REGION }}
 
-    - name: Deploy to S3
+    - name: Deploy to ECS
       run: |
-        echo "🚀 Deploying website to staging S3..."
+        echo "🚀 Deploying to ECS staging service..."
         
-        # Simple deployment that matches our manual process
-        aws s3 sync out/ s3://${{ env.S3_BUCKET }}/ --delete
+        # Update the ECS service to use the new image
+        aws ecs update-service \
+          --cluster ${{ env.ECS_CLUSTER }} \
+          --service ${{ env.ECS_SERVICE }} \
+          --force-new-deployment
+        
+        echo "✅ ECS service update initiated"
 
-        echo "✅ Staging S3 deployment completed"
-
-    - name: Invalidate CloudFront
+    - name: Wait for deployment to complete
       run: |
-        echo "🔄 Invalidating staging CloudFront cache..."
-        aws cloudfront create-invalidation \
-          --distribution-id ${{ env.CLOUDFRONT_DISTRIBUTION_ID }} \
-          --paths "/*"
-        echo "✅ Staging CloudFront cache invalidation initiated"
+        echo "⏳ Waiting for ECS deployment to complete..."
+        aws ecs wait services-stable \
+          --cluster ${{ env.ECS_CLUSTER }} \
+          --services ${{ env.ECS_SERVICE }}
+        echo "✅ ECS deployment completed successfully"
 
-    - name: Get deployment URL
+    - name: Get deployment status
       run: |
-        URL=$(aws cloudfront get-distribution --id ${{ env.CLOUDFRONT_DISTRIBUTION_ID }} --query 'Distribution.DomainName' --output text)
-        echo "🌐 Staging App Frontend URL: https://$URL"
         echo "🌐 Staging App Domain: https://app-staging.titanforecast.com"
-        echo "📦 Staging S3 Bucket: ${{ env.S3_BUCKET }}"
+        echo "🐳 ECR Repository: ${{ env.ECR_REPOSITORY }}"
+        echo "📦 ECS Cluster: ${{ env.ECS_CLUSTER }}"
+        echo "🚀 ECS Service: ${{ env.ECS_SERVICE }}"
         if [ "${{ github.event_name }}" = "pull_request" ]; then
           echo "🔀 PR Preview: #${{ github.event.number }} - ${{ github.event.pull_request.title }}"
           echo "🏷️  Branch: ${{ github.head_ref }}"
@@ -155,7 +195,7 @@ jobs:
           echo "🏷️  Branch: ${{ github.ref_name }}"
         fi
         echo "📝 Commit: ${{ github.sha }}"
-        echo "::notice::Staging app frontend deployed successfully! URL: https://$URL"
+        echo "::notice::Staging app frontend deployed successfully to ECS! URL: https://app-staging.titanforecast.com"
 
   # Security scan
   security-scan:
