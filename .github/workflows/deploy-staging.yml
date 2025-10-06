@@ -2,11 +2,10 @@ name: Deploy App Frontend to Staging
 
 on:
   push:
-    tags:
-      - 'v*staging'
-  pull_request:
     branches:
       - staging
+    tags:
+      - 'v*staging'
     paths-ignore:
       - 'docs/**'
       - '.github/workflows/**'
