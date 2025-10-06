@@ -1,15 +1,51 @@
 #!/bin/bash
 
 # Docker build script for TITAN Frontend
-# Usage: ./scripts/docker-build.sh [tag]
+# Usage: ./scripts/docker-build.sh [environment] [tag]
+# Example: ./scripts/docker-build.sh production v1.0.0
+# Example: ./scripts/docker-build.sh staging latest
 
 set -e
 
 # Default values
 ECR_REGISTRY=""
-ECR_REPOSITORY="titan-frontend-production"
-IMAGE_TAG=${1:-latest}
+ENVIRONMENT=${1:-production}
+IMAGE_TAG=${2:-latest}
 AWS_REGION="us-east-1"
+
+# Help function
+show_help() {
+    echo "Usage: $0 [environment] [tag]"
+    echo ""
+    echo "Arguments:"
+    echo "  environment    Target environment (staging|production) [default: production]"
+    echo "  tag           Docker image tag [default: latest]"
+    echo ""
+    echo "Examples:"
+    echo "  $0 production v1.0.0     # Build production image with tag v1.0.0"
+    echo "  $0 staging latest         # Build staging image with tag latest"
+    echo "  $0 production            # Build production image with tag latest"
+    echo ""
+    echo "Options:"
+    echo "  -h, --help    Show this help message"
+    exit 0
+}
+
+# Check for help flag
+if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    show_help
+fi
+
+# Set repository based on environment
+if [ "$ENVIRONMENT" = "staging" ]; then
+    ECR_REPOSITORY="titan-frontend-staging"
+elif [ "$ENVIRONMENT" = "production" ]; then
+    ECR_REPOSITORY="titan-frontend-production"
+else
+    echo -e "${RED}❌ Invalid environment. Use 'staging' or 'production'${NC}"
+    echo "Run '$0 --help' for usage information"
+    exit 1
+fi
 
 # Colors for output
 RED='\033[0;31m'
@@ -18,6 +54,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 echo -e "${GREEN}🐳 Building TITAN Frontend Docker Image${NC}"
+echo "Environment: $ENVIRONMENT"
 echo "Repository: $ECR_REPOSITORY"
 echo "Tag: $IMAGE_TAG"
 echo "Region: $AWS_REGION"
@@ -72,4 +109,8 @@ echo -e "${GREEN}✅ Successfully built and pushed image!${NC}"
 echo "Image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 echo ""
 echo -e "${YELLOW}💡 To deploy to ECS, run:${NC}"
-echo "aws ecs update-service --cluster titan-frontend-cluster --service titan-frontend-production --force-new-deployment"
+if [ "$ENVIRONMENT" = "staging" ]; then
+    echo "aws ecs update-service --cluster titan-cluster --service titan-frontend-staging --force-new-deployment"
+else
+    echo "aws ecs update-service --cluster titan-cluster --service titan-frontend-production --force-new-deployment"
+fi
