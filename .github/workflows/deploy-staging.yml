@@ -50,12 +50,27 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
 
+    - name: Get staging secrets
+      id: get-secrets
+      run: |
+        # Get staging secrets for build-time environment variables
+        SECRETS=$(aws secretsmanager get-secret-value --secret-id "titan-frontend/staging/config" --query 'SecretString' --output text)
+        echo "NEXT_PUBLIC_AWS_REGION=$(echo $SECRETS | jq -r '.NEXT_PUBLIC_AWS_REGION')" >> $GITHUB_ENV
+        echo "NEXT_PUBLIC_COGNITO_USER_POOL_ID=$(echo $SECRETS | jq -r '.NEXT_PUBLIC_COGNITO_USER_POOL_ID')" >> $GITHUB_ENV
+        echo "NEXT_PUBLIC_COGNITO_CLIENT_ID=$(echo $SECRETS | jq -r '.NEXT_PUBLIC_COGNITO_CLIENT_ID')" >> $GITHUB_ENV
+        echo "NEXT_PUBLIC_APP_URL=$(echo $SECRETS | jq -r '.NEXT_PUBLIC_APP_URL')" >> $GITHUB_ENV
+
     - name: Build, tag, and push image to Amazon ECR
       id: build-image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         IMAGE_TAG: ${{ github.sha }}
         DOCKER_BUILD: true
+        # Pass NEXT_PUBLIC_* variables to Docker build
+        NEXT_PUBLIC_AWS_REGION: ${{ env.NEXT_PUBLIC_AWS_REGION }}
+        NEXT_PUBLIC_COGNITO_USER_POOL_ID: ${{ env.NEXT_PUBLIC_COGNITO_USER_POOL_ID }}
+        NEXT_PUBLIC_COGNITO_CLIENT_ID: ${{ env.NEXT_PUBLIC_COGNITO_CLIENT_ID }}
+        NEXT_PUBLIC_APP_URL: ${{ env.NEXT_PUBLIC_APP_URL }}
       run: |
         # Build a docker container and push it to ECR
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .

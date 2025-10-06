@@ -31,24 +31,7 @@
           "value": "0.0.0.0"
         }
       ],
-      "secrets": [
-        {
-          "name": "NEXT_PUBLIC_AWS_REGION",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:ACCOUNT_ID:secret:titan-frontend/staging/config:NEXT_PUBLIC_AWS_REGION::"
-        },
-        {
-          "name": "NEXT_PUBLIC_COGNITO_USER_POOL_ID",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:ACCOUNT_ID:secret:titan-frontend/staging/config:NEXT_PUBLIC_COGNITO_USER_POOL_ID::"
-        },
-        {
-          "name": "NEXT_PUBLIC_COGNITO_CLIENT_ID",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:ACCOUNT_ID:secret:titan-frontend/staging/config:NEXT_PUBLIC_COGNITO_CLIENT_ID::"
-        },
-        {
-          "name": "NEXT_PUBLIC_APP_URL",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:ACCOUNT_ID:secret:titan-frontend/staging/config:NEXT_PUBLIC_APP_URL::"
-        }
-      ],
+      "secrets": [],
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
