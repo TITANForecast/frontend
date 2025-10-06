@@ -26,10 +26,12 @@ env:
   ECS_TASK_DEFINITION: titan-frontend-staging
 
 jobs:
-  deploy:
-    name: Deploy to ECS Staging
+  build:
+    name: Build and Push Docker Image
     runs-on: ubuntu-latest
-    environment: staging
+    outputs:
+      image: ${{ steps.build-image.outputs.image }}
+      image-tag: ${{ steps.build-image.outputs.image-tag }}
     permissions:
       id-token: write
       contents: read
@@ -61,6 +63,23 @@ jobs:
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
         echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+        echo "image-tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+  deploy:
+    name: Deploy to ECS Staging
+    runs-on: ubuntu-latest
+    needs: build
+    environment: staging
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_GITHUB_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
 
     - name: Update ECS task definition and deploy
       run: |
@@ -70,7 +89,7 @@ jobs:
         TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition ${{ env.ECS_TASK_DEFINITION }} --region ${{ env.AWS_REGION }} --query 'taskDefinition')
         
         # Update the image in the task definition
-        UPDATED_TASK_DEFINITION=$(echo $TASK_DEFINITION | jq --arg IMAGE "${{ steps.build-image.outputs.image }}" '.containerDefinitions[0].image = $IMAGE')
+        UPDATED_TASK_DEFINITION=$(echo $TASK_DEFINITION | jq --arg IMAGE "${{ needs.build.outputs.image }}" '.containerDefinitions[0].image = $IMAGE')
         
         # Register the new task definition
         NEW_TASK_DEFINITION=$(aws ecs register-task-definition \
@@ -109,8 +128,8 @@ jobs:
     - name: Deployment summary
       run: |
         echo "✅ ECS staging deployment completed successfully!"
-        echo "🐳 Image: ${{ steps.build-image.outputs.image }}"
-        echo "🏷️  Tag: ${{ github.sha }}"
+        echo "🐳 Image: ${{ needs.build.outputs.image }}"
+        echo "🏷️  Tag: ${{ needs.build.outputs.image-tag }}"
         echo "🚀 Service: ${{ env.ECS_SERVICE }}"
         echo "📦 Cluster: ${{ env.ECS_CLUSTER }}"
         echo "🌐 Staging URL: https://app-staging.titanforecast.com"
