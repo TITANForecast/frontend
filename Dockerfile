@@ -17,6 +17,18 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Accept build arguments for Next.js public environment variables
+ARG NEXT_PUBLIC_AWS_REGION
+ARG NEXT_PUBLIC_COGNITO_USER_POOL_ID
+ARG NEXT_PUBLIC_COGNITO_CLIENT_ID
+ARG NEXT_PUBLIC_APP_URL
+
+# Set environment variables from build arguments
+ENV NEXT_PUBLIC_AWS_REGION=$NEXT_PUBLIC_AWS_REGION
+ENV NEXT_PUBLIC_COGNITO_USER_POOL_ID=$NEXT_PUBLIC_COGNITO_USER_POOL_ID
+ENV NEXT_PUBLIC_COGNITO_CLIENT_ID=$NEXT_PUBLIC_COGNITO_CLIENT_ID
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry
 # Uncomment the following line in case you want to disable telemetry during the build.
