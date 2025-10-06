@@ -62,21 +62,49 @@ jobs:
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
         echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-    - name: Fill in the new image ID in the Amazon ECS task definition
-      id: task-def
-      uses: aws-actions/amazon-ecs-render-task-definition@v1
-      with:
-        task-definition: infrastructure/ecs-task-definition-staging.json
-        container-name: titan-frontend-staging
-        image: ${{ steps.build-image.outputs.image }}
-
-    - name: Deploy Amazon ECS task definition
-      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-      with:
-        task-definition: ${{ steps.task-def.outputs.task-definition }}
-        service: ${{ env.ECS_SERVICE }}
-        cluster: ${{ env.ECS_CLUSTER }}
-        wait-for-service-stability: true
+    - name: Update ECS task definition and deploy
+      run: |
+        echo "📝 Updating ECS task definition with new image..."
+        
+        # Get the current task definition
+        TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition ${{ env.ECS_TASK_DEFINITION }} --region ${{ env.AWS_REGION }} --query 'taskDefinition')
+        
+        # Update the image in the task definition
+        UPDATED_TASK_DEFINITION=$(echo $TASK_DEFINITION | jq --arg IMAGE "${{ steps.build-image.outputs.image }}" '.containerDefinitions[0].image = $IMAGE')
+        
+        # Register the new task definition
+        NEW_TASK_DEFINITION=$(aws ecs register-task-definition \
+          --family ${{ env.ECS_TASK_DEFINITION }} \
+          --network-mode $(echo $UPDATED_TASK_DEFINITION | jq -r '.networkMode') \
+          --requires-compatibilities $(echo $UPDATED_TASK_DEFINITION | jq -r '.requiresCompatibilities | join(",")') \
+          --cpu $(echo $UPDATED_TASK_DEFINITION | jq -r '.cpu') \
+          --memory $(echo $UPDATED_TASK_DEFINITION | jq -r '.memory') \
+          --execution-role-arn $(echo $UPDATED_TASK_DEFINITION | jq -r '.executionRoleArn') \
+          --task-role-arn $(echo $UPDATED_TASK_DEFINITION | jq -r '.taskRoleArn') \
+          --container-definitions "$(echo $UPDATED_TASK_DEFINITION | jq -c '.containerDefinitions')" \
+          --region ${{ env.AWS_REGION }} \
+          --query 'taskDefinition.taskDefinitionArn' \
+          --output text)
+        
+        echo "✅ New task definition registered: $NEW_TASK_DEFINITION"
+        
+        # Update the ECS service
+        echo "🚀 Updating ECS service..."
+        aws ecs update-service \
+          --cluster ${{ env.ECS_CLUSTER }} \
+          --service ${{ env.ECS_SERVICE }} \
+          --task-definition $NEW_TASK_DEFINITION \
+          --region ${{ env.AWS_REGION }} \
+          --query 'service.serviceName' \
+          --output text
+        
+        echo "⏳ Waiting for service to stabilize..."
+        aws ecs wait services-stable \
+          --cluster ${{ env.ECS_CLUSTER }} \
+          --services ${{ env.ECS_SERVICE }} \
+          --region ${{ env.AWS_REGION }}
+        
+        echo "✅ Service update completed successfully!"
 
     - name: Deployment summary
       run: |
