@@ -10,6 +10,7 @@ const amplifyConfig = {
       },
     },
   },
+  region: process.env.NEXT_PUBLIC_AWS_REGION!,
 };
 
 Amplify.configure(amplifyConfig);
