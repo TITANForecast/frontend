@@ -23,6 +23,7 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED 1
 
 # Build the application
+ENV DOCKER_BUILD=true
 RUN npm run build
 
 # Production image, copy all the files and run next
