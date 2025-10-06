@@ -66,7 +66,7 @@ jobs:
       id: task-def
       uses: aws-actions/amazon-ecs-render-task-definition@v1
       with:
-        task-definition: infrastructure/ecs-task-definition.json
+        task-definition: infrastructure/ecs-task-definition-staging.json
         container-name: titan-frontend-staging
         image: ${{ steps.build-image.outputs.image }}
 
