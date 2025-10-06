@@ -100,8 +100,8 @@ jobs:
       run: |
         echo "📝 Updating ECS task definition with new image..."
         
-        # Get the current task definition
-        TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition ${{ env.ECS_TASK_DEFINITION }} --region ${{ env.AWS_REGION }} --query 'taskDefinition')
+        # Use our updated task definition file
+        TASK_DEFINITION=$(cat infrastructure/ecs-task-definition-staging.json)
         
         # Update the image in the task definition
         UPDATED_TASK_DEFINITION=$(echo $TASK_DEFINITION | jq --arg IMAGE "${{ needs.build.outputs.image }}" '.containerDefinitions[0].image = $IMAGE')
