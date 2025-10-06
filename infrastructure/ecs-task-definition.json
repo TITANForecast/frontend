@@ -4,12 +4,12 @@
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "512",
   "memory": "1024",
-  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/titan-frontend-production-ecs-execution-role",
-  "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/titan-frontend-production-ecs-task-role",
+  "executionRoleArn": "arn:aws:iam::183300739967:role/titan-frontend-production-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::183300739967:role/titan-frontend-production-ecs-task-role",
   "containerDefinitions": [
     {
       "name": "titan-frontend-production",
-      "image": "ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/titan-frontend-production:latest",
+      "image": "183300739967.dkr.ecr.us-east-1.amazonaws.com/titan-frontend-production:latest",
       "portMappings": [
         {
           "containerPort": 3000,
