@@ -40,7 +40,7 @@ function VerifyEmailForm() {
         
         // Redirect to signin after 3 seconds
         setTimeout(() => {
-          router.push(`/signin?verified=true&email=${encodeURIComponent(emailParam)}`);
+          router.push(`/?verified=true&email=${encodeURIComponent(emailParam)}`);
         }, 3000);
         
       } catch (error: any) {
@@ -121,7 +121,7 @@ function VerifyEmailForm() {
                       Try Signing Up Again
                     </Link>
                     <Link 
-                      href="/signin" 
+                      href="/" 
                       className="block w-full text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 text-center"
                     >
                       Back to Sign In

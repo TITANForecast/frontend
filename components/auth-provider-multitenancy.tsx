@@ -131,11 +131,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
+      // Local development - skip Cognito signOut
+      if (process.env.NODE_ENV === 'development') {
+        setIsAuthenticated(false);
+        setUser(null);
+        setCurrentDealer(null);
+        router.push('/');
+        return;
+      }
+
+      // Production Cognito sign out
       await signOut();
       setIsAuthenticated(false);
       setUser(null);
       setCurrentDealer(null);
-      router.push('/signin');
+      router.push('/');
     } catch (error) {
       console.error('Logout error:', error);
       throw error;
