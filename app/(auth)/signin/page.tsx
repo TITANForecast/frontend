@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation';
 import AuthHeader from '../auth-header'
 import AuthImage from '../auth-image'
-import { useAuth } from '@/components/auth-provider'
+import { useAuth } from '@/components/auth-provider-multitenancy'
 
-export default function SignIn() {
+function SignInForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -170,4 +170,12 @@ export default function SignIn() {
 
     </main>
   )
+}
+
+export default function SignIn() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SignInForm />
+    </Suspense>
+  );
 }

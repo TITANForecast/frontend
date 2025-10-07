@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import AuthHeader from '../auth-header'
 import AuthImage from '../auth-image'
-import { useAuth } from '@/components/auth-provider'
+import { useAuth } from '@/components/auth-provider-multitenancy'
 
-export default function ResetPasswordConfirm() {
+function ResetPasswordConfirmForm() {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -170,4 +170,12 @@ export default function ResetPasswordConfirm() {
 
     </main>
   )
+}
+
+export default function ResetPasswordConfirm() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ResetPasswordConfirmForm />
+    </Suspense>
+  );
 }

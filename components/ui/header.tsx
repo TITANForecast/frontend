@@ -8,6 +8,7 @@ import Notifications from '@/components/dropdown-notifications'
 import DropdownHelp from '@/components/dropdown-help'
 import ThemeToggle from '@/components/theme-toggle'
 import DropdownProfile from '@/components/dropdown-profile'
+import DealerDropdown from '@/components/dealer-dropdown'
 
 export default function Header({
   variant = 'default',
@@ -66,6 +67,7 @@ export default function Header({
             </div>
             <Notifications align="right" />
             <DropdownHelp align="right" />
+            <DealerDropdown />
             <ThemeToggle />
             {/*  Divider */}
             <hr className="w-px h-6 bg-gray-200 dark:bg-gray-700/60 border-none" />
