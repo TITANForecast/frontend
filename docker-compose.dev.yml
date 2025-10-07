@@ -1,4 +1,3 @@
-version: '3.8'
 
 services:
   # PostgreSQL Database (simulating RDS)
@@ -42,75 +41,6 @@ services:
     restart: unless-stopped
     command: redis-server --appendonly yes
 
-  # Core API (NestJS)
-  core-api:
-    build:
-      context: ../core-api
-      dockerfile: Dockerfile.dev
-    container_name: titan-core-api-dev
-    environment:
-      NODE_ENV: development
-      PORT: 3001
-      DATABASE_URL: postgresql://titan_admin:dev_password_123@postgres:5432/titan_dev
-      DATABASE_HOST: postgres
-      DATABASE_PORT: 5432
-      DATABASE_NAME: titan_dev
-      DATABASE_USERNAME: titan_admin
-      DATABASE_PASSWORD: dev_password_123
-      REDIS_URL: redis://redis:6379
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      JWT_SECRET: dev_jwt_secret_key_123
-      AWS_REGION: us-east-1
-      COGNITO_USER_POOL_ID: us-east-1_nHfr0cgfP
-      COGNITO_CLIENT_ID: 1orj1nfmmeg2cev8o0bk95s7d9
-    ports:
-      - "3001:3001"
-    volumes:
-      - ../core-api:/app
-      - /app/node_modules
-    networks:
-      - titan-network
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-    command: npm run start:dev
-
-  # Data API (FastAPI)
-  data-api:
-    build:
-      context: ../data-api
-      dockerfile: Dockerfile.dev
-    container_name: titan-data-api-dev
-    environment:
-      PYTHONPATH: /app
-      DATABASE_URL: postgresql://titan_admin:dev_password_123@postgres:5432/titan_dev
-      DATABASE_HOST: postgres
-      DATABASE_PORT: 5432
-      DATABASE_NAME: titan_dev
-      DATABASE_USERNAME: titan_admin
-      DATABASE_PASSWORD: dev_password_123
-      REDIS_URL: redis://redis:6379
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      API_HOST: 0.0.0.0
-      API_PORT: 8000
-    ports:
-      - "8000:8000"
-    volumes:
-      - ../data-api:/app
-    networks:
-      - titan-network
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
   # Frontend (Next.js)
   frontend:
@@ -125,8 +55,6 @@ services:
       NEXT_PUBLIC_COGNITO_USER_POOL_ID: us-east-1_nHfr0cgfP
       NEXT_PUBLIC_COGNITO_CLIENT_ID: 1orj1nfmmeg2cev8o0bk95s7d9
       NEXT_PUBLIC_APP_URL: http://localhost:3000
-      NEXT_PUBLIC_CORE_API_URL: http://localhost:3001
-      NEXT_PUBLIC_DATA_API_URL: http://localhost:8000
       DATABASE_URL: postgresql://titan_admin:dev_password_123@postgres:5432/titan_dev
       DATABASE_HOST: postgres
       DATABASE_PORT: 5432
@@ -147,10 +75,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      core-api:
-        condition: service_started
-      data-api:
-        condition: service_started
     restart: unless-stopped
     command: npm run dev
 

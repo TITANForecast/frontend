@@ -21,8 +21,8 @@ COPY . .
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nextjs -u 1001
 
-# Change ownership of the app directory
-RUN chown -R nextjs:nodejs /app
+# Create .next directory and set permissions
+RUN mkdir -p /app/.next && chown -R nextjs:nodejs /app
 USER nextjs
 
 # Expose port
