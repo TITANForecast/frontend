@@ -246,6 +246,222 @@ The following secrets are automatically retrieved from AWS Secrets Manager:
 - **[Data API](https://github.com/TITANForecast/data-api)** - Data processing services
 - **[Website](https://github.com/TITANForecast/website)** - Main marketing website
 
+## 🔄 GitFlow Process
+
+To avoid merge conflicts and maintain a clean development workflow, follow this GitFlow process:
+
+### **Branch Strategy:**
+
+#### **Main Branches:**
+- **`main`**: Production-ready code, always deployable
+- **`staging`**: Pre-production testing, auto-deploys to staging environment
+
+#### **Development Branches:**
+- **`feature/*`**: New features (e.g., `feature/user-dashboard`)
+- **`fix/*`**: Bug fixes (e.g., `fix/auth-issue`)
+- **`hotfix/*`**: Critical production fixes (e.g., `hotfix/security-patch`)
+
+### **GitFlow Workflow:**
+
+#### **1. Starting New Work:**
+```bash
+# Always start from main
+git checkout main
+git pull origin main
+
+# Create feature branch
+git checkout -b feature/your-feature-name
+# or
+git checkout -b fix/your-fix-name
+```
+
+#### **2. Regular Development:**
+```bash
+# Make your changes
+git add .
+git commit -m "feat: add user dashboard component"
+
+# Push to remote
+git push origin feature/your-feature-name
+```
+
+#### **3. Keeping Up to Date:**
+```bash
+# Fetch latest changes
+git fetch origin
+
+# Merge main into your branch regularly
+git merge origin/main
+
+# Resolve any conflicts
+# Test your changes
+# Push updates
+git push origin feature/your-feature-name
+```
+
+#### **4. Before Creating PR:**
+```bash
+# Ensure you're up to date with main
+git checkout main
+git pull origin main
+
+# Merge main into your branch
+git checkout feature/your-feature-name
+git merge origin/main
+
+# Resolve conflicts if any
+# Test thoroughly
+# Push final changes
+git push origin feature/your-feature-name
+```
+
+#### **5. PR Process:**
+1. **Create PR** from your branch to `main`
+2. **Review** and address feedback
+3. **Merge** to `main` when approved
+4. **Delete** feature branch after merge
+
+### **Conflict Resolution Best Practices:**
+
+#### **When Conflicts Occur:**
+```bash
+# 1. Identify conflicted files
+git status
+
+# 2. Open each conflicted file
+# 3. Look for conflict markers:
+#    <<<<<<< HEAD
+#    Your changes
+#    =======
+#    Incoming changes
+#    >>>>>>> branch-name
+
+# 4. Resolve conflicts manually
+# 5. Remove conflict markers
+# 6. Test your changes
+# 7. Add resolved files
+git add resolved-file.json
+
+# 8. Complete the merge
+git commit -m "resolve: merge conflicts in task definitions"
+```
+
+### **Branch Protection Rules:**
+
+#### **Main Branch:**
+- ✅ Require pull request reviews
+- ✅ Require status checks to pass
+- ✅ Require branches to be up to date
+- ✅ Restrict pushes to main
+
+#### **Staging Branch:**
+- ✅ Auto-deploy on merge
+- ✅ Require main branch to be up to date
+- ✅ Allow force pushes for hotfixes
+
+### **Emergency Procedures:**
+
+#### **Hotfix Process:**
+```bash
+# 1. Create hotfix from main
+git checkout main
+git pull origin main
+git checkout -b hotfix/critical-issue
+
+# 2. Make minimal fix
+# 3. Test thoroughly
+# 4. Merge to main immediately
+# 5. Merge to staging
+# 6. Deploy to production
+```
+
+#### **Rollback Process:**
+```bash
+# 1. Identify last good commit
+git log --oneline
+
+# 2. Create rollback branch
+git checkout -b rollback/to-stable-version
+
+# 3. Revert problematic commit
+git revert <commit-hash>
+
+# 4. Test rollback
+# 5. Merge to main
+# 6. Deploy immediately
+```
+
+### **Best Practices:**
+
+#### **Commit Messages:**
+```bash
+# Use conventional commits
+feat: add new feature
+fix: resolve bug
+docs: update documentation
+style: formatting changes
+refactor: code restructuring
+test: add tests
+chore: maintenance tasks
+```
+
+#### **Branch Naming:**
+```bash
+# Good examples
+feature/user-authentication
+fix/cognito-login-issue
+hotfix/security-vulnerability
+docs/api-documentation
+
+# Avoid
+fix
+new-feature
+update
+```
+
+#### **Regular Maintenance:**
+```bash
+# Weekly: Clean up merged branches
+git branch --merged main | grep -v main | xargs -n 1 git branch -d
+
+# Before starting work: Always pull latest
+git checkout main
+git pull origin main
+
+# After merging: Update local branches
+git checkout staging
+git pull origin staging
+```
+
+### **Troubleshooting Common Issues:**
+
+#### **"Your branch is behind" Error:**
+```bash
+git fetch origin
+git merge origin/main
+# Resolve conflicts if any
+git push origin your-branch
+```
+
+#### **"Cannot push to protected branch" Error:**
+```bash
+# Create PR instead of direct push
+# Or use force push for hotfixes (with caution)
+git push origin your-branch --force-with-lease
+```
+
+#### **Complex Merge Conflicts:**
+```bash
+# Use merge tool
+git mergetool
+
+# Or abort and try different approach
+git merge --abort
+git rebase origin/main
+```
+
+This GitFlow process helps prevent the merge conflicts we experienced and ensures smooth collaboration across the team.
+
 ## 🤝 Contributing
 
 1. Fork the repository
