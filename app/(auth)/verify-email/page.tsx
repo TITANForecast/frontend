@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import AuthHeader from '../auth-header';
 import AuthImage from '../auth-image';
-import { useAuth } from '@/components/auth-provider';
+import { useAuth } from '@/components/auth-provider-multitenancy';
 
 export default function VerifyEmail() {
   const [isVerifying, setIsVerifying] = useState(true);

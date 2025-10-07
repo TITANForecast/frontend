@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import AuthHeader from '../auth-header'
 import AuthImage from '../auth-image'
-import { useAuth } from '@/components/auth-provider'
+import { useAuth } from '@/components/auth-provider-multitenancy'
 
 export default function ResetPassword() {
   const [email, setEmail] = useState("");
