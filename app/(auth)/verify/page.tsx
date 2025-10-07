@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import AuthHeader from "../auth-header";
 import AuthImage from "../auth-image";
 import { useAuth } from "@/components/auth-provider-multitenancy";
 
-export default function Verify() {
+function VerifyForm() {
   const [code, setCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -133,5 +133,13 @@ export default function Verify() {
         <AuthImage />
       </div>
     </main>
+  );
+}
+
+export default function Verify() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <VerifyForm />
+    </Suspense>
   );
 }

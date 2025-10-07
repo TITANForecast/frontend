@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import AuthHeader from '../auth-header';
 import AuthImage from '../auth-image';
 import { useAuth } from '@/components/auth-provider-multitenancy';
 
-export default function VerifyEmail() {
+function VerifyEmailForm() {
   const [isVerifying, setIsVerifying] = useState(true);
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState("");
@@ -136,5 +136,13 @@ export default function VerifyEmail() {
         <AuthImage />
       </div>
     </main>
+  );
+}
+
+export default function VerifyEmail() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <VerifyEmailForm />
+    </Suspense>
   );
 }
