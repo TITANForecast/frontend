@@ -79,6 +79,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ]);
       
       console.log('✅ Login successful, user object:', user);
+      
+      // Check if user needs to confirm signup
+      if (user.nextStep?.signInStep === 'CONFIRM_SIGN_UP') {
+        console.log('📧 User needs to confirm email address');
+        throw new Error("Please verify your email address before signing in. Check your email for a verification link.");
+      }
+      
+      // Check if user is actually signed in
+      if (!user.isSignedIn) {
+        console.log('❌ User is not signed in despite successful response');
+        throw new Error("Authentication failed. Please try again.");
+      }
+      
       setUser(user as any);
       setIsAuthenticated(true);
       
