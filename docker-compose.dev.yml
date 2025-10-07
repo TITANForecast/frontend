@@ -1,0 +1,204 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database (simulating RDS)
+  postgres:
+    image: postgres:15.12
+    container_name: titan-postgres-dev
+    environment:
+      POSTGRES_DB: titan_dev
+      POSTGRES_USER: titan_admin
+      POSTGRES_PASSWORD: dev_password_123
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    networks:
+      - titan-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U titan_admin -d titan_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis Cache (simulating ElastiCache)
+  redis:
+    image: redis:7.0-alpine
+    container_name: titan-redis-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - titan-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+  # Core API (NestJS)
+  core-api:
+    build:
+      context: ../core-api
+      dockerfile: Dockerfile.dev
+    container_name: titan-core-api-dev
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DATABASE_URL: postgresql://titan_admin:dev_password_123@postgres:5432/titan_dev
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: titan_dev
+      DATABASE_USERNAME: titan_admin
+      DATABASE_PASSWORD: dev_password_123
+      REDIS_URL: redis://redis:6379
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: dev_jwt_secret_key_123
+      AWS_REGION: us-east-1
+      COGNITO_USER_POOL_ID: us-east-1_nHfr0cgfP
+      COGNITO_CLIENT_ID: 1orj1nfmmeg2cev8o0bk95s7d9
+    ports:
+      - "3001:3001"
+    volumes:
+      - ../core-api:/app
+      - /app/node_modules
+    networks:
+      - titan-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    command: npm run start:dev
+
+  # Data API (FastAPI)
+  data-api:
+    build:
+      context: ../data-api
+      dockerfile: Dockerfile.dev
+    container_name: titan-data-api-dev
+    environment:
+      PYTHONPATH: /app
+      DATABASE_URL: postgresql://titan_admin:dev_password_123@postgres:5432/titan_dev
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: titan_dev
+      DATABASE_USERNAME: titan_admin
+      DATABASE_PASSWORD: dev_password_123
+      REDIS_URL: redis://redis:6379
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../data-api:/app
+    networks:
+      - titan-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Frontend (Next.js)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: titan-frontend-dev
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      NEXT_PUBLIC_AWS_REGION: us-east-1
+      NEXT_PUBLIC_COGNITO_USER_POOL_ID: us-east-1_nHfr0cgfP
+      NEXT_PUBLIC_COGNITO_CLIENT_ID: 1orj1nfmmeg2cev8o0bk95s7d9
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_PUBLIC_CORE_API_URL: http://localhost:3001
+      NEXT_PUBLIC_DATA_API_URL: http://localhost:8000
+      DATABASE_URL: postgresql://titan_admin:dev_password_123@postgres:5432/titan_dev
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: titan_dev
+      DATABASE_USERNAME: titan_admin
+      DATABASE_PASSWORD: dev_password_123
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - titan-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      core-api:
+        condition: service_started
+      data-api:
+        condition: service_started
+    restart: unless-stopped
+    command: npm run dev
+
+  # Database Admin (pgAdmin)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: titan-pgadmin-dev
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@titan.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - titan-network
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  # Redis Admin (RedisInsight)
+  redis-insight:
+    image: redislabs/redisinsight:latest
+    container_name: titan-redis-insight-dev
+    ports:
+      - "8001:8001"
+    volumes:
+      - redis_insight_data:/data
+    networks:
+      - titan-network
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+  redis_insight_data:
+    driver: local
+
+networks:
+  titan-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
