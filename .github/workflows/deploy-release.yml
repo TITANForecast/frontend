@@ -1,111 +1,44 @@
-name: Deploy App Frontend
+name: Deploy Frontend to ECS Production
 
 on:
   push:
     branches:
       - main
-    tags:
-      - 'v*'
     paths-ignore:
       - 'docs/**'
-      - '.github/workflows/**'
-      - 'README.md'
       - '*.md'
+      - 'infrastructure/**'
   workflow_dispatch:
     inputs:
-      tag:
-        description: 'Release tag to deploy'
+      environment:
+        description: 'Environment to deploy to'
         required: true
-        default: 'latest'
+        default: 'production'
+        type: choice
+        options:
+          - production
 
 env:
   AWS_REGION: us-east-1
-  NODE_VERSION: '20'
-  S3_BUCKET: 'titan-app-static-site-8fbf908b'
-  CLOUDFRONT_DISTRIBUTION_ID: 'EX6Y4ZPOCGMW6'
-  # Cognito Authentication
-  NEXT_PUBLIC_AWS_REGION: us-east-1
-  NEXT_PUBLIC_COGNITO_USER_POOL_ID: ${{ secrets.NEXT_PUBLIC_COGNITO_USER_POOL_ID }}
-  NEXT_PUBLIC_COGNITO_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_COGNITO_CLIENT_ID }}
+  ECR_REPOSITORY: titan-frontend-production
+  ECS_SERVICE: titan-frontend-production
+  ECS_CLUSTER: titan-cluster
+  ECS_TASK_DEFINITION: titan-frontend-production
 
 jobs:
-  # Check if there are relevant changes
-  check-changes:
+  build:
+    name: Build and Push Docker Image
     runs-on: ubuntu-latest
     outputs:
-      has-changes: ${{ steps.changes.outputs.has-changes }}
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-    
-    - name: Check for relevant changes
-      id: changes
-      run: |
-        # Check if there are any changes to application code
-        if git diff --quiet HEAD~1 HEAD -- app/ components/ lib/ public/ package.json package-lock.json next.config.js tsconfig.json postcss.config.js; then
-          echo "No relevant application code changes detected"
-          echo "has-changes=false" >> $GITHUB_OUTPUT
-        else
-          echo "Relevant application code changes detected"
-          echo "has-changes=true" >> $GITHUB_OUTPUT
-        fi
-
-  # Build and test the frontend application
-  build:
-    needs: check-changes
-    if: needs.check-changes.outputs.has-changes == 'true'
-    runs-on: ubuntu-latest
+      image: ${{ steps.build-image.outputs.image }}
+      image-tag: ${{ steps.build-image.outputs.image-tag }}
     permissions:
       id-token: write
       contents: read
     
     steps:
-    - name: Checkout code
+    - name: Checkout
       uses: actions/checkout@v4
-
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
-        cache-dependency-path: 'package-lock.json'
-
-    - name: Install dependencies
-      run: npm ci
-
-    - name: Run linting
-      run: npm run lint
-
-    - name: Build static site
-      run: npm run build:static
-
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: frontend-build-${{ github.ref_name || github.sha }}
-        path: out/
-        retention-days: 7
-
-  # Deploy to S3 and CloudFront
-  deploy:
-    needs: [check-changes, build]
-    if: needs.check-changes.outputs.has-changes == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Download build artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: frontend-build-${{ github.ref_name || github.sha }}
-        path: out/
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
@@ -113,41 +46,55 @@ jobs:
         role-to-assume: ${{ secrets.AWS_GITHUB_ROLE_ARN }}
         aws-region: ${{ env.AWS_REGION }}
 
-    - name: Deploy to S3
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Get production secrets
+      id: get-secrets
       run: |
-        echo "🚀 Deploying website to S3..."
-        
-        # Simple deployment that matches our manual process
-        aws s3 sync out/ s3://${{ env.S3_BUCKET }}/ --delete
+        # Get production secrets for build-time environment variables
+        SECRETS=$(aws secretsmanager get-secret-value --secret-id "titan-frontend/production/config" --query 'SecretString' --output text)
+        echo "NEXT_PUBLIC_AWS_REGION=$(echo $SECRETS | jq -r '.NEXT_PUBLIC_AWS_REGION')" >> $GITHUB_ENV
+        echo "NEXT_PUBLIC_COGNITO_USER_POOL_ID=$(echo $SECRETS | jq -r '.NEXT_PUBLIC_COGNITO_USER_POOL_ID')" >> $GITHUB_ENV
+        echo "NEXT_PUBLIC_COGNITO_CLIENT_ID=$(echo $SECRETS | jq -r '.NEXT_PUBLIC_COGNITO_CLIENT_ID')" >> $GITHUB_ENV
+        echo "NEXT_PUBLIC_APP_URL=$(echo $SECRETS | jq -r '.NEXT_PUBLIC_APP_URL')" >> $GITHUB_ENV
 
-        echo "✅ S3 deployment completed"
-
-    - name: Invalidate CloudFront
+    - name: Build, tag, and push image to Amazon ECR
+      id: build-image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+        DOCKER_BUILD: true
+        # Pass NEXT_PUBLIC_* variables to Docker build
+        NEXT_PUBLIC_AWS_REGION: ${{ env.NEXT_PUBLIC_AWS_REGION }}
+        NEXT_PUBLIC_COGNITO_USER_POOL_ID: ${{ env.NEXT_PUBLIC_COGNITO_USER_POOL_ID }}
+        NEXT_PUBLIC_COGNITO_CLIENT_ID: ${{ env.NEXT_PUBLIC_COGNITO_CLIENT_ID }}
+        NEXT_PUBLIC_APP_URL: ${{ env.NEXT_PUBLIC_APP_URL }}
       run: |
-        echo "🔄 Invalidating CloudFront cache..."
-        aws cloudfront create-invalidation \
-          --distribution-id ${{ env.CLOUDFRONT_DISTRIBUTION_ID }} \
-          --paths "/*"
-        echo "✅ CloudFront cache invalidation initiated"
+        # Build a docker container and push it to ECR
+        docker build \
+          --build-arg NEXT_PUBLIC_AWS_REGION=$NEXT_PUBLIC_AWS_REGION \
+          --build-arg NEXT_PUBLIC_COGNITO_USER_POOL_ID=$NEXT_PUBLIC_COGNITO_USER_POOL_ID \
+          --build-arg NEXT_PUBLIC_COGNITO_CLIENT_ID=$NEXT_PUBLIC_COGNITO_CLIENT_ID \
+          --build-arg NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL \
+          -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker build \
+          --build-arg NEXT_PUBLIC_AWS_REGION=$NEXT_PUBLIC_AWS_REGION \
+          --build-arg NEXT_PUBLIC_COGNITO_USER_POOL_ID=$NEXT_PUBLIC_COGNITO_USER_POOL_ID \
+          --build-arg NEXT_PUBLIC_COGNITO_CLIENT_ID=$NEXT_PUBLIC_COGNITO_CLIENT_ID \
+          --build-arg NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL \
+          -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+        echo "image-tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-    - name: Get deployment URL
-      run: |
-        URL=$(aws cloudfront get-distribution --id ${{ env.CLOUDFRONT_DISTRIBUTION_ID }} --query 'Distribution.DomainName' --output text)
-        echo "🌐 App Frontend URL: https://$URL"
-        echo "🌐 App Domain: https://app.titanforecast.com"
-        echo "📦 S3 Bucket: ${{ env.S3_BUCKET }}"
-        if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; then
-          echo "🚀 Deployed from main branch (commit: ${{ github.sha }})"
-        else
-          echo "🏷️  Release Tag: ${{ github.ref_name }}"
-        fi
-        echo "::notice::App frontend deployed successfully! URL: https://$URL"
-
-  # Security scan
-  security-scan:
-    needs: check-changes
-    if: needs.check-changes.outputs.has-changes == 'true'
+  deploy:
+    name: Deploy to ECS Production
     runs-on: ubuntu-latest
+    needs: build
+    environment: production
     permissions:
       id-token: write
       contents: read
@@ -156,20 +103,62 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@master
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
       with:
-        scan-type: 'fs'
-        scan-ref: '.'
-        format: 'table'
-        exit-code: '0'
+        role-to-assume: ${{ secrets.AWS_GITHUB_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
 
-    - name: Security scan summary
+    - name: Update ECS task definition and deploy
       run: |
-        echo "✅ Security scan completed successfully"
-        echo "📊 Vulnerability scan results are shown above"
-        if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; then
-          echo "🚀 Scanned main branch (commit: ${{ github.sha }})"
-        else
-          echo "🏷️  Release Tag: ${{ github.ref_name }}"
-        fi
+        echo "📝 Updating ECS task definition with new image..."
+        
+        # Use our updated task definition file
+        TASK_DEFINITION=$(cat infrastructure/ecs-task-definition.json)
+        
+        # Update the image in the task definition
+        UPDATED_TASK_DEFINITION=$(echo $TASK_DEFINITION | jq --arg IMAGE "${{ needs.build.outputs.image }}" '.containerDefinitions[0].image = $IMAGE')
+        
+        # Register the new task definition
+        NEW_TASK_DEFINITION=$(aws ecs register-task-definition \
+          --family ${{ env.ECS_TASK_DEFINITION }} \
+          --network-mode $(echo $UPDATED_TASK_DEFINITION | jq -r '.networkMode') \
+          --requires-compatibilities $(echo $UPDATED_TASK_DEFINITION | jq -r '.requiresCompatibilities | join(",")') \
+          --cpu $(echo $UPDATED_TASK_DEFINITION | jq -r '.cpu') \
+          --memory $(echo $UPDATED_TASK_DEFINITION | jq -r '.memory') \
+          --execution-role-arn $(echo $UPDATED_TASK_DEFINITION | jq -r '.executionRoleArn') \
+          --task-role-arn $(echo $UPDATED_TASK_DEFINITION | jq -r '.taskRoleArn') \
+          --container-definitions "$(echo $UPDATED_TASK_DEFINITION | jq -c '.containerDefinitions')" \
+          --region ${{ env.AWS_REGION }} \
+          --query 'taskDefinition.taskDefinitionArn' \
+          --output text)
+        
+        echo "✅ New task definition registered: $NEW_TASK_DEFINITION"
+        
+        # Update the ECS service
+        echo "🚀 Updating ECS service..."
+        aws ecs update-service \
+          --cluster ${{ env.ECS_CLUSTER }} \
+          --service ${{ env.ECS_SERVICE }} \
+          --task-definition $NEW_TASK_DEFINITION \
+          --region ${{ env.AWS_REGION }} \
+          --query 'service.serviceName' \
+          --output text
+        
+        echo "⏳ Waiting for service to stabilize..."
+        aws ecs wait services-stable \
+          --cluster ${{ env.ECS_CLUSTER }} \
+          --services ${{ env.ECS_SERVICE }} \
+          --region ${{ env.AWS_REGION }}
+        
+        echo "✅ Service update completed successfully!"
+
+    - name: Deployment summary
+      run: |
+        echo "✅ ECS production deployment completed successfully!"
+        echo "🐳 Image: ${{ needs.build.outputs.image }}"
+        echo "🏷️  Tag: ${{ needs.build.outputs.image-tag }}"
+        echo "🚀 Service: ${{ env.ECS_SERVICE }}"
+        echo "📦 Cluster: ${{ env.ECS_CLUSTER }}"
+        echo "🌐 Production URL: https://app.titanforecast.com"
+        echo "::notice::Frontend deployed successfully to ECS production!"

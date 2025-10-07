@@ -2,14 +2,7 @@ name: Lint Code
 
 on:
   pull_request:
-    branches: [ main ]
-    paths-ignore:
-      - 'docs/**'
-      - '.github/workflows/**'
-      - 'README.md'
-      - '*.md'
-  push:
-    branches: [ main ]
+    branches: [ main, staging ]
     paths-ignore:
       - 'docs/**'
       - '.github/workflows/**'

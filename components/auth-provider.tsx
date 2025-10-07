@@ -38,20 +38,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [isAuthenticated, isLoading, pathname, router]);
 
   const checkAuthStatus = async () => {
+    console.log('🔍 Checking authentication status...');
     try {
       // Add timeout to prevent hanging
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Auth check timeout')), 5000)
       );
       
+      console.log('📡 Calling getCurrentUser...');
       const currentUser = await Promise.race([
         getCurrentUser(),
         timeoutPromise
       ]);
       
+      console.log('✅ User authenticated:', currentUser);
       setUser(currentUser as any);
       setIsAuthenticated(true);
     } catch (error) {
+      console.log('❌ Auth check failed:', error);
+      console.log('❌ Setting user as not authenticated');
       setUser(null);
       setIsAuthenticated(false);
     } finally {
@@ -60,23 +65,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const login = async (email: string, password: string) => {
+    console.log('🔐 Starting login process for:', email);
     try {
       // Add timeout to prevent hanging
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Login timeout - please try again')), 10000)
       );
       
+      console.log('📡 Calling signIn with Amplify...');
       const user = await Promise.race([
         signIn({ username: email, password }),
         timeoutPromise
       ]);
       
+      console.log('✅ Login successful, user object:', user);
+      
+      // Type assertion for user object
+      const userObj = user as any;
+      
+      // Check if user needs to confirm signup
+      if (userObj.nextStep?.signInStep === 'CONFIRM_SIGN_UP') {
+        console.log('📧 User needs to confirm email address');
+        throw new Error("Please verify your email address before signing in. Check your email for a verification link.");
+      }
+      
+      // Check if user is actually signed in
+      if (!userObj.isSignedIn) {
+        console.log('❌ User is not signed in despite successful response');
+        throw new Error("Authentication failed. Please try again.");
+      }
+      
       setUser(user as any);
       setIsAuthenticated(true);
       
+      console.log('🔄 Redirecting to dashboard...');
       // Immediately redirect to dashboard
       router.push("/dashboard");
     } catch (error: any) {
+      console.error('❌ Login failed with error:', error);
+      console.error('❌ Error details:', {
+        name: error.name,
+        message: error.message,
+        code: error.code,
+        httpStatusCode: error.metadata?.httpStatusCode,
+        underlyingError: error.underlyingError
+      });
+      
       // Provide more helpful error messages
       if (error.message?.includes('UserNotFoundException')) {
         throw new Error("No account found with this email address. Please check your email or create a new account.");
