@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Eye, EyeOff, Lock, User } from "lucide-react";
-import { useAuth } from "./auth-provider";
+import { useAuth } from "./auth-provider-multitenancy";
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");

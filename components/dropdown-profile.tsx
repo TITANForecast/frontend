@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Menu, MenuButton, MenuItems, MenuItem, Transition } from '@headlessui/react'
-import { useAuth } from './auth-provider'
+import { useAuth } from './auth-provider-multitenancy'
 import UserAvatar from '@/public/images/user-avatar-32.png'
 
 export default function DropdownProfile({ align }: {
