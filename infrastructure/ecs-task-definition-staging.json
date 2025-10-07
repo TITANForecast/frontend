@@ -31,7 +31,32 @@
           "value": "0.0.0.0"
         }
       ],
-      "secrets": [],
+      "secrets": [
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/staging/connection-string"
+        },
+        {
+          "name": "DATABASE_HOST",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/staging/host"
+        },
+        {
+          "name": "DATABASE_PORT",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/staging/port"
+        },
+        {
+          "name": "DATABASE_NAME",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/staging/name"
+        },
+        {
+          "name": "DATABASE_USERNAME",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/staging/username"
+        },
+        {
+          "name": "DATABASE_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/staging/password"
+        }
+      ],
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
