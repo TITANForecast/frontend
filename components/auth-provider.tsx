@@ -38,20 +38,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [isAuthenticated, isLoading, pathname, router]);
 
   const checkAuthStatus = async () => {
+    console.log('🔍 Checking authentication status...');
     try {
       // Add timeout to prevent hanging
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Auth check timeout')), 5000)
       );
       
+      console.log('📡 Calling getCurrentUser...');
       const currentUser = await Promise.race([
         getCurrentUser(),
         timeoutPromise
       ]);
       
+      console.log('✅ User authenticated:', currentUser);
       setUser(currentUser as any);
       setIsAuthenticated(true);
     } catch (error) {
+      console.log('❌ Auth check failed:', error);
+      console.log('❌ Setting user as not authenticated');
       setUser(null);
       setIsAuthenticated(false);
     } finally {
@@ -60,23 +65,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const login = async (email: string, password: string) => {
+    console.log('🔐 Starting login process for:', email);
     try {
       // Add timeout to prevent hanging
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Login timeout - please try again')), 10000)
       );
       
+      console.log('📡 Calling signIn with Amplify...');
       const user = await Promise.race([
         signIn({ username: email, password }),
         timeoutPromise
       ]);
       
+      console.log('✅ Login successful, user object:', user);
       setUser(user as any);
       setIsAuthenticated(true);
       
+      console.log('🔄 Redirecting to dashboard...');
       // Immediately redirect to dashboard
       router.push("/dashboard");
     } catch (error: any) {
+      console.error('❌ Login failed with error:', error);
+      console.error('❌ Error details:', {
+        name: error.name,
+        message: error.message,
+        code: error.code,
+        httpStatusCode: error.metadata?.httpStatusCode,
+        underlyingError: error.underlyingError
+      });
+      
       // Provide more helpful error messages
       if (error.message?.includes('UserNotFoundException')) {
         throw new Error("No account found with this email address. Please check your email or create a new account.");
