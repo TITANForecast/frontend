@@ -2,12 +2,10 @@
 
 ## Overview
 
-This Docker Compose setup simulates the complete TITAN Forecast Platform infrastructure for local development, including:
+This Docker Compose setup simulates the core TITAN Forecast Platform infrastructure for local development, including:
 
 - **PostgreSQL Database** (simulating RDS)
 - **Redis Cache** (simulating ElastiCache)
-- **Core API** (NestJS service)
-- **Data API** (FastAPI service)
 - **Frontend** (Next.js application)
 - **Database Admin** (pgAdmin)
 - **Redis Admin** (RedisInsight)
@@ -38,8 +36,6 @@ docker-compose -f docker-compose.dev.yml logs -f
 | Service | URL | Description |
 |---------|-----|-------------|
 | **Frontend** | http://localhost:3000 | Next.js application |
-| **Core API** | http://localhost:3001 | NestJS backend API |
-| **Data API** | http://localhost:8000 | FastAPI data service |
 | **pgAdmin** | http://localhost:5050 | Database administration |
 | **RedisInsight** | http://localhost:8001 | Redis administration |
 
@@ -130,33 +126,6 @@ data/
 - ✅ Message queuing
 - ✅ Real-time features
 
-### Core API (NestJS)
-
-**Configuration:**
-- **Port**: 3001
-- **Environment**: development
-- **Hot Reload**: enabled
-
-**Features:**
-- ✅ User management
-- ✅ Authentication
-- ✅ Business logic
-- ✅ Database integration
-- ✅ Health checks
-
-### Data API (FastAPI)
-
-**Configuration:**
-- **Port**: 8000
-- **Environment**: development
-- **Hot Reload**: enabled
-
-**Features:**
-- ✅ Data processing
-- ✅ Analytics
-- ✅ RO parsing
-- ✅ Database integration
-- ✅ Health checks
 
 ### Frontend (Next.js)
 
@@ -194,12 +163,6 @@ REDIS_HOST=redis
 REDIS_PORT=6379
 ```
 
-### API Endpoints
-
-```bash
-NEXT_PUBLIC_CORE_API_URL=http://localhost:3001
-NEXT_PUBLIC_DATA_API_URL=http://localhost:8000
-```
 
 ## Development Workflow
 
@@ -211,11 +174,6 @@ NEXT_PUBLIC_DATA_API_URL=http://localhost:8000
 # Changes are automatically reflected (hot reload)
 ```
 
-**API Changes:**
-```bash
-# Edit files in /Users/jaylong/Web/Titan/core-api or /Users/jaylong/Web/Titan/data-api
-# Changes are automatically reflected (hot reload)
-```
 
 ### 2. Database Changes
 
@@ -239,15 +197,15 @@ docker exec -it titan-postgres-dev psql -U titan_admin -d titan_dev
 **Restart Specific Service:**
 ```bash
 docker-compose -f docker-compose.dev.yml restart frontend
-docker-compose -f docker-compose.dev.yml restart core-api
-docker-compose -f docker-compose.dev.yml restart data-api
+docker-compose -f docker-compose.dev.yml restart postgres
+docker-compose -f docker-compose.dev.yml restart redis
 ```
 
 **View Service Logs:**
 ```bash
 docker-compose -f docker-compose.dev.yml logs frontend
-docker-compose -f docker-compose.dev.yml logs core-api
-docker-compose -f docker-compose.dev.yml logs data-api
+docker-compose -f docker-compose.dev.yml logs postgres
+docker-compose -f docker-compose.dev.yml logs redis
 ```
 
 **Stop All Services:**
@@ -268,9 +226,10 @@ docker-compose -f docker-compose.dev.yml down -v
 ```bash
 # Check if ports are in use
 lsof -i :3000
-lsof -i :3001
 lsof -i :5432
 lsof -i :6379
+lsof -i :5050
+lsof -i :8001
 
 # Stop conflicting services or change ports in docker-compose.dev.yml
 ```
@@ -342,7 +301,7 @@ This development environment differs from production in several ways:
 ## Next Steps
 
 1. **Test Multi-Tenant Features**: Use the sample data to test dealer switching
-2. **API Development**: Build out the Core API and Data API endpoints
+2. **Frontend Development**: Build out the Next.js application features
 3. **Database Schema**: Extend the schema as needed for your use case
 4. **Integration Testing**: Test the complete flow from frontend to database
 5. **Performance Testing**: Load test the local environment

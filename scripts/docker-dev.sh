@@ -39,7 +39,7 @@ show_help() {
     echo "Examples:"
     echo "  $0 start                    # Start all services"
     echo "  $0 logs frontend           # Show frontend logs"
-    echo "  $0 shell core-api          # Open shell in core-api container"
+    echo "  $0 shell frontend          # Open shell in frontend container"
     echo "  $0 db                      # Connect to database"
     echo "  $0 clean                   # Clean everything and start fresh"
 }
@@ -60,8 +60,6 @@ start_services() {
     echo ""
     echo -e "${YELLOW}📋 Service URLs:${NC}"
     echo "  Frontend:    http://localhost:3000"
-    echo "  Core API:    http://localhost:3001"
-    echo "  Data API:    http://localhost:8000"
     echo "  pgAdmin:     http://localhost:5050"
     echo "  RedisInsight: http://localhost:8001"
     echo ""
@@ -124,7 +122,7 @@ fresh_start() {
 open_shell() {
     if [ -z "$2" ]; then
         echo -e "${RED}❌ Please specify a service name${NC}"
-        echo "Available services: frontend, core-api, data-api, postgres, redis"
+        echo "Available services: frontend, postgres, redis, pgadmin, redis-insight"
         exit 1
     fi
     
@@ -175,19 +173,6 @@ check_health() {
         echo -e "${RED}❌ Frontend: Unhealthy${NC}"
     fi
     
-    # Check core API
-    if curl -f http://localhost:3001/health > /dev/null 2>&1; then
-        echo -e "${GREEN}✅ Core API: Healthy${NC}"
-    else
-        echo -e "${RED}❌ Core API: Unhealthy${NC}"
-    fi
-    
-    # Check data API
-    if curl -f http://localhost:8000/health > /dev/null 2>&1; then
-        echo -e "${GREEN}✅ Data API: Healthy${NC}"
-    else
-        echo -e "${RED}❌ Data API: Unhealthy${NC}"
-    fi
 }
 
 # Main script logic
