@@ -32,7 +32,8 @@ import {
 } from "@/lib/utils/dashboard-data-processor";
 
 export default function Dashboard() {
-  const [dashboardData, setDashboardData] = useState<ProcessedDashboardData | null>(null);
+  const [dashboardData, setDashboardData] =
+    useState<ProcessedDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [dataSource, setDataSource] = useState<string>("");
   const [hasKpiData, setHasKpiData] = useState(false);
@@ -42,14 +43,14 @@ export default function Dashboard() {
       try {
         const response = await fetch("/api/dms/delivery");
         const result = await response.json();
-        
+
         if (result.data) {
           setDataSource(result.source);
           setHasKpiData(!!result.kpis);
-          
+
           // Process data with pre-calculated KPIs if available
           const processed = processDashboardData(
-            result.data as DMSData, 
+            result.data as DMSData,
             result.kpis as KPIResults | null
           );
           setDashboardData(processed);
@@ -70,7 +71,9 @@ export default function Dashboard() {
         <div className="flex items-center justify-center h-96">
           <div className="text-center">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 dark:border-gray-100"></div>
-            <p className="mt-4 text-gray-600 dark:text-gray-400">Loading dashboard data...</p>
+            <p className="mt-4 text-gray-600 dark:text-gray-400">
+              Loading dashboard data...
+            </p>
           </div>
         </div>
       </div>
@@ -111,21 +114,54 @@ export default function Dashboard() {
       {dataSource && (
         <div className="mb-4 flex gap-2 flex-wrap">
           <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200">
-            <svg className="w-3 h-3 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            <svg
+              className="w-3 h-3 mr-1.5"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                fillRule="evenodd"
+                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                clipRule="evenodd"
+              />
             </svg>
-            Data: {dataSource === "api" ? "Live API" : dataSource === "fallback-SV500" ? "SV500.json" : "SV50.json"}
+            Data:{" "}
+            {dataSource === "api"
+              ? "Live API"
+              : dataSource === "fallback-SV500"
+              ? "SV500.json"
+              : "SV50.json"}
           </div>
           {hasKpiData && (
             <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200">
-              <svg className="w-3 h-3 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              <svg
+                className="w-3 h-3 mr-1.5"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  clipRule="evenodd"
+                />
               </svg>
               KPIs: Pre-calculated (kpi_results.json)
             </div>
           )}
         </div>
       )}
+
+      {/* Main Dashboard Charts */}
+      <div className="mb-8">
+        <div className="grid grid-cols-12 gap-6">
+          {/* Gross Profit Performance */}
+          <DashboardCardGrossProfit data={dashboardData?.grossProfit} />
+          {/* RO Count */}
+          <DashboardCardRoCount data={dashboardData?.roCount} />
+          {/* Warranty Opportunity */}
+          <DashboardCardWarrantyOpportunity data={dashboardData?.warranty} />
+        </div>
+      </div>
 
       {/* KPI Gauges Section */}
       <div className="mb-8">
@@ -156,11 +192,11 @@ export default function Dashboard() {
           <DashboardCardAGKPIGauge
             value={dashboardData?.kpis.hoursPerRO || 1.29}
             name="Hrs/RO"
-            min={1.10}
-            max={1.60}
-            redZone={[1.10, 1.20]}
-            yellowZone={[1.20, 1.40]}
-            greenZone={[1.40, 1.60]}
+            min={1.1}
+            max={1.6}
+            redZone={[1.1, 1.2]}
+            yellowZone={[1.2, 1.4]}
+            greenZone={[1.4, 1.6]}
             className="col-span-12 md:col-span-6 lg:col-span-3"
           />
           {/* ELR Total */}
@@ -174,18 +210,6 @@ export default function Dashboard() {
             greenZone={[220, 280]}
             className="col-span-12 md:col-span-6 lg:col-span-3"
           />
-        </div>
-      </div>
-
-      {/* Main Dashboard Charts */}
-      <div className="mb-8">
-        <div className="grid grid-cols-12 gap-6">
-          {/* Gross Profit Performance */}
-          <DashboardCardGrossProfit data={dashboardData?.grossProfit} />
-          {/* RO Count */}
-          <DashboardCardRoCount data={dashboardData?.roCount} />
-          {/* Warranty Opportunity */}
-          <DashboardCardWarrantyOpportunity data={dashboardData?.warranty} />
         </div>
       </div>
 
@@ -208,7 +232,9 @@ export default function Dashboard() {
       <div className="mb-8">
         <div className="grid grid-cols-12 gap-6">
           {/* Technician Production */}
-          <DashboardCardTechnicianProduction data={dashboardData?.technicians} />
+          <DashboardCardTechnicianProduction
+            data={dashboardData?.technicians}
+          />
           {/* Top 5 Opcodes */}
           <DashboardCardOpcodes data={dashboardData?.opcodes} />
           {/* Advisor Summary ELR */}
