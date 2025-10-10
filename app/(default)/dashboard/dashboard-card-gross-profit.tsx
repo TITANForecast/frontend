@@ -4,7 +4,18 @@ import React, { useEffect, useState } from "react";
 import ReactECharts from "echarts-for-react";
 import EditMenu from "@/components/edit-menu";
 
-export default function DashboardCardGrossProfit() {
+interface GrossProfitData {
+  months: string[];
+  customerPay: number[];
+  warranty: number[];
+  internal: number[];
+}
+
+interface Props {
+  data?: GrossProfitData;
+}
+
+export default function DashboardCardGrossProfit({ data }: Props) {
   const [isDark, setIsDark] = useState(false);
 
   // Check for dark mode
@@ -25,6 +36,15 @@ export default function DashboardCardGrossProfit() {
 
     return () => observer.disconnect();
   }, []);
+
+  // Use real data if available, otherwise use mock data
+  const chartData = data || {
+    months: ["January", "February", "March", "April", "May", "June", 
+             "July", "August", "September", "October", "November", "December"],
+    customerPay: [45, 48, 42, 50, 52, 48, 45, 47, 49, 51, 53, 50],
+    warranty: [38, 40, 35, 42, 44, 40, 38, 39, 41, 43, 45, 42],
+    internal: [35, 38, 25, 30, 32, 28, 26, 28, 30, 32, 34, 31],
+  };
 
   const chartOption = {
     backgroundColor: "transparent",
@@ -52,20 +72,7 @@ export default function DashboardCardGrossProfit() {
     },
     xAxis: {
       type: "category",
-      data: [
-        "January",
-        "February",
-        "March",
-        "April",
-        "May",
-        "June",
-        "July",
-        "August",
-        "September",
-        "October",
-        "November",
-        "December",
-      ],
+      data: chartData.months,
       axisLine: {
         show: false,
       },
@@ -74,6 +81,8 @@ export default function DashboardCardGrossProfit() {
       },
       axisLabel: {
         color: isDark ? "#9CA3AF" : "#6B7280",
+        rotate: 45,
+        fontSize: 11,
       },
     },
     yAxis: {
@@ -100,7 +109,7 @@ export default function DashboardCardGrossProfit() {
       {
         name: "Customer Pay",
         type: "line",
-        data: [45, 48, 42, 50, 52, 48, 45, 47, 49, 51, 53, 50],
+        data: chartData.customerPay,
         smooth: true,
         lineStyle: {
           color: "#3B82F6",
@@ -115,7 +124,7 @@ export default function DashboardCardGrossProfit() {
       {
         name: "Warranty",
         type: "line",
-        data: [38, 40, 35, 42, 44, 40, 38, 39, 41, 43, 45, 42],
+        data: chartData.warranty,
         smooth: true,
         lineStyle: {
           color: "#8B5CF6",
@@ -131,7 +140,7 @@ export default function DashboardCardGrossProfit() {
       {
         name: "Internal",
         type: "line",
-        data: [35, 38, 25, 30, 32, 28, 26, 28, 30, 32, 34, 31],
+        data: chartData.internal,
         smooth: true,
         lineStyle: {
           color: "#EF4444",
