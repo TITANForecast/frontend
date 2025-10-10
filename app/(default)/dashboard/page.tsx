@@ -1,8 +1,6 @@
-export const metadata = {
-  title: "Dashboard - TitanForecast",
-  description: "Page description",
-};
+"use client";
 
+import { useEffect, useState } from "react";
 import FilterButton from "@/components/dropdown-filter";
 import Datepicker from "@/components/datepicker";
 import DashboardCard01 from "./dashboard-card-01";
@@ -26,8 +24,58 @@ import DashboardCardAGKPIGauge from "./dashboard-card-ag-kpi-gauge";
 import EChartsDemo from "@/components/echarts-demo";
 import EChartsComprehensiveDemo from "@/components/echarts-comprehensive-demo";
 import AgGridExamplesPage from "../ag-grid-examples/page";
+import {
+  processDashboardData,
+  ProcessedDashboardData,
+  DMSData,
+  KPIResults,
+} from "@/lib/utils/dashboard-data-processor";
 
 export default function Dashboard() {
+  const [dashboardData, setDashboardData] = useState<ProcessedDashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [dataSource, setDataSource] = useState<string>("");
+  const [hasKpiData, setHasKpiData] = useState(false);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const response = await fetch("/api/dms/delivery");
+        const result = await response.json();
+        
+        if (result.data) {
+          setDataSource(result.source);
+          setHasKpiData(!!result.kpis);
+          
+          // Process data with pre-calculated KPIs if available
+          const processed = processDashboardData(
+            result.data as DMSData, 
+            result.kpis as KPIResults | null
+          );
+          setDashboardData(processed);
+        }
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-[96rem] mx-auto">
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 dark:border-gray-100"></div>
+            <p className="mt-4 text-gray-600 dark:text-gray-400">Loading dashboard data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-[96rem] mx-auto">
       {/* Dashboard actions */}
@@ -59,12 +107,32 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Data Source Indicator */}
+      {dataSource && (
+        <div className="mb-4 flex gap-2 flex-wrap">
+          <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200">
+            <svg className="w-3 h-3 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+            Data: {dataSource === "api" ? "Live API" : dataSource === "fallback-SV500" ? "SV500.json" : "SV50.json"}
+          </div>
+          {hasKpiData && (
+            <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200">
+              <svg className="w-3 h-3 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              KPIs: Pre-calculated (kpi_results.json)
+            </div>
+          )}
+        </div>
+      )}
+
       {/* KPI Gauges Section */}
       <div className="mb-8">
         <div className="grid grid-cols-12 gap-6">
           {/* Labor GP % */}
           <DashboardCardAGKPIGauge
-            value={85.5}
+            value={dashboardData?.kpis.laborGPPercent || 85.5}
             name="Labor GP %"
             min={66}
             max={96}
@@ -75,18 +143,18 @@ export default function Dashboard() {
           />
           {/* Labor $/RO */}
           <DashboardCardAGKPIGauge
-            value={222}
+            value={dashboardData?.kpis.laborPerRO || 222}
             name="Labor $/RO"
-            min={192}
-            max={272}
-            redZone={[192, 208]}
-            yellowZone={[208, 240]}
-            greenZone={[240, 272]}
+            min={120}
+            max={280}
+            redZone={[120, 160]}
+            yellowZone={[160, 200]}
+            greenZone={[200, 280]}
             className="col-span-12 md:col-span-6 lg:col-span-3"
           />
           {/* Hrs/RO */}
           <DashboardCardAGKPIGauge
-            value={1.29}
+            value={dashboardData?.kpis.hoursPerRO || 1.29}
             name="Hrs/RO"
             min={1.10}
             max={1.60}
@@ -97,13 +165,13 @@ export default function Dashboard() {
           />
           {/* ELR Total */}
           <DashboardCardAGKPIGauge
-            value={177.5}
+            value={dashboardData?.kpis.elrTotal || 177.5}
             name="ELR Total"
             min={140}
-            max={200}
-            redZone={[140, 152]}
-            yellowZone={[152, 164]}
-            greenZone={[164, 200]}
+            max={280}
+            redZone={[140, 180]}
+            yellowZone={[180, 220]}
+            greenZone={[220, 280]}
             className="col-span-12 md:col-span-6 lg:col-span-3"
           />
         </div>
@@ -113,11 +181,11 @@ export default function Dashboard() {
       <div className="mb-8">
         <div className="grid grid-cols-12 gap-6">
           {/* Gross Profit Performance */}
-          <DashboardCardGrossProfit />
+          <DashboardCardGrossProfit data={dashboardData?.grossProfit} />
           {/* RO Count */}
-          <DashboardCardRoCount />
+          <DashboardCardRoCount data={dashboardData?.roCount} />
           {/* Warranty Opportunity */}
-          <DashboardCardWarrantyOpportunity />
+          <DashboardCardWarrantyOpportunity data={dashboardData?.warranty} />
         </div>
       </div>
 
@@ -140,11 +208,11 @@ export default function Dashboard() {
       <div className="mb-8">
         <div className="grid grid-cols-12 gap-6">
           {/* Technician Production */}
-          <DashboardCardTechnicianProduction />
+          <DashboardCardTechnicianProduction data={dashboardData?.technicians} />
           {/* Top 5 Opcodes */}
-          <DashboardCardOpcodes />
+          <DashboardCardOpcodes data={dashboardData?.opcodes} />
           {/* Advisor Summary ELR */}
-          <DashboardCardAdvisorElr />
+          <DashboardCardAdvisorElr data={dashboardData?.advisors} />
         </div>
       </div>
 
