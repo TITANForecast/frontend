@@ -4,7 +4,16 @@ import React, { useEffect, useState } from "react";
 import ReactECharts from "echarts-for-react";
 import EditMenu from "@/components/edit-menu";
 
-export default function DashboardCardOpcodes() {
+interface OpcodesData {
+  labels: string[];
+  values: number[];
+}
+
+interface Props {
+  data?: OpcodesData;
+}
+
+export default function DashboardCardOpcodes({ data }: Props) {
   const [isDark, setIsDark] = useState(false);
 
   // Check for dark mode
@@ -26,6 +35,20 @@ export default function DashboardCardOpcodes() {
     return () => observer.disconnect();
   }, []);
 
+  // Use real data if available, otherwise use mock data
+  const chartData = data || {
+    labels: ["MA10", "FS02", "DIAG", "99P", "BG44K"],
+    values: [35, 25, 20, 15, 5],
+  };
+
+  // Prepare pie chart data
+  const colors = ["#3B82F6", "#1E40AF", "#EF4444", "#14B8A6", "#22C55E"];
+  const pieData = chartData.labels.map((label, index) => ({
+    value: chartData.values[index],
+    name: label,
+    itemStyle: { color: colors[index % colors.length] },
+  }));
+
   const chartOption = {
     backgroundColor: "transparent",
     tooltip: {
@@ -37,7 +60,7 @@ export default function DashboardCardOpcodes() {
       },
     },
     legend: {
-      data: ["MA10", "FS02", "DIAG", "99P", "BG44K"],
+      data: chartData.labels,
       bottom: 0,
       textStyle: {
         color: isDark ? "#D1D5DB" : "#6B7280",
@@ -70,13 +93,7 @@ export default function DashboardCardOpcodes() {
         labelLine: {
           show: false,
         },
-        data: [
-          { value: 35, name: "MA10", itemStyle: { color: "#3B82F6" } },
-          { value: 25, name: "FS02", itemStyle: { color: "#1E40AF" } },
-          { value: 20, name: "DIAG", itemStyle: { color: "#EF4444" } },
-          { value: 15, name: "99P", itemStyle: { color: "#14B8A6" } },
-          { value: 5, name: "BG44K", itemStyle: { color: "#22C55E" } },
-        ],
+        data: pieData,
       },
     ],
   };

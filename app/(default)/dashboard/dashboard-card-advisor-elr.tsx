@@ -4,7 +4,16 @@ import React, { useEffect, useState } from "react";
 import ReactECharts from "echarts-for-react";
 import EditMenu from "@/components/edit-menu";
 
-export default function DashboardCardAdvisorElr() {
+interface AdvisorData {
+  names: string[];
+  elr: number[];
+}
+
+interface Props {
+  data?: AdvisorData;
+}
+
+export default function DashboardCardAdvisorElr({ data }: Props) {
   const [isDark, setIsDark] = useState(false);
 
   // Check for dark mode
@@ -25,6 +34,13 @@ export default function DashboardCardAdvisorElr() {
 
     return () => observer.disconnect();
   }, []);
+
+  // Use real data if available, otherwise use mock data
+  const chartData = data || {
+    names: ["M. Jordan", "J. Diezzy", "C. Pratt", "M. Goodbar", "C. Crunch", 
+            "F. Astair", "S. Walton", "Y. Bear", "J. Doe"],
+    elr: [185, 178, 172, 168, 165, 160, 155, 148, 142],
+  };
 
   const chartOption = {
     backgroundColor: "transparent",
@@ -51,17 +67,7 @@ export default function DashboardCardAdvisorElr() {
     },
     xAxis: {
       type: "category",
-      data: [
-        "M. Jordan",
-        "J. Diezzy",
-        "C. Pratt",
-        "M. Goodbar",
-        "C. Crunch",
-        "F. Astair",
-        "S. Walton",
-        "Y. Bear",
-        "J. Doe",
-      ],
+      data: chartData.names,
       axisLine: {
         show: false,
       },
@@ -97,9 +103,7 @@ export default function DashboardCardAdvisorElr() {
       {
         name: "Repair ELR",
         type: "bar",
-        data: [
-          150.12, 145.5, 142.3, 140.8, 138.9, 135.2, 119.99, 132.4, 128.75,
-        ],
+        data: chartData.elr,
         itemStyle: {
           color: "#3B82F6",
           borderRadius: [4, 4, 0, 0],
