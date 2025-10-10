@@ -1,5 +1,7 @@
 // Database types for administration
 
+import { UserRole } from './auth';
+
 export interface DealerApiConfig {
   id: string;
   dealerId: string;
@@ -66,7 +68,7 @@ export interface UserExtended {
   id: string;
   email: string;
   name: string;
-  role: 'SUPER_ADMIN' | 'MULTI_DEALER' | 'USER';
+  role: UserRole;
   defaultDealerId: string;
   isActive: boolean;
   dealers: DealerExtended[];
@@ -78,7 +80,7 @@ export interface UserInput {
   email: string;
   name: string;
   password?: string;
-  role: 'SUPER_ADMIN' | 'MULTI_DEALER' | 'USER';
+  role: UserRole;
   defaultDealerId: string;
   isActive?: boolean;
   dealerIds?: string[];
