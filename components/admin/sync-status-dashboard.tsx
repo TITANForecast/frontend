@@ -2,8 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { SyncStatus, AdminStats } from '@/lib/types/admin';
+import { authenticatedFetch } from '@/lib/utils/api';
 
-export default function SyncStatusDashboard() {
+interface SyncStatusDashboardProps {
+  getAuthToken: () => Promise<string | null>;
+}
+
+export default function SyncStatusDashboard({ getAuthToken }: SyncStatusDashboardProps) {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus[]>([]);
   const [loading, setLoading] = useState(true);
@@ -11,8 +16,8 @@ export default function SyncStatusDashboard() {
   const fetchData = async () => {
     try {
       const [statsRes, syncRes] = await Promise.all([
-        fetch('/api/admin/stats'),
-        fetch('/api/admin/sync-status'),
+        authenticatedFetch('/api/admin/stats', getAuthToken),
+        authenticatedFetch('/api/admin/sync-status', getAuthToken),
       ]);
 
       if (statsRes.ok) {
@@ -33,6 +38,7 @@ export default function SyncStatusDashboard() {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getStatusIcon = (status: SyncStatus['status']) => {
