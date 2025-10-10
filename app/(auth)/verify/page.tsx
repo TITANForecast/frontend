@@ -30,7 +30,7 @@ function VerifyForm() {
       setSuccess(true);
       // Redirect to sign in after successful verification
       setTimeout(() => {
-        router.push("/signin?verified=true");
+        router.push("/?verified=true");
       }, 2000);
     } catch (error: any) {
       setError(error.message || "Verification failed. Please try again.");
@@ -95,7 +95,7 @@ function VerifyForm() {
                 </div>
                 <div className="flex items-center justify-between mt-6">
                   <Link
-                    href="/signin"
+                    href="/"
                     className="text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
                   >
                     Back to Sign In

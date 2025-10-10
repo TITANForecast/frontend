@@ -59,7 +59,7 @@ resource "aws_lb_target_group" "frontend" {
 # ALB Listener Rule for frontend (HTTP)
 resource "aws_lb_listener_rule" "frontend" {
   listener_arn = var.alb_listener_arn
-  priority     = 150
+  priority     = 160
 
   action {
     type             = "forward"
@@ -80,7 +80,7 @@ resource "aws_lb_listener_rule" "frontend" {
 # ALB Listener Rule for frontend (HTTPS)
 resource "aws_lb_listener_rule" "frontend_https" {
   listener_arn = var.alb_https_listener_arn
-  priority     = 150
+  priority     = 160
 
   action {
     type             = "forward"
@@ -189,6 +189,7 @@ resource "aws_ecs_service" "frontend" {
   task_definition = aws_ecs_task_definition.frontend.arn
   desired_count   = var.desired_count
   launch_type     = "FARGATE"
+  enable_execute_command = true
 
   network_configuration {
     subnets          = var.private_subnet_ids

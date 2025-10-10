@@ -76,7 +76,7 @@ export default function DashboardCardAGKPIGauge({
         formatter({ value }: { value: number }) {
           // Add appropriate symbol to the value based on gauge type
           if (name.includes("GP %")) {
-            return `$${value.toFixed(0)}`;
+            return `${value.toFixed(0)}%`;
           } else if (name.includes("$/RO")) {
             return `$${value.toFixed(0)}`;
           } else if (name.includes("Hrs/RO")) {
@@ -112,7 +112,7 @@ export default function DashboardCardAGKPIGauge({
           // Format value based on gauge type
           let formattedValue;
           if (name.includes("GP %")) {
-            formattedValue = `$${value.toFixed(0)}`;
+            formattedValue = `${value.toFixed(0)}%`;
           } else if (name.includes("$/RO")) {
             formattedValue = `$${value.toFixed(0)}`;
           } else if (name.includes("Hrs/RO")) {
@@ -148,7 +148,7 @@ export default function DashboardCardAGKPIGauge({
           formatter: ({ value }: { value: number }) => {
             // Add appropriate symbol to scale labels based on gauge type
             if (name.includes("GP %")) {
-              return `$${value.toFixed(0)}`;
+              return `${value.toFixed(0)}%`;
             } else if (name.includes("$/RO")) {
               return `$${value.toFixed(0)}`;
             } else if (name.includes("Hrs/RO")) {

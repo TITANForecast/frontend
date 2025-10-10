@@ -4,7 +4,18 @@ import React, { useEffect, useState } from "react";
 import ReactECharts from "echarts-for-react";
 import EditMenu from "@/components/edit-menu";
 
-export default function DashboardCardTechnicianProduction() {
+interface TechnicianData {
+  names: string[];
+  customerPay: number[];
+  warranty: number[];
+  internal: number[];
+}
+
+interface Props {
+  data?: TechnicianData;
+}
+
+export default function DashboardCardTechnicianProduction({ data }: Props) {
   const [isDark, setIsDark] = useState(false);
 
   // Check for dark mode
@@ -25,6 +36,20 @@ export default function DashboardCardTechnicianProduction() {
 
     return () => observer.disconnect();
   }, []);
+
+  // Use real data if available, otherwise use mock data
+  const chartData = data || {
+    names: ["H. Ford", "K. Benz", "G. Kawasaki", "E. Ferrari", "G. Daimler", 
+            "S. Honda", "K. Toyoda", "L. Chevrolet", "F. Porsche", "R.E. Olds", 
+            "H. Royce", "H. Dodge", "F. Dodge", "W. Chrysler", "G Mason"],
+    customerPay: [800, 650, 580, 520, 480, 450, 420, 380, 350, 320, 300, 280, 250, 220, 180],
+    warranty: [200, 180, 160, 140, 120, 100, 90, 80, 70, 60, 50, 45, 40, 35, 30],
+    internal: [150, 120, 100, 80, 70, 60, 50, 45, 40, 35, 30, 25, 20, 15, 10],
+  };
+
+  const totalHours = chartData.customerPay.reduce((a, b, i) => 
+    a + b + chartData.warranty[i] + chartData.internal[i], 0
+  );
 
   const chartOption = {
     backgroundColor: "transparent",
@@ -74,23 +99,7 @@ export default function DashboardCardTechnicianProduction() {
     },
     yAxis: {
       type: "category",
-      data: [
-        "H. Ford",
-        "K. Benz",
-        "G. Kawasaki",
-        "E. Ferrari",
-        "G. Daimler",
-        "S. Honda",
-        "K. Toyoda",
-        "L. Chevrolet",
-        "F. Porsche",
-        "R.E. Olds",
-        "H. Royce",
-        "H. Dodge",
-        "F. Dodge",
-        "W. Chrysler",
-        "G Mason",
-      ],
+      data: chartData.names,
       axisLine: {
         show: false,
       },
@@ -106,10 +115,7 @@ export default function DashboardCardTechnicianProduction() {
         name: "Customer Pay",
         type: "bar",
         stack: "total",
-        data: [
-          800, 650, 580, 520, 480, 450, 420, 380, 350, 320, 300, 280, 250, 220,
-          180,
-        ],
+        data: chartData.customerPay,
         itemStyle: {
           color: "#3B82F6",
         },
@@ -118,9 +124,7 @@ export default function DashboardCardTechnicianProduction() {
         name: "Warranty",
         type: "bar",
         stack: "total",
-        data: [
-          200, 180, 160, 140, 120, 100, 90, 80, 70, 60, 50, 45, 40, 35, 30,
-        ],
+        data: chartData.warranty,
         itemStyle: {
           color: "#8B5CF6",
         },
@@ -129,7 +133,7 @@ export default function DashboardCardTechnicianProduction() {
         name: "Internal",
         type: "bar",
         stack: "total",
-        data: [150, 120, 100, 80, 70, 60, 50, 45, 40, 35, 30, 25, 20, 15, 10],
+        data: chartData.internal,
         itemStyle: {
           color: "#EF4444",
         },
@@ -148,11 +152,11 @@ export default function DashboardCardTechnicianProduction() {
         </header>
         <div className="flex items-center justify-between mb-4">
           <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase">
-            Hours
+            Total Hours (x1000)
           </div>
           <div className="flex items-center text-sm font-medium text-green-700 px-2 py-1 bg-green-500/20 rounded-full">
             <span className="mr-1">↑</span>
-            2,773 HRS
+            {totalHours.toFixed(1)} K HRS
           </div>
         </div>
       </div>

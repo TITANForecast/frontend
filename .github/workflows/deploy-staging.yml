@@ -59,6 +59,9 @@ jobs:
         echo "NEXT_PUBLIC_COGNITO_USER_POOL_ID=$(echo $SECRETS | jq -r '.NEXT_PUBLIC_COGNITO_USER_POOL_ID')" >> $GITHUB_ENV
         echo "NEXT_PUBLIC_COGNITO_CLIENT_ID=$(echo $SECRETS | jq -r '.NEXT_PUBLIC_COGNITO_CLIENT_ID')" >> $GITHUB_ENV
         echo "NEXT_PUBLIC_APP_URL=$(echo $SECRETS | jq -r '.NEXT_PUBLIC_APP_URL')" >> $GITHUB_ENV
+        # Set authentication mode for production builds
+        echo "NEXT_PUBLIC_USE_COGNITO=true" >> $GITHUB_ENV
+        echo "NEXT_PUBLIC_USE_MOCK_AUTH=false" >> $GITHUB_ENV
 
     - name: Build, tag, and push image to Amazon ECR
       id: build-image
@@ -71,6 +74,8 @@ jobs:
         NEXT_PUBLIC_COGNITO_USER_POOL_ID: ${{ env.NEXT_PUBLIC_COGNITO_USER_POOL_ID }}
         NEXT_PUBLIC_COGNITO_CLIENT_ID: ${{ env.NEXT_PUBLIC_COGNITO_CLIENT_ID }}
         NEXT_PUBLIC_APP_URL: ${{ env.NEXT_PUBLIC_APP_URL }}
+        NEXT_PUBLIC_USE_COGNITO: ${{ env.NEXT_PUBLIC_USE_COGNITO }}
+        NEXT_PUBLIC_USE_MOCK_AUTH: ${{ env.NEXT_PUBLIC_USE_MOCK_AUTH }}
       run: |
         # Build a docker container and push it to ECR
         docker build \
@@ -78,12 +83,16 @@ jobs:
           --build-arg NEXT_PUBLIC_COGNITO_USER_POOL_ID=$NEXT_PUBLIC_COGNITO_USER_POOL_ID \
           --build-arg NEXT_PUBLIC_COGNITO_CLIENT_ID=$NEXT_PUBLIC_COGNITO_CLIENT_ID \
           --build-arg NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL \
+          --build-arg NEXT_PUBLIC_USE_COGNITO=$NEXT_PUBLIC_USE_COGNITO \
+          --build-arg NEXT_PUBLIC_USE_MOCK_AUTH=$NEXT_PUBLIC_USE_MOCK_AUTH \
           -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
         docker build \
           --build-arg NEXT_PUBLIC_AWS_REGION=$NEXT_PUBLIC_AWS_REGION \
           --build-arg NEXT_PUBLIC_COGNITO_USER_POOL_ID=$NEXT_PUBLIC_COGNITO_USER_POOL_ID \
           --build-arg NEXT_PUBLIC_COGNITO_CLIENT_ID=$NEXT_PUBLIC_COGNITO_CLIENT_ID \
           --build-arg NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL \
+          --build-arg NEXT_PUBLIC_USE_COGNITO=$NEXT_PUBLIC_USE_COGNITO \
+          --build-arg NEXT_PUBLIC_USE_MOCK_AUTH=$NEXT_PUBLIC_USE_MOCK_AUTH \
           -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest

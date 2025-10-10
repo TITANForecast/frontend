@@ -19,6 +19,7 @@ interface AuthContextType {
   confirmSignup: (email: string, code: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   confirmPassword: (email: string, code: string, newPassword: string) => Promise<void>;
+  getAuthToken: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -37,15 +38,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    console.log('Auth redirect check - isLoading:', isLoading, 'isAuthenticated:', isAuthenticated, 'pathname:', pathname);
     if (!isLoading && isAuthenticated && pathname === "/") {
+      console.log('Redirecting to dashboard...');
       router.push("/dashboard");
     }
   }, [isAuthenticated, isLoading, pathname, router]);
 
   const checkAuthStatus = async () => {
     try {
-      // Local development mock data
-      if (process.env.NODE_ENV === 'development') {
+      // Check if we should use mock authentication
+      const useMockAuth = process.env.NEXT_PUBLIC_USE_MOCK_AUTH === 'true';
+      const useCognito = process.env.NEXT_PUBLIC_USE_COGNITO === 'true';
+      
+      console.log('Auth check - useMockAuth:', useMockAuth, 'useCognito:', useCognito);
+      
+      // Use mock authentication if explicitly enabled
+      if (useMockAuth && !useCognito) {
         const mockUser: UserProfile = {
           id: 'dev-user-1',
           email: 'dev@titan.com',
@@ -75,12 +84,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Production Cognito authentication
+      console.log('Attempting Cognito authentication...');
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Auth timeout')), 5000)
       );
       
       const authPromise = getCurrentUser();
       const user = await Promise.race([authPromise, timeoutPromise]);
+      
+      console.log('Cognito user result:', user);
       
       if (user) {
         setCognitoUser(user);
@@ -91,6 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(userProfile);
           setCurrentDealer(userProfile.dealers[0]);
           setIsAuthenticated(true);
+          console.log('User authenticated via Cognito');
         }
       }
     } catch (error) {
@@ -131,14 +144,68 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await signOut();
+      console.log('Starting logout process...');
+      
+      // Clear all local state first
       setIsAuthenticated(false);
       setUser(null);
       setCurrentDealer(null);
-      router.push('/signin');
+      console.log('Cleared local state');
+      
+      // Sign out from Cognito - handle case where user is already authenticated
+      try {
+        await signOut();
+        console.log('Signed out from Cognito');
+      } catch (error) {
+        console.log('SignOut error (may be expected):', error);
+        // Force signout even if there's an error
+        try {
+          await signOut({ global: true });
+          console.log('Force signed out from Cognito');
+        } catch (forceError) {
+          console.log('Force signOut also failed:', forceError);
+        }
+      }
+      
+      // Clear all storage aggressively
+      if (typeof window !== 'undefined') {
+        // Clear localStorage
+        localStorage.clear();
+        
+        // Clear sessionStorage
+        sessionStorage.clear();
+        
+        // Clear Amplify-specific cache keys
+        const amplifyKeys = Object.keys(localStorage).filter(key => 
+          key.includes('amplify') || 
+          key.includes('cognito') || 
+          key.includes('aws-amplify')
+        );
+        amplifyKeys.forEach(key => localStorage.removeItem(key));
+        
+        // Clear any remaining Amplify cache
+        try {
+          // Note: clearCache may not be available in all Amplify versions
+          // The localStorage clearing above should be sufficient
+        } catch (e) {
+          // Ignore if clearCache is not available
+        }
+      }
+      
+      // Force page reload to clear any remaining state
+      console.log('Redirecting to home page...');
+      window.location.href = '/';
     } catch (error) {
       console.error('Logout error:', error);
-      throw error;
+      // Even if signOut fails, clear local state and redirect
+      setIsAuthenticated(false);
+      setUser(null);
+      setCurrentDealer(null);
+      if (typeof window !== 'undefined') {
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = '/';
+      }
     }
   };
 
@@ -206,6 +273,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const getAuthToken = async (): Promise<string | null> => {
+    try {
+      // In mock auth mode, return null (API will bypass auth in dev mode)
+      const useMockAuth = process.env.NEXT_PUBLIC_USE_MOCK_AUTH === 'true';
+      const useCognito = process.env.NEXT_PUBLIC_USE_COGNITO === 'true';
+      
+      if (useMockAuth && !useCognito) {
+        return null;
+      }
+
+      // Get the current session from Cognito
+      const session = await fetchAuthSession();
+      const token = session.tokens?.idToken?.toString();
+      
+      return token || null;
+    } catch (error) {
+      console.error('Error fetching auth token:', error);
+      return null;
+    }
+  };
+
   const value: AuthContextType = {
     isAuthenticated,
     user,
@@ -219,6 +307,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     confirmSignup,
     resetPassword,
     confirmPassword,
+    getAuthToken,
   };
 
   return (

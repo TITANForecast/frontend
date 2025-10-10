@@ -19,6 +19,7 @@ import {
   Info,
   Settings,
   ChevronDown,
+  UserCog,
 } from "lucide-react";
 
 // Navigation constants
@@ -220,6 +221,13 @@ const NAVIGATION_ITEMS: NavItem[] = [
     href: "/about",
     segment: "about",
     icon: <Info size={16} />,
+  },
+  {
+    id: "administration",
+    title: "Admin Panel",
+    href: "/administration",
+    segment: "administration",
+    icon: <UserCog size={16} />,
   },
   {
     id: "settings",

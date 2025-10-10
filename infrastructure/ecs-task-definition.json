@@ -34,27 +34,27 @@
       "secrets": [
         {
           "name": "DATABASE_URL",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/production/connection-string"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/production/connection-string-v9ZaOA"
         },
         {
           "name": "DATABASE_HOST",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/production/host"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/production/host-Lww6tR"
         },
         {
           "name": "DATABASE_PORT",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/production/port"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/production/port-XtU4iZ"
         },
         {
           "name": "DATABASE_NAME",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/production/name"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/production/name-KKAxCe"
         },
         {
           "name": "DATABASE_USERNAME",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/production/username"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/production/username-W77Mfv"
         },
         {
           "name": "DATABASE_PASSWORD",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/production/password"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/production/password-jWoMzE"
         }
       ],
       "logConfiguration": {
