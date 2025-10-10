@@ -88,7 +88,7 @@ export default function DashboardCardGrossProfit({ data }: Props) {
     yAxis: {
       type: "value",
       min: 0,
-      max: 60,
+      max: 100,
       axisLine: {
         show: false,
       },
