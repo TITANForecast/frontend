@@ -49,12 +49,14 @@ services:
       dockerfile: Dockerfile.dev
     container_name: titan-frontend-dev
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: 3000
       NEXT_PUBLIC_AWS_REGION: us-east-1
       NEXT_PUBLIC_COGNITO_USER_POOL_ID: us-east-1_nHfr0cgfP
       NEXT_PUBLIC_COGNITO_CLIENT_ID: 1orj1nfmmeg2cev8o0bk95s7d9
       NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_PUBLIC_USE_COGNITO: "true"
+      NEXT_PUBLIC_USE_MOCK_AUTH: "false"
       DATABASE_URL: postgresql://titan_admin:dev_password_123@postgres:5432/titan_dev
       DATABASE_HOST: postgres
       DATABASE_PORT: 5432
@@ -76,7 +78,7 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
-    command: npm run dev
+    command: npm run build && npm start
 
   # Database Admin (pgAdmin)
   pgadmin:
