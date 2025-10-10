@@ -184,8 +184,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         // Clear any remaining Amplify cache
         try {
-          const { clearCache } = await import('aws-amplify/utils');
-          clearCache();
+          // Note: clearCache may not be available in all Amplify versions
+          // The localStorage clearing above should be sufficient
         } catch (e) {
           // Ignore if clearCache is not available
         }
