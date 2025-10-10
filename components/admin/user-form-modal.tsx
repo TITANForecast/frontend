@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import ModalBlank from '@/components/modal-blank';
 import { UserExtended, UserInput, DealerExtended } from '@/lib/types/admin';
 import { UserRole } from '@/lib/types/auth';
+import { authenticatedFetch } from '@/lib/utils/api';
 
 interface UserFormModalProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface UserFormModalProps {
   user?: UserExtended;
   dealers: DealerExtended[];
   onSave: () => void;
+  getAuthToken: () => Promise<string | null>;
 }
 
 export default function UserFormModal({
@@ -19,6 +21,7 @@ export default function UserFormModal({
   user,
   dealers,
   onSave,
+  getAuthToken,
 }: UserFormModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -80,11 +83,11 @@ export default function UserFormModal({
         });
       }
 
-      const response = await fetch(
+      const response = await authenticatedFetch(
         user ? `/api/admin/users/${user.id}` : '/api/admin/users',
+        getAuthToken,
         {
           method: user ? 'PATCH' : 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(userForm),
         }
       );

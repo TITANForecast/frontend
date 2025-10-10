@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react';
 import ModalBlank from '@/components/modal-blank';
 import { DealerExtended, DealerInput, DealerApiConfigInput } from '@/lib/types/admin';
+import { authenticatedFetch } from '@/lib/utils/api';
 
 interface DealerFormModalProps {
   isOpen: boolean;
   setIsOpen: (value: boolean) => void;
   dealer?: DealerExtended;
   onSave: () => void;
+  getAuthToken: () => Promise<string | null>;
 }
 
 export default function DealerFormModal({
@@ -16,6 +18,7 @@ export default function DealerFormModal({
   setIsOpen,
   dealer,
   onSave,
+  getAuthToken,
 }: DealerFormModalProps) {
   const [activeTab, setActiveTab] = useState<'info' | 'api'>('info');
   const [loading, setLoading] = useState(false);
@@ -104,11 +107,11 @@ export default function DealerFormModal({
 
     try {
       // Save dealer info
-      const dealerResponse = await fetch(
+      const dealerResponse = await authenticatedFetch(
         dealer ? `/api/admin/dealers/${dealer.id}` : '/api/admin/dealers',
+        getAuthToken,
         {
           method: dealer ? 'PATCH' : 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(dealerForm),
         }
       );
@@ -122,11 +125,14 @@ export default function DealerFormModal({
 
       // Save API config if on API tab and dealer is saved
       if (activeTab === 'api' && savedDealer.id) {
-        const configResponse = await fetch(`/api/admin/dealers/${savedDealer.id}/config`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(apiForm),
-        });
+        const configResponse = await authenticatedFetch(
+          `/api/admin/dealers/${savedDealer.id}/config`,
+          getAuthToken,
+          {
+            method: 'POST',
+            body: JSON.stringify(apiForm),
+          }
+        );
 
         if (!configResponse.ok) {
           const errorData = await configResponse.json();

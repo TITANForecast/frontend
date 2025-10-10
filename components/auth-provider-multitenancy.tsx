@@ -19,6 +19,7 @@ interface AuthContextType {
   confirmSignup: (email: string, code: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   confirmPassword: (email: string, code: string, newPassword: string) => Promise<void>;
+  getAuthToken: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -272,6 +273,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const getAuthToken = async (): Promise<string | null> => {
+    try {
+      // In mock auth mode, return null (API will bypass auth in dev mode)
+      const useMockAuth = process.env.NEXT_PUBLIC_USE_MOCK_AUTH === 'true';
+      const useCognito = process.env.NEXT_PUBLIC_USE_COGNITO === 'true';
+      
+      if (useMockAuth && !useCognito) {
+        return null;
+      }
+
+      // Get the current session from Cognito
+      const session = await fetchAuthSession();
+      const token = session.tokens?.idToken?.toString();
+      
+      return token || null;
+    } catch (error) {
+      console.error('Error fetching auth token:', error);
+      return null;
+    }
+  };
+
   const value: AuthContextType = {
     isAuthenticated,
     user,
@@ -285,6 +307,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     confirmSignup,
     resetPassword,
     confirmPassword,
+    getAuthToken,
   };
 
   return (

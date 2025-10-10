@@ -9,11 +9,12 @@ import DealerFormModal from '@/components/admin/dealer-form-modal';
 import UserListTable from '@/components/admin/user-list-table';
 import UserFormModal from '@/components/admin/user-form-modal';
 import SyncStatusDashboard from '@/components/admin/sync-status-dashboard';
+import { authenticatedFetch } from '@/lib/utils/api';
 
 type ActiveTab = 'dashboard' | 'dealers' | 'users';
 
 export default function AdministrationPage() {
-  const { user } = useAuth();
+  const { user, getAuthToken } = useAuth();
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [dealers, setDealers] = useState<DealerExtended[]>([]);
   const [users, setUsers] = useState<UserExtended[]>([]);
@@ -38,8 +39,8 @@ export default function AdministrationPage() {
     setLoading(true);
     try {
       const [dealersRes, usersRes] = await Promise.all([
-        fetch('/api/admin/dealers'),
-        fetch('/api/admin/users'),
+        authenticatedFetch('/api/admin/dealers', getAuthToken),
+        authenticatedFetch('/api/admin/users', getAuthToken),
       ]);
 
       if (dealersRes.ok) {
@@ -70,7 +71,7 @@ export default function AdministrationPage() {
 
   const handleDeleteDealer = async (dealerId: string) => {
     try {
-      const response = await fetch(`/api/admin/dealers/${dealerId}`, {
+      const response = await authenticatedFetch(`/api/admin/dealers/${dealerId}`, getAuthToken, {
         method: 'DELETE',
       });
 
@@ -98,7 +99,7 @@ export default function AdministrationPage() {
 
   const handleDeleteUser = async (userId: string) => {
     try {
-      const response = await fetch(`/api/admin/users/${userId}`, {
+      const response = await authenticatedFetch(`/api/admin/users/${userId}`, getAuthToken, {
         method: 'DELETE',
       });
 
@@ -207,7 +208,7 @@ export default function AdministrationPage() {
       {/* Dashboard Tab */}
       {!loading && activeTab === 'dashboard' && (
         <div>
-          <SyncStatusDashboard />
+          <SyncStatusDashboard getAuthToken={getAuthToken} />
         </div>
       )}
 
@@ -277,6 +278,7 @@ export default function AdministrationPage() {
         setIsOpen={setDealerModalOpen}
         dealer={selectedDealer}
         onSave={fetchData}
+        getAuthToken={getAuthToken}
       />
 
       <UserFormModal
@@ -285,6 +287,7 @@ export default function AdministrationPage() {
         user={selectedUser}
         dealers={dealers}
         onSave={fetchData}
+        getAuthToken={getAuthToken}
       />
     </div>
   );
