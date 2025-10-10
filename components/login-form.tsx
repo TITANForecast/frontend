@@ -51,9 +51,9 @@ export default function LoginForm() {
             <Image
               src="/images/logo.png"
               alt="TITAN Forecast Platform"
-              width={1000}
-              height={1000}
-              className="w-full h-auto"
+              width={723}  
+              height={72}
+              className="w-full h-auto bg-white"
               priority
             />
           </div>
