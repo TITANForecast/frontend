@@ -18,6 +18,7 @@ datasource db {
 model TestConnection {
   id        String   @id @default(cuid())
   message   String
+  status    String   @default("active")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
