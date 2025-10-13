@@ -52,7 +52,7 @@ function ResetPasswordConfirmForm() {
       setSuccess(true);
       // Redirect to signin after 2 seconds
       setTimeout(() => {
-        router.push('/signin?reset=true');
+        router.push('/?reset=true');
       }, 2000);
     } catch (error: any) {
       setError(error.message || "Password reset failed. Please check your code and try again.");
@@ -155,7 +155,7 @@ function ResetPasswordConfirmForm() {
               </form>
 
               <div className="mt-6 text-center">
-                <Link href="/signin" className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">
+                <Link href="/" className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">
                   Back to Sign In
                 </Link>
               </div>

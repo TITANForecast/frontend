@@ -34,27 +34,27 @@
       "secrets": [
         {
           "name": "DATABASE_URL",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/staging/connection-string"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/staging/connection-string-tUr41P"
         },
         {
           "name": "DATABASE_HOST",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/staging/host"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/staging/host-TiprFS"
         },
         {
           "name": "DATABASE_PORT",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/staging/port"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/staging/port-EVfi5X"
         },
         {
           "name": "DATABASE_NAME",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/staging/name"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/staging/name-1ZXWVG"
         },
         {
           "name": "DATABASE_USERNAME",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/staging/username"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/staging/username-5VdsMr"
         },
         {
           "name": "DATABASE_PASSWORD",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/staging/password"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:183300739967:secret:titan-database/staging/password-D5VD3r"
         }
       ],
       "logConfiguration": {
