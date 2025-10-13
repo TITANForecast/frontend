@@ -143,6 +143,32 @@ jobs:
         cd infrastructure
         echo "🚀 Applying Terraform changes..."
         terraform apply -auto-approve tfplan
+
+    - name: Run Database Migrations
+      run: |
+        echo "🗄️  Running Prisma migrations with IAM authentication..."
+        
+        # Generate IAM token for database connection
+        export DB_HOST="titan-staging.ccpseya6qetq.us-east-1.rds.amazonaws.com"
+        export DB_USER="titan_staging_user"
+        export DB_NAME="titan_staging"
+        
+        export IAM_TOKEN=$(aws rds generate-db-auth-token \
+          --hostname $DB_HOST \
+          --port 5432 \
+          --username $DB_USER \
+          --region ${{ env.AWS_REGION }})
+        
+        # URL-encode the token
+        export ENCODED_TOKEN=$(python3 -c "import urllib.parse; import os; print(urllib.parse.quote(os.environ['IAM_TOKEN'], safe=''))")
+        
+        # Set DATABASE_URL for Prisma
+        export DATABASE_URL="postgresql://$DB_USER:$ENCODED_TOKEN@$DB_HOST:5432/$DB_NAME?sslmode=require"
+        
+        # Run migrations (production-safe, non-interactive)
+        npx prisma migrate deploy
+        
+        echo "✅ Database migrations completed successfully!"
         
     - name: Wait for service stability
       run: |
