@@ -22,3 +22,14 @@ resource "aws_security_group" "ecs_tasks" {
     Name = "${var.project_name}-${var.environment}-ecs-sg"
   }
 }
+
+# Security Group Rule to allow ECS tasks to access RDS database
+resource "aws_security_group_rule" "ecs_to_database" {
+  type                     = "ingress"
+  from_port                = 5432
+  to_port                  = 5432
+  protocol                 = "tcp"
+  security_group_id        = var.database_security_group_id
+  source_security_group_id = aws_security_group.ecs_tasks.id
+  description              = "PostgreSQL access from ${var.project_name}-${var.environment} ECS tasks"
+}
