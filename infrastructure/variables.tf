@@ -4,6 +4,12 @@ variable "aws_region" {
   default     = "us-east-1"
 }
 
+variable "aws_profile" {
+  description = "AWS profile for local development (not used in CI/CD)"
+  type        = string
+  default     = "TitanOps"
+}
+
 variable "project_name" {
   description = "Name of the project"
   type        = string
