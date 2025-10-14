@@ -117,3 +117,28 @@ variable "github_branch" {
   description = "GitHub branch for deployment"
   type        = string
 }
+
+variable "database_security_group_id" {
+  description = "Security group ID of the RDS database to allow access from ECS tasks"
+  type        = string
+}
+
+variable "image_tag" {
+  description = "Docker image tag to deploy"
+  type        = string
+  default     = "latest"
+}
+
+variable "database_secrets" {
+  description = "List of database secrets to inject into the container"
+  type = list(object({
+    name      = string
+    valueFrom = string
+  }))
+  default = []
+}
+
+variable "alb_listener_priority" {
+  description = "Priority for the ALB listener rule"
+  type        = number
+}

@@ -1,6 +1,6 @@
 terraform {
   required_version = ">= 1.0"
-  
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -18,13 +18,15 @@ terraform {
 }
 
 provider "aws" {
-  region  = var.aws_region
-  profile = "TitanOps"
+  region = var.aws_region
+  # Only use profile for local development
+  # In CI/CD, AWS credentials come from OIDC role
+  profile = var.aws_profile != "" ? var.aws_profile : null
 
   default_tags {
     tags = {
-      Project     = var.project_name
-      ManagedBy   = "terraform"
+      Project   = var.project_name
+      ManagedBy = "terraform"
     }
   }
 }

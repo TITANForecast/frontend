@@ -59,7 +59,7 @@ resource "aws_lb_target_group" "frontend" {
 # ALB Listener Rule for frontend (HTTP)
 resource "aws_lb_listener_rule" "frontend" {
   listener_arn = var.alb_listener_arn
-  priority     = 160
+  priority     = var.alb_listener_priority
 
   action {
     type             = "forward"
@@ -80,7 +80,7 @@ resource "aws_lb_listener_rule" "frontend" {
 # ALB Listener Rule for frontend (HTTPS)
 resource "aws_lb_listener_rule" "frontend_https" {
   listener_arn = var.alb_https_listener_arn
-  priority     = 160
+  priority     = var.alb_listener_priority
 
   action {
     type             = "forward"
@@ -106,13 +106,13 @@ resource "aws_ecs_task_definition" "frontend" {
   cpu                      = var.cpu
   memory                   = var.memory
   execution_role_arn       = aws_iam_role.ecs_execution_role.arn
-  task_role_arn           = aws_iam_role.ecs_task_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_role.arn
 
   container_definitions = jsonencode([
     {
       name  = "${var.project_name}-${var.environment}"
-      image = "${aws_ecr_repository.frontend.repository_url}:latest"
-      
+      image = "${aws_ecr_repository.frontend.repository_url}:${var.image_tag}"
+
       portMappings = [
         {
           containerPort = var.container_port
@@ -136,24 +136,27 @@ resource "aws_ecs_task_definition" "frontend" {
         }
       ]
 
-      secrets = [
-        {
-          name      = "NEXT_PUBLIC_AWS_REGION"
-          valueFrom = "${aws_secretsmanager_secret.frontend_config.arn}:NEXT_PUBLIC_AWS_REGION::"
-        },
-        {
-          name      = "NEXT_PUBLIC_COGNITO_USER_POOL_ID"
-          valueFrom = "${aws_secretsmanager_secret.frontend_config.arn}:NEXT_PUBLIC_COGNITO_USER_POOL_ID::"
-        },
-        {
-          name      = "NEXT_PUBLIC_COGNITO_CLIENT_ID"
-          valueFrom = "${aws_secretsmanager_secret.frontend_config.arn}:NEXT_PUBLIC_COGNITO_CLIENT_ID::"
-        },
-        {
-          name      = "NEXT_PUBLIC_APP_URL"
-          valueFrom = "${aws_secretsmanager_secret.frontend_config.arn}:NEXT_PUBLIC_APP_URL::"
-        }
-      ]
+      secrets = concat(
+        [
+          {
+            name      = "NEXT_PUBLIC_AWS_REGION"
+            valueFrom = "${aws_secretsmanager_secret.frontend_config.arn}:NEXT_PUBLIC_AWS_REGION::"
+          },
+          {
+            name      = "NEXT_PUBLIC_COGNITO_USER_POOL_ID"
+            valueFrom = "${aws_secretsmanager_secret.frontend_config.arn}:NEXT_PUBLIC_COGNITO_USER_POOL_ID::"
+          },
+          {
+            name      = "NEXT_PUBLIC_COGNITO_CLIENT_ID"
+            valueFrom = "${aws_secretsmanager_secret.frontend_config.arn}:NEXT_PUBLIC_COGNITO_CLIENT_ID::"
+          },
+          {
+            name      = "NEXT_PUBLIC_APP_URL"
+            valueFrom = "${aws_secretsmanager_secret.frontend_config.arn}:NEXT_PUBLIC_APP_URL::"
+          }
+        ],
+        var.database_secrets
+      )
 
       logConfiguration = {
         logDriver = "awslogs"
@@ -174,6 +177,10 @@ resource "aws_ecs_task_definition" "frontend" {
         retries     = 3
         startPeriod = 60
       }
+
+      linuxParameters = {
+        initProcessEnabled = true
+      }
     }
   ])
 
@@ -184,11 +191,11 @@ resource "aws_ecs_task_definition" "frontend" {
 
 # ECS Service
 resource "aws_ecs_service" "frontend" {
-  name            = "${var.project_name}-${var.environment}"
-  cluster         = "arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:cluster/${var.ecs_cluster_name}"
-  task_definition = aws_ecs_task_definition.frontend.arn
-  desired_count   = var.desired_count
-  launch_type     = "FARGATE"
+  name                   = "${var.project_name}-${var.environment}"
+  cluster                = "arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:cluster/${var.ecs_cluster_name}"
+  task_definition        = aws_ecs_task_definition.frontend.arn
+  desired_count          = var.desired_count
+  launch_type            = "FARGATE"
   enable_execute_command = true
 
   network_configuration {

@@ -109,42 +109,43 @@ jobs:
         role-to-assume: ${{ secrets.AWS_GITHUB_ROLE_ARN }}
         aws-region: ${{ env.AWS_REGION }}
 
-    - name: Update ECS task definition and deploy
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.5.0
+
+    - name: Terraform Init
       run: |
-        echo "📝 Updating ECS task definition with new image..."
+        cd infrastructure
+        terraform init
+
+    - name: Terraform Plan
+      run: |
+        cd infrastructure
+        echo "📝 Planning deployment with image tag: ${{ needs.build.outputs.image-tag }}"
+        terraform plan \
+          -target=module.frontend_production \
+          -var="production_image_tag=${{ needs.build.outputs.image-tag }}" \
+          -var="aws_profile=" \
+          -out=tfplan
         
-        # Use our updated task definition file
-        TASK_DEFINITION=$(cat infrastructure/ecs-task-definition.json)
+    - name: Terraform Apply
+      run: |
+        cd infrastructure
+        echo "🚀 Applying Terraform changes..."
+        terraform apply -auto-approve tfplan
+
+    # Note: Database migrations are skipped in CI/CD because GitHub Actions runners
+    # cannot reach the RDS database in the private subnet.
+    # 
+    # ⚠️  IMPORTANT: For production deployments, ALWAYS run migrations manually BEFORE deploying:
+    # 1. Via SSM port forwarding to the bastion host (see docs/database-iam-setup.md in infrastructure repo)
+    # 2. Via ECS Exec into a running production container
+    #
+    # Never deploy code that requires schema changes without running migrations first!
         
-        # Update the image in the task definition
-        UPDATED_TASK_DEFINITION=$(echo $TASK_DEFINITION | jq --arg IMAGE "${{ needs.build.outputs.image }}" '.containerDefinitions[0].image = $IMAGE')
-        
-        # Register the new task definition
-        NEW_TASK_DEFINITION=$(aws ecs register-task-definition \
-          --family ${{ env.ECS_TASK_DEFINITION }} \
-          --network-mode $(echo $UPDATED_TASK_DEFINITION | jq -r '.networkMode') \
-          --requires-compatibilities $(echo $UPDATED_TASK_DEFINITION | jq -r '.requiresCompatibilities | join(",")') \
-          --cpu $(echo $UPDATED_TASK_DEFINITION | jq -r '.cpu') \
-          --memory $(echo $UPDATED_TASK_DEFINITION | jq -r '.memory') \
-          --execution-role-arn $(echo $UPDATED_TASK_DEFINITION | jq -r '.executionRoleArn') \
-          --task-role-arn $(echo $UPDATED_TASK_DEFINITION | jq -r '.taskRoleArn') \
-          --container-definitions "$(echo $UPDATED_TASK_DEFINITION | jq -c '.containerDefinitions')" \
-          --region ${{ env.AWS_REGION }} \
-          --query 'taskDefinition.taskDefinitionArn' \
-          --output text)
-        
-        echo "✅ New task definition registered: $NEW_TASK_DEFINITION"
-        
-        # Update the ECS service
-        echo "🚀 Updating ECS service..."
-        aws ecs update-service \
-          --cluster ${{ env.ECS_CLUSTER }} \
-          --service ${{ env.ECS_SERVICE }} \
-          --task-definition $NEW_TASK_DEFINITION \
-          --region ${{ env.AWS_REGION }} \
-          --query 'service.serviceName' \
-          --output text
-        
+    - name: Wait for service stability
+      run: |
         echo "⏳ Waiting for service to stabilize..."
         aws ecs wait services-stable \
           --cluster ${{ env.ECS_CLUSTER }} \
