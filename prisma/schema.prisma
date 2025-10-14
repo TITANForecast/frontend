@@ -73,11 +73,15 @@ model DealerApiConfig {
 
 model User {
   id               String       @id @default(cuid())
+  cognitoSub       String?      @unique  // Links to Cognito user's 'sub' attribute
   email            String       @unique
   name             String
   role             String       // SUPER_ADMIN, MULTI_DEALER, USER
   defaultDealerId  String
   isActive         Boolean      @default(true)
+  lastLoginAt      DateTime?    // Track last login time
+  invitedAt        DateTime?    // Track when user was invited
+  invitedBy        String?      // Admin who invited the user
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
   
@@ -86,6 +90,7 @@ model User {
   dealers          UserDealer[]
 
   @@index([email])
+  @@index([cognitoSub])
   @@map("users")
 }
 

@@ -71,61 +71,95 @@ async function main() {
 
   console.log('✓ Created API config for Titan Motors');
 
-  // Create users
-  console.log('👤 Creating users...');
+  // Create users (from Cognito)
+  console.log('👤 Creating users from Cognito...');
   
-  const superAdmin = await prisma.user.upsert({
-    where: { email: 'admin@titan.com' },
+  // Super Admin - Jay Long (you)
+  const jayAdmin = await prisma.user.upsert({
+    where: { email: 'jay@cyberworldbuilders.com' },
     update: {},
     create: {
-      email: 'admin@titan.com',
-      name: 'Admin User',
+      email: 'jay@cyberworldbuilders.com',
+      cognitoSub: 'c4d8e4b8-0091-708f-36eb-20e33f84cc0e',
+      name: 'Jay Long',
       role: 'SUPER_ADMIN',
       defaultDealerId: titanMotors.id,
       isActive: true,
     },
   });
 
-  const multiDealerUser = await prisma.user.upsert({
-    where: { email: 'manager@titanmotors.com' },
+  // Super Admin - Platform Admin
+  const platformAdmin = await prisma.user.upsert({
+    where: { email: 'admin@titanforecast.com' },
     update: {},
     create: {
-      email: 'manager@titanmotors.com',
-      name: 'Manager User',
+      email: 'admin@titanforecast.com',
+      cognitoSub: '849884c8-0011-705e-7770-da29b4b1eca3',
+      name: 'Admin',
+      role: 'SUPER_ADMIN',
+      defaultDealerId: titanMotors.id,
+      isActive: true,
+    },
+  });
+
+  // Multi-Dealer User - Brandon Keach
+  const multiDealerBrandon = await prisma.user.upsert({
+    where: { email: 'brandon@titanforecast.com' },
+    update: {},
+    create: {
+      email: 'brandon@titanforecast.com',
+      cognitoSub: 'f45804e8-4081-7029-b36e-5eed106f8740',
+      name: 'Brandon Keach',
       role: 'MULTI_DEALER',
       defaultDealerId: titanMotors.id,
       isActive: true,
     },
   });
 
-  const regularUser = await prisma.user.upsert({
-    where: { email: 'user@autopro.com' },
+  // Regular User - Ryan Wood (Titan Motors)
+  const ryanUser = await prisma.user.upsert({
+    where: { email: 'ryan@titanforecast.com' },
     update: {},
     create: {
-      email: 'user@autopro.com',
-      name: 'Regular User',
+      email: 'ryan@titanforecast.com',
+      cognitoSub: '84781478-30e1-70ec-b8ee-bb57be06e0ae',
+      name: 'Ryan Wood',
+      role: 'USER',
+      defaultDealerId: titanMotors.id,
+      isActive: true,
+    },
+  });
+
+  // Regular User - Lionel Robin (AutoPro)
+  const lionelUser = await prisma.user.upsert({
+    where: { email: 'lionel.robin528@gmail.com' },
+    update: {},
+    create: {
+      email: 'lionel.robin528@gmail.com',
+      cognitoSub: '147854b8-60d1-7015-5f87-0741ba003073',
+      name: 'Lionel Robin',
       role: 'USER',
       defaultDealerId: autoPro.id,
       isActive: true,
     },
   });
 
-  console.log(`✓ Created users: ${superAdmin.name}, ${multiDealerUser.name}, ${regularUser.name}`);
+  console.log(`✓ Created users: ${jayAdmin.name}, ${platformAdmin.name}, ${multiDealerBrandon.name}, ${ryanUser.name}, ${lionelUser.name}`);
 
   // Create user-dealer associations
   console.log('🔗 Creating user-dealer associations...');
   
-  // Super admin has access to all dealers
+  // Jay (Super Admin) has access to all dealers
   await prisma.userDealer.upsert({
     where: {
       userId_dealerId: {
-        userId: superAdmin.id,
+        userId: jayAdmin.id,
         dealerId: titanMotors.id,
       },
     },
     update: {},
     create: {
-      userId: superAdmin.id,
+      userId: jayAdmin.id,
       dealerId: titanMotors.id,
     },
   });
@@ -133,43 +167,101 @@ async function main() {
   await prisma.userDealer.upsert({
     where: {
       userId_dealerId: {
-        userId: superAdmin.id,
+        userId: jayAdmin.id,
         dealerId: autoPro.id,
       },
     },
     update: {},
     create: {
-      userId: superAdmin.id,
+      userId: jayAdmin.id,
       dealerId: autoPro.id,
     },
   });
 
-  // Manager has access to Titan Motors
+  // Platform Admin has access to all dealers
   await prisma.userDealer.upsert({
     where: {
       userId_dealerId: {
-        userId: multiDealerUser.id,
+        userId: platformAdmin.id,
         dealerId: titanMotors.id,
       },
     },
     update: {},
     create: {
-      userId: multiDealerUser.id,
+      userId: platformAdmin.id,
       dealerId: titanMotors.id,
     },
   });
 
-  // Regular user has access to AutoPro
   await prisma.userDealer.upsert({
     where: {
       userId_dealerId: {
-        userId: regularUser.id,
+        userId: platformAdmin.id,
         dealerId: autoPro.id,
       },
     },
     update: {},
     create: {
-      userId: regularUser.id,
+      userId: platformAdmin.id,
+      dealerId: autoPro.id,
+    },
+  });
+
+  // Brandon (Multi-Dealer) has access to both dealers
+  await prisma.userDealer.upsert({
+    where: {
+      userId_dealerId: {
+        userId: multiDealerBrandon.id,
+        dealerId: titanMotors.id,
+      },
+    },
+    update: {},
+    create: {
+      userId: multiDealerBrandon.id,
+      dealerId: titanMotors.id,
+    },
+  });
+
+  await prisma.userDealer.upsert({
+    where: {
+      userId_dealerId: {
+        userId: multiDealerBrandon.id,
+        dealerId: autoPro.id,
+      },
+    },
+    update: {},
+    create: {
+      userId: multiDealerBrandon.id,
+      dealerId: autoPro.id,
+    },
+  });
+
+  // Ryan has access to Titan Motors only
+  await prisma.userDealer.upsert({
+    where: {
+      userId_dealerId: {
+        userId: ryanUser.id,
+        dealerId: titanMotors.id,
+      },
+    },
+    update: {},
+    create: {
+      userId: ryanUser.id,
+      dealerId: titanMotors.id,
+    },
+  });
+
+  // Lionel has access to AutoPro only
+  await prisma.userDealer.upsert({
+    where: {
+      userId_dealerId: {
+        userId: lionelUser.id,
+        dealerId: autoPro.id,
+      },
+    },
+    update: {},
+    create: {
+      userId: lionelUser.id,
       dealerId: autoPro.id,
     },
   });
