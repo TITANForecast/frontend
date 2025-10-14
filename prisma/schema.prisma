@@ -24,3 +24,80 @@ model TestConnection {
 
   @@map("test_connections")
 }
+
+// Admin Panel Models
+
+model Dealer {
+  id           String            @id @default(cuid())
+  name         String
+  address      String?
+  city         String?
+  state        String?
+  zip          String?
+  contactEmail String?
+  contactPhone String?
+  isActive     Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  
+  // Relations
+  apiConfig    DealerApiConfig?
+  users        UserDealer[]
+  defaultUsers User[]            @relation("DefaultDealer")
+
+  @@map("dealers")
+}
+
+model DealerApiConfig {
+  id                 String    @id @default(cuid())
+  dealerId           String    @unique
+  dealerShortCode    String
+  programId          String
+  subscriptionKey    String    // Encrypted in production
+  xUserEmail         String
+  deliveryEndpoint   String    @default("https://authenticom.azure-api.net/dv-delivery/v1/delivery")
+  jwtTokenUrl        String    @default("https://authenticom.azure-api.net/dv-delivery/v1/token")
+  fileTypeCode       String    @default("SV")
+  compareDateDefault Int       @default(1)
+  lastSuccess        DateTime?
+  lastError          String?
+  isActive           Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  
+  // Relations
+  dealer             Dealer    @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+
+  @@map("dealer_api_configs")
+}
+
+model User {
+  id               String       @id @default(cuid())
+  email            String       @unique
+  name             String
+  role             String       // SUPER_ADMIN, MULTI_DEALER, USER
+  defaultDealerId  String
+  isActive         Boolean      @default(true)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  
+  // Relations
+  defaultDealer    Dealer       @relation("DefaultDealer", fields: [defaultDealerId], references: [id])
+  dealers          UserDealer[]
+
+  @@index([email])
+  @@map("users")
+}
+
+model UserDealer {
+  userId    String
+  dealerId  String
+  createdAt DateTime @default(now())
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dealer    Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+
+  @@id([userId, dealerId])
+  @@map("user_dealers")
+}

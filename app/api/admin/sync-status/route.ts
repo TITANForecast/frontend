@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdmin, unauthorizedResponse } from '@/lib/auth/middleware';
-import { mockDb } from '@/lib/db/mock-admin-data';
+import { prismaDb } from '@/lib/db/prisma-admin-data';
 
 /**
  * GET /api/admin/sync-status
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
       return unauthorizedResponse(auth.error);
     }
 
-    const syncStatus = await mockDb.stats.getSyncStatus();
+    const syncStatus = await prismaDb.stats.getSyncStatus();
     return NextResponse.json(syncStatus);
   } catch (error) {
     console.error('Error fetching sync status:', error);

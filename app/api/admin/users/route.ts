@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdmin, unauthorizedResponse } from '@/lib/auth/middleware';
-import { mockDb } from '@/lib/db/mock-admin-data';
+import { prismaDb } from '@/lib/db/prisma-admin-data';
 import { UserInput } from '@/lib/types/admin';
 
 /**
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       return unauthorizedResponse(auth.error);
     }
 
-    const users = await mockDb.users.findAll();
+    const users = await prismaDb.users.findAll();
     return NextResponse.json(users);
   } catch (error) {
     console.error('Error fetching users:', error);
@@ -63,18 +63,18 @@ export async function POST(request: NextRequest) {
       isActive: body.isActive ?? true,
     };
 
-    const newUser = await mockDb.users.create(userData);
+    const newUser = await prismaDb.users.create(userData);
 
     // Set up dealer associations
     if (body.dealerIds && body.dealerIds.length > 0) {
-      await mockDb.userDealers.setUserDealers(newUser.id, body.dealerIds);
+      await prismaDb.userDealers.setUserDealers(newUser.id, body.dealerIds);
     } else {
       // If no dealers specified, add default dealer
-      await mockDb.userDealers.addUserDealer(newUser.id, body.defaultDealerId);
+      await prismaDb.userDealers.addUserDealer(newUser.id, body.defaultDealerId);
     }
 
     // Fetch complete user with dealers
-    const completeUser = await mockDb.users.findById(newUser.id);
+    const completeUser = await prismaDb.users.findById(newUser.id);
 
     // TODO: In production, create user in Cognito and send invitation email
     // await createCognitoUser(body.email, body.password);

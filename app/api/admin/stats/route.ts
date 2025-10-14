@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdmin, unauthorizedResponse } from '@/lib/auth/middleware';
-import { mockDb } from '@/lib/db/mock-admin-data';
+import { prismaDb } from '@/lib/db/prisma-admin-data';
 
 /**
  * GET /api/admin/stats
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
       return unauthorizedResponse(auth.error);
     }
 
-    const stats = await mockDb.stats.getAdminStats();
+    const stats = await prismaDb.stats.getAdminStats();
     return NextResponse.json(stats);
   } catch (error) {
     console.error('Error fetching admin stats:', error);
