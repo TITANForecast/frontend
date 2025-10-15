@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdmin, unauthorizedResponse } from '@/lib/auth/middleware';
-import { mockDb } from '@/lib/db/mock-admin-data';
+import { prismaDb } from '@/lib/db/prisma-admin-data';
 import { DealerApiConfigInput } from '@/lib/types/admin';
 
 /**
@@ -18,7 +18,7 @@ export async function GET(
     }
 
     const { id } = await params;
-    const config = await mockDb.apiConfigs.findByDealerId(id);
+    const config = await prismaDb.apiConfigs.findByDealerId(id);
 
     if (!config) {
       return NextResponse.json(
@@ -63,7 +63,7 @@ export async function POST(
     }
 
     // Check if dealer exists
-    const dealer = await mockDb.dealers.findById(id);
+    const dealer = await prismaDb.dealers.findById(id);
     if (!dealer) {
       return NextResponse.json(
         { error: 'Dealer not found' },
@@ -72,7 +72,7 @@ export async function POST(
     }
 
     // Check if config already exists
-    const existingConfig = await mockDb.apiConfigs.findByDealerId(id);
+    const existingConfig = await prismaDb.apiConfigs.findByDealerId(id);
 
     const configData = {
       dealerId: id,
@@ -91,9 +91,9 @@ export async function POST(
 
     let result;
     if (existingConfig) {
-      result = await mockDb.apiConfigs.update(existingConfig.id, configData);
+      result = await prismaDb.apiConfigs.update(existingConfig.id, configData);
     } else {
-      result = await mockDb.apiConfigs.create(configData);
+      result = await prismaDb.apiConfigs.create(configData);
     }
 
     return NextResponse.json(result, { status: existingConfig ? 200 : 201 });
@@ -121,7 +121,7 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    const config = await mockDb.apiConfigs.findByDealerId(id);
+    const config = await prismaDb.apiConfigs.findByDealerId(id);
 
     if (!config) {
       return NextResponse.json(
@@ -130,7 +130,7 @@ export async function DELETE(
       );
     }
 
-    await mockDb.apiConfigs.delete(config.id);
+    await prismaDb.apiConfigs.delete(config.id);
     return NextResponse.json({ message: 'API config deleted successfully' });
   } catch (error) {
     console.error('Error deleting API config:', error);

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdmin, unauthorizedResponse } from '@/lib/auth/middleware';
-import { mockDb } from '@/lib/db/mock-admin-data';
+import { prismaDb } from '@/lib/db/prisma-admin-data';
 import { DealerInput } from '@/lib/types/admin';
 
 /**
@@ -18,7 +18,7 @@ export async function GET(
     }
 
     const { id } = await params;
-    const dealer = await mockDb.dealers.findById(id);
+    const dealer = await prismaDb.dealers.findById(id);
 
     if (!dealer) {
       return NextResponse.json(
@@ -54,7 +54,7 @@ export async function PATCH(
     const { id } = await params;
     const body: Partial<DealerInput> = await request.json();
 
-    const updatedDealer = await mockDb.dealers.update(id, body);
+    const updatedDealer = await prismaDb.dealers.update(id, body);
 
     if (!updatedDealer) {
       return NextResponse.json(
@@ -88,7 +88,7 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    const success = await mockDb.dealers.delete(id);
+    const success = await prismaDb.dealers.delete(id);
 
     if (!success) {
       return NextResponse.json(

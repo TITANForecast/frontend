@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useAppProvider } from "@/app/app-provider";
 import { useSelectedLayoutSegments } from "next/navigation";
 import { useWindowWidth } from "@/components/utils/use-window-width";
+import { useAuth } from "@/components/auth-provider-multitenancy";
+import { UserRole } from "@/lib/types/auth";
 import SidebarLinkGroup from "./sidebar-link-group";
 import SidebarLink from "./sidebar-link";
 import Logo from "./logo";
@@ -31,6 +33,7 @@ interface NavItem {
   icon: React.ReactNode;
   children?: NavItem[];
   badge?: string;
+  requiredRoles?: UserRole[];
 }
 
 const NAVIGATION_ITEMS: NavItem[] = [
@@ -228,6 +231,7 @@ const NAVIGATION_ITEMS: NavItem[] = [
     href: "/administration",
     segment: "administration",
     icon: <UserCog size={16} />,
+    requiredRoles: [UserRole.SUPER_ADMIN],
   },
   {
     id: "settings",
@@ -245,10 +249,38 @@ export default function Sidebar({
   const sidebar = useRef<HTMLDivElement>(null);
   const { sidebarOpen, setSidebarOpen, sidebarExpanded, setSidebarExpanded } =
     useAppProvider();
+  const { user } = useAuth();
   const segments = useSelectedLayoutSegments();
   const breakpoint = useWindowWidth();
   const expandOnly =
     !sidebarExpanded && breakpoint && breakpoint >= 1024 && breakpoint < 1536;
+
+  // Filter navigation items based on user role
+  const filterNavItems = (items: NavItem[]): NavItem[] => {
+    return items
+      .filter((item) => {
+        // If no required roles specified, show to all users
+        if (!item.requiredRoles || item.requiredRoles.length === 0) {
+          return true;
+        }
+
+        // Check if user has any of the required roles
+        if (!user) return false;
+        return item.requiredRoles.includes(user.role);
+      })
+      .map((item) => {
+        // Recursively filter children if they exist
+        if (item.children) {
+          return {
+            ...item,
+            children: filterNavItems(item.children),
+          };
+        }
+        return item;
+      });
+  };
+
+  const filteredNavItems = filterNavItems(NAVIGATION_ITEMS);
 
   // Helper function to render navigation items
   const renderNavItem = (item: NavItem) => {
@@ -436,7 +468,7 @@ export default function Sidebar({
               </span>
             </h3>
             <ul className="mt-3">
-              {NAVIGATION_ITEMS.map((item) => renderNavItem(item))}
+              {filteredNavItems.map((item) => renderNavItem(item))}
             </ul>
           </div>
         </div>
