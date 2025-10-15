@@ -58,6 +58,27 @@ services:
     networks:
       - titan-network
 
+  # Prisma Studio (Database GUI)
+  prisma-studio:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: titan-prisma-studio-dev
+    environment:
+      DATABASE_URL: postgresql://titan_admin:dev_password_123@postgres:5432/titan_dev
+    ports:
+      - "5555:5555"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    command: npx prisma studio --port 5555 --hostname 0.0.0.0
+    networks:
+      - titan-network
+
 
 
 volumes:
