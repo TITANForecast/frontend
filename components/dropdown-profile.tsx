@@ -9,14 +9,41 @@ import UserAvatar from '@/public/images/user-avatar-32.png'
 export default function DropdownProfile({ align }: {
   align?: 'left' | 'right'
 }) {
-  const { logout } = useAuth();
+  const { logout, user, currentDealer, isAuthenticated } = useAuth();
   
+  // Debug logging
+  console.log('DropdownProfile - User data:', { user, currentDealer, isAuthenticated });
+  
+  // Generate user initials for avatar fallback
+  const getUserInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word.charAt(0))
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  // Get display name and role with fallbacks
+  const displayName = user?.name || 'Loading...';
+  const userRole = user?.role || 'USER';
+  const dealerName = currentDealer?.name || 'No Dealer';
+  const isUserLoaded = user && isAuthenticated;
+
   return (
     <Menu as="div" className="relative inline-flex">
       <MenuButton className="inline-flex justify-center items-center group">
-        <Image className="w-8 h-8 rounded-full" src={UserAvatar} width={32} height={32} alt="User" />
+        {isUserLoaded ? (
+          <div className="w-8 h-8 rounded-full bg-violet-500 flex items-center justify-center text-white text-sm font-medium">
+            {getUserInitials(user.name)}
+          </div>
+        ) : (
+          <Image className="w-8 h-8 rounded-full" src={UserAvatar} width={32} height={32} alt="User" />
+        )}
         <div className="flex items-center truncate">
-          <span className="truncate ml-2 text-sm font-medium text-gray-600 dark:text-gray-100 group-hover:text-gray-800 dark:group-hover:text-white">TITAN Forecast</span>
+          <span className="truncate ml-2 text-sm font-medium text-gray-600 dark:text-gray-100 group-hover:text-gray-800 dark:group-hover:text-white">
+            {displayName}
+          </span>
           <svg className="w-3 h-3 shrink-0 ml-1 fill-current text-gray-400 dark:text-gray-500" viewBox="0 0 12 12">
             <path d="M5.9 11.4L.5 6l1.4-1.4 4 4 4-4L11.3 6z" />
           </svg>
@@ -34,8 +61,15 @@ export default function DropdownProfile({ align }: {
         leaveTo="opacity-0"
       >
         <div className="pt-0.5 pb-2 px-3 mb-1 border-b border-gray-200 dark:border-gray-700/60">
-          <div className="font-medium text-gray-800 dark:text-gray-100">TITAN Forecast</div>
-          <div className="text-xs text-gray-500 dark:text-gray-400 italic">Administrator</div>
+          <div className="font-medium text-gray-800 dark:text-gray-100">
+            {isUserLoaded ? user.name : 'Loading...'}
+          </div>
+          <div className="text-xs text-gray-500 dark:text-gray-400 italic">
+            {isUserLoaded ? userRole.replace('_', ' ') : 'Loading...'}
+            {isUserLoaded && currentDealer && (
+              <span className="block mt-1">• {dealerName}</span>
+            )}
+          </div>
         </div>
         <MenuItems as="ul" className="focus:outline-hidden">
           <MenuItem as="li">

@@ -96,14 +96,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (user) {
         setCognitoUser(user);
-        // Fetch user profile from API
-        const response = await fetch('/api/auth/me');
-        if (response.ok) {
-          const userProfile = await response.json();
-          setUser(userProfile);
-          setCurrentDealer(userProfile.dealers[0]);
-          setIsAuthenticated(true);
-          console.log('User authenticated via Cognito');
+        
+        // Get the JWT token for API calls
+        try {
+          const session = await fetchAuthSession();
+          const token = session.tokens?.idToken?.toString();
+          
+          console.log('JWT Token available:', !!token);
+          console.log('Session tokens:', session.tokens);
+          
+          if (token) {
+            // Fetch user profile from API with JWT token
+            const response = await fetch('/api/auth/me/', {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            if (response.ok) {
+              const userProfile = await response.json();
+              setUser(userProfile);
+              setCurrentDealer(userProfile.dealers[0]);
+              setIsAuthenticated(true);
+              console.log('User authenticated via Cognito:', userProfile.name);
+            } else {
+              console.error('Failed to fetch user profile:', response.status, response.statusText);
+            }
+          } else {
+            console.error('No JWT token available');
+          }
+        } catch (error) {
+          console.error('Error fetching user profile:', error);
         }
       }
     } catch (error) {
