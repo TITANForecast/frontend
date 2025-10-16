@@ -226,7 +226,7 @@ export default function Dashboard() {
       </div>
 
       {/* Secondary Dashboard Charts */}
-      {/* <div className="mb-8">
+      <div className="mb-8">
         <div className="grid grid-cols-12 gap-6">
           <DashboardCardTechnicianProduction
             data={dashboardData?.technicians}
@@ -234,7 +234,7 @@ export default function Dashboard() {
           <DashboardCardOpcodes data={dashboardData?.opcodes} />
           <DashboardCardAdvisorElr data={dashboardData?.advisors} />
         </div>
-      </div> */}
+      </div>
 
       {/* Cards */}
       {/* <div className="grid grid-cols-12 gap-6"> */}
