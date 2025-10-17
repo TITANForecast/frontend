@@ -231,7 +231,7 @@ export async function GET(request: NextRequest) {
         id: ud.dealer.id,
         name: ud.dealer.name,
         address: ud.dealer.address,
-        contactPhone: ud.dealer.contactPhone,
+        phone: ud.dealer.contactPhone,
         city: ud.dealer.city,
         state: ud.dealer.state,
         zip: ud.dealer.zip,
