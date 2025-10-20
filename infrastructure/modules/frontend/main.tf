@@ -31,6 +31,55 @@ resource "aws_ecr_repository" "frontend" {
   }
 }
 
+# ECR Lifecycle Policy - Keep last 10 images, except latest
+resource "aws_ecr_lifecycle_policy" "frontend" {
+  repository = aws_ecr_repository.frontend.name
+
+  policy = jsonencode({
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Keep last 10 commit-tagged images"
+        selection = {
+          tagStatus     = "tagged"
+          tagPrefixList = ["sha-", "v", "release-"]
+          countType     = "imageCountMoreThan"
+          countNumber   = 10
+        }
+        action = {
+          type = "expire"
+        }
+      },
+      {
+        rulePriority = 2
+        description  = "Keep latest tag"
+        selection = {
+          tagStatus   = "tagged"
+          tagPrefixList = ["latest"]
+          countType   = "imageCountMoreThan"
+          countNumber = 1
+        }
+        action = {
+          type = "expire"
+        }
+      },
+      {
+        rulePriority = 3
+        description  = "Remove untagged images after 7 days"
+        selection = {
+          tagStatus   = "untagged"
+          countType   = "sinceImagePushed"
+          countUnit   = "days"
+          countNumber = 7
+        }
+        action = {
+          type = "expire"
+        }
+      }
+    ]
+  })
+}
+
 # Target Group for the frontend service
 resource "aws_lb_target_group" "frontend" {
   name        = "${var.project_name}-${var.environment}-tg"

@@ -64,7 +64,6 @@ jobs:
       id: build-image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        IMAGE_TAG: ${{ github.sha }}
         DOCKER_BUILD: true
         # Pass NEXT_PUBLIC_* variables to Docker build
         NEXT_PUBLIC_AWS_REGION: ${{ env.NEXT_PUBLIC_AWS_REGION }}
@@ -72,21 +71,23 @@ jobs:
         NEXT_PUBLIC_COGNITO_CLIENT_ID: ${{ env.NEXT_PUBLIC_COGNITO_CLIENT_ID }}
         NEXT_PUBLIC_APP_URL: ${{ env.NEXT_PUBLIC_APP_URL }}
       run: |
+        # Use short commit SHA (first 7 chars) with prefix
+        SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+        IMAGE_TAG="sha-${SHORT_SHA}"
+        echo "Building image with tag: $IMAGE_TAG"
+        
         # Build a docker container and push it to ECR
         docker build \
           --build-arg NEXT_PUBLIC_AWS_REGION=$NEXT_PUBLIC_AWS_REGION \
           --build-arg NEXT_PUBLIC_COGNITO_USER_POOL_ID=$NEXT_PUBLIC_COGNITO_USER_POOL_ID \
           --build-arg NEXT_PUBLIC_COGNITO_CLIENT_ID=$NEXT_PUBLIC_COGNITO_CLIENT_ID \
           --build-arg NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL \
-          -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        docker build \
-          --build-arg NEXT_PUBLIC_AWS_REGION=$NEXT_PUBLIC_AWS_REGION \
-          --build-arg NEXT_PUBLIC_COGNITO_USER_POOL_ID=$NEXT_PUBLIC_COGNITO_USER_POOL_ID \
-          --build-arg NEXT_PUBLIC_COGNITO_CLIENT_ID=$NEXT_PUBLIC_COGNITO_CLIENT_ID \
-          --build-arg NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL \
+          -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
           -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+        
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        
         echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
         echo "image-tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
 
