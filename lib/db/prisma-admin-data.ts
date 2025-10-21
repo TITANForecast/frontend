@@ -26,13 +26,10 @@ const convertToExtendedDealer = (dealer: any): DealerExtended => {
     apiConfig: dealer.apiConfig ? {
       id: dealer.apiConfig.id,
       dealerId: dealer.apiConfig.dealerId,
-      dealerShortCode: dealer.apiConfig.dealerShortCode,
+      dataSource: dealer.apiConfig.dataSource,
+      rooftopId: dealer.apiConfig.rooftopId,
       programId: dealer.apiConfig.programId,
-      subscriptionKey: dealer.apiConfig.subscriptionKey,
-      xUserEmail: dealer.apiConfig.xUserEmail,
-      deliveryEndpoint: dealer.apiConfig.deliveryEndpoint,
-      jwtTokenUrl: dealer.apiConfig.jwtTokenUrl,
-      fileTypeCode: dealer.apiConfig.fileTypeCode,
+      fileTypeCodes: dealer.apiConfig.fileTypeCodes,
       compareDateDefault: dealer.apiConfig.compareDateDefault,
       lastSuccess: dealer.apiConfig.lastSuccess,
       lastError: dealer.apiConfig.lastError,
@@ -152,13 +149,10 @@ export const prismaDb = {
       const config = await prisma.dealerApiConfig.create({
         data: {
           dealerId: data.dealerId,
-          dealerShortCode: data.dealerShortCode,
+          dataSource: data.dataSource,
+          rooftopId: data.rooftopId,
           programId: data.programId,
-          subscriptionKey: data.subscriptionKey,
-          xUserEmail: data.xUserEmail,
-          deliveryEndpoint: data.deliveryEndpoint,
-          jwtTokenUrl: data.jwtTokenUrl,
-          fileTypeCode: data.fileTypeCode,
+          fileTypeCodes: data.fileTypeCodes,
           compareDateDefault: data.compareDateDefault,
           lastSuccess: data.lastSuccess,
           lastError: data.lastError,
@@ -173,13 +167,10 @@ export const prismaDb = {
         const config = await prisma.dealerApiConfig.update({
           where: { id },
           data: {
-            dealerShortCode: data.dealerShortCode,
+            dataSource: data.dataSource,
+            rooftopId: data.rooftopId,
             programId: data.programId,
-            subscriptionKey: data.subscriptionKey,
-            xUserEmail: data.xUserEmail,
-            deliveryEndpoint: data.deliveryEndpoint,
-            jwtTokenUrl: data.jwtTokenUrl,
-            fileTypeCode: data.fileTypeCode,
+            fileTypeCodes: data.fileTypeCodes,
             compareDateDefault: data.compareDateDefault,
             lastSuccess: data.lastSuccess,
             lastError: data.lastError,
@@ -188,6 +179,7 @@ export const prismaDb = {
         });
         return config as DealerApiConfig;
       } catch (error) {
+        console.error('Error updating API config:', error);
         return null;
       }
     },

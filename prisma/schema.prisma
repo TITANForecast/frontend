@@ -44,6 +44,7 @@ model Dealer {
   apiConfig    DealerApiConfig?
   users        UserDealer[]
   defaultUsers User[]            @relation("DefaultDealer")
+  importLogs   ImportLog[]
 
   @@map("dealers")
 }
@@ -51,13 +52,10 @@ model Dealer {
 model DealerApiConfig {
   id                 String    @id @default(cuid())
   dealerId           String    @unique
-  dealerShortCode    String
+  dataSource         String    @default("Certify-Staging") // Data Source: "Certify-Staging" or "DealerVault-Production"
+  rooftopId          String
   programId          String
-  subscriptionKey    String    // Encrypted in production
-  xUserEmail         String
-  deliveryEndpoint   String    @default("https://authenticom.azure-api.net/dv-delivery/v1/delivery")
-  jwtTokenUrl        String    @default("https://authenticom.azure-api.net/dv-delivery/v1/token")
-  fileTypeCode       String    @default("SV")
+  fileTypeCodes      String[]  @default(["SV"])
   compareDateDefault Int       @default(1)
   lastSuccess        DateTime?
   lastError          String?
@@ -105,4 +103,32 @@ model UserDealer {
 
   @@id([userId, dealerId])
   @@map("user_dealers")
+}
+
+model ImportLog {
+  id                BigInt    @id @default(autoincrement())
+  dealerId          String    @map("dealer_id")
+  importType        String    @map("import_type")
+  fileType          String?   @map("file_type")
+  requestId         String?   @map("request_id")
+  status            String
+  totalRecords      Int?      @map("total_records")
+  processedRecords  Int?      @map("processed_records")
+  failedRecords     Int?      @map("failed_records")
+  newRecords        Int?      @map("new_records")
+  updatedRecords    Int?      @map("updated_records")
+  errorMessage      String?   @map("error_message") @db.Text
+  importStartTime   DateTime? @map("import_start_time") @db.Timestamp()
+  importEndTime     DateTime? @map("import_end_time") @db.Timestamp()
+  elapsedSeconds    Decimal?  @map("elapsed_seconds") @db.Decimal(8, 2)
+  createdAt         DateTime? @map("created_at") @db.Timestamp()
+  
+  // Relations
+  dealer            Dealer    @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+
+  @@index([dealerId])
+  @@index([fileType])
+  @@index([status])
+  @@index([createdAt])
+  @@map("import_log")
 }
