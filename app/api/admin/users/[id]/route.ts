@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdmin, unauthorizedResponse } from '@/lib/auth/middleware';
-import { mockDb } from '@/lib/db/mock-admin-data';
+import { prismaDb } from '@/lib/db/prisma-admin-data';
 import { UserInput } from '@/lib/types/admin';
 
 /**
@@ -18,7 +18,7 @@ export async function GET(
     }
 
     const { id } = await params;
-    const user = await mockDb.users.findById(id);
+    const user = await prismaDb.users.findById(id);
 
     if (!user) {
       return NextResponse.json(
@@ -62,7 +62,7 @@ export async function PATCH(
     if (body.defaultDealerId) updateData.defaultDealerId = body.defaultDealerId;
     if (body.isActive !== undefined) updateData.isActive = body.isActive;
 
-    const updatedUser = await mockDb.users.update(id, updateData);
+    const updatedUser = await prismaDb.users.update(id, updateData);
 
     if (!updatedUser) {
       return NextResponse.json(
@@ -73,11 +73,11 @@ export async function PATCH(
 
     // Update dealer associations if provided
     if (body.dealerIds !== undefined) {
-      await mockDb.userDealers.setUserDealers(id, body.dealerIds);
+      await prismaDb.userDealers.setUserDealers(id, body.dealerIds);
     }
 
     // Fetch complete user with dealers
-    const completeUser = await mockDb.users.findById(id);
+    const completeUser = await prismaDb.users.findById(id);
 
     return NextResponse.json(completeUser);
   } catch (error) {
@@ -104,7 +104,7 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    const success = await mockDb.users.delete(id);
+    const success = await prismaDb.users.delete(id);
 
     if (!success) {
       return NextResponse.json(

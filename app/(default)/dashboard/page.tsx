@@ -82,20 +82,17 @@ export default function Dashboard() {
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-[96rem] mx-auto">
       {/* Dashboard actions */}
-      <div className="sm:flex sm:justify-between sm:items-center mb-8">
-        {/* Left: Title */}
-        <div className="mb-4 sm:mb-0">
+      {/* <div className="sm:flex sm:justify-between sm:items-center mb-8"> */}
+      {/* Left: Title */}
+      {/* <div className="mb-4 sm:mb-0">
           <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">
             Dashboard
           </h1>
-        </div>
-        {/* Right: Actions */}
-        <div className="grid grid-flow-col sm:auto-cols-max justify-start sm:justify-end gap-2">
-          {/* Filter button */}
+        </div> */}
+      {/* Right: Actions */}
+      {/* <div className="grid grid-flow-col sm:auto-cols-max justify-start sm:justify-end gap-2">
           <FilterButton align="right" />
-          {/* Datepicker built with React Day Picker */}
           <Datepicker />
-          {/* Add view button */}
           <button className="btn bg-gray-900 text-gray-100 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white">
             <svg
               className="fill-current shrink-0 xs:hidden"
@@ -107,9 +104,9 @@ export default function Dashboard() {
             </svg>
             <span className="max-xs:sr-only">Add View</span>
           </button>
-        </div>
-      </div>
-
+        </div> */}
+      {/* </div> */}
+      {/* </div> */}
       {/* Data Source Indicator */}
       {dataSource && (
         <div className="mb-4 flex gap-2 flex-wrap">
@@ -231,45 +228,42 @@ export default function Dashboard() {
       {/* Secondary Dashboard Charts */}
       <div className="mb-8">
         <div className="grid grid-cols-12 gap-6">
-          {/* Technician Production */}
           <DashboardCardTechnicianProduction
             data={dashboardData?.technicians}
           />
-          {/* Top 5 Opcodes */}
           <DashboardCardOpcodes data={dashboardData?.opcodes} />
-          {/* Advisor Summary ELR */}
           <DashboardCardAdvisorElr data={dashboardData?.advisors} />
         </div>
       </div>
 
       {/* Cards */}
-      <div className="grid grid-cols-12 gap-6">
-        {/* Line chart (Acme Plus) */}
-        <DashboardCard01 />
-        {/* Line chart (Acme Advanced) */}
-        <DashboardCard02 />
-        {/* Line chart (Acme Professional) */}
-        <DashboardCard03 />
-        {/* Bar chart (Direct vs Indirect) */}
-        <DashboardCard04 />
-        {/* Line chart (Real Time Value) */}
-        <DashboardCard05 />
-        {/* Doughnut chart (Top Countries) */}
-        <DashboardCard06 />
-        {/* Table (Top Channels) */}
-        <DashboardCard07 />
-        {/* Line chart (Sales Over Time) */}
-        <DashboardCard08 />
-        {/* Stacked bar chart (Sales VS Refunds) */}
-        <DashboardCard09 />
-        {/* Card (Recent Activity) */}
-        <DashboardCard10 />
-        {/* Card (Income/Expenses) */}
-        <DashboardCard11 />
-      </div>
+      {/* <div className="grid grid-cols-12 gap-6"> */}
+      {/* Line chart (Acme Plus) */}
+      {/* <DashboardCard01 /> */}
+      {/* Line chart (Acme Advanced) */}
+      {/* <DashboardCard02 /> */}
+      {/* Line chart (Acme Professional) */}
+      {/* <DashboardCard03 /> */}
+      {/* Bar chart (Direct vs Indirect) */}
+      {/* <DashboardCard04 /> */}
+      {/* Line chart (Real Time Value) */}
+      {/* <DashboardCard05 /> */}
+      {/* Doughnut chart (Top Countries) */}
+      {/* <DashboardCard06 /> */}
+      {/* Table (Top Channels) */}
+      {/* <DashboardCard07 /> */}
+      {/* Line chart (Sales Over Time) */}
+      {/* <DashboardCard08 /> */}
+      {/* Stacked bar chart (Sales VS Refunds) */}
+      {/* <DashboardCard09 /> */}
+      {/* Card (Recent Activity) */}
+      {/* <DashboardCard10 /> */}
+      {/* Card (Income/Expenses) */}
+      {/* <DashboardCard11 /> */}
+      {/* </div> */}
 
       {/* ECharts Demo Section */}
-      <div className="mt-8">
+      {/* <div className="mt-8">
         <div className="mb-6">
           <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">
             ECharts Analytics
@@ -279,10 +273,10 @@ export default function Dashboard() {
           </p>
         </div>
         <EChartsDemo />
-      </div>
+      </div> */}
 
       {/* ECharts Comprehensive Examples */}
-      <div className="mt-8">
+      {/* <div className="mt-8">
         <div className="mb-6">
           <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">
             Advanced ECharts Examples
@@ -294,10 +288,10 @@ export default function Dashboard() {
           </p>
         </div>
         <EChartsComprehensiveDemo />
-      </div>
+      </div> */}
 
       {/* AG-Grid Section */}
-      <div className="mt-8">
+      {/* <div className="mt-8">
         <div className="mb-6">
           <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">
             Data Grid
@@ -307,7 +301,7 @@ export default function Dashboard() {
           </p>
         </div>
         <AgGridExamplesPage />
-      </div>
+      </div> */}
     </div>
   );
 }

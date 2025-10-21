@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdmin, unauthorizedResponse } from '@/lib/auth/middleware';
-import { mockDb } from '@/lib/db/mock-admin-data';
+import { prismaDb } from '@/lib/db/prisma-admin-data';
 import { DealerInput } from '@/lib/types/admin';
 
 /**
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       return unauthorizedResponse(auth.error);
     }
 
-    const dealers = await mockDb.dealers.findAll();
+    const dealers = await prismaDb.dealers.findAll();
     return NextResponse.json(dealers);
   } catch (error) {
     console.error('Error fetching dealers:', error);
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       isActive: body.isActive ?? true,
     };
 
-    const newDealer = await mockDb.dealers.create(dealerData);
+    const newDealer = await prismaDb.dealers.create(dealerData);
     return NextResponse.json(newDealer, { status: 201 });
   } catch (error) {
     console.error('Error creating dealer:', error);

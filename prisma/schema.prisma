@@ -1,0 +1,108 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Test model to verify database connectivity and migrations
+model TestConnection {
+  id        String   @id @default(cuid())
+  message   String
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("test_connections")
+}
+
+// Admin Panel Models
+
+model Dealer {
+  id           String            @id @default(cuid())
+  name         String
+  address      String?
+  city         String?
+  state        String?
+  zip          String?
+  contactEmail String?
+  contactPhone String?
+  isActive     Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  
+  // Relations
+  apiConfig    DealerApiConfig?
+  users        UserDealer[]
+  defaultUsers User[]            @relation("DefaultDealer")
+
+  @@map("dealers")
+}
+
+model DealerApiConfig {
+  id                 String    @id @default(cuid())
+  dealerId           String    @unique
+  dealerShortCode    String
+  programId          String
+  subscriptionKey    String    // Encrypted in production
+  xUserEmail         String
+  deliveryEndpoint   String    @default("https://authenticom.azure-api.net/dv-delivery/v1/delivery")
+  jwtTokenUrl        String    @default("https://authenticom.azure-api.net/dv-delivery/v1/token")
+  fileTypeCode       String    @default("SV")
+  compareDateDefault Int       @default(1)
+  lastSuccess        DateTime?
+  lastError          String?
+  isActive           Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  
+  // Relations
+  dealer             Dealer    @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+
+  @@map("dealer_api_configs")
+}
+
+model User {
+  id               String       @id @default(cuid())
+  cognitoSub       String?      @unique  // Links to Cognito user's 'sub' attribute
+  email            String       @unique
+  name             String
+  role             String       // SUPER_ADMIN, MULTI_DEALER, USER
+  defaultDealerId  String
+  isActive         Boolean      @default(true)
+  lastLoginAt      DateTime?    // Track last login time
+  invitedAt        DateTime?    // Track when user was invited
+  invitedBy        String?      // Admin who invited the user
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  
+  // Relations
+  defaultDealer    Dealer       @relation("DefaultDealer", fields: [defaultDealerId], references: [id])
+  dealers          UserDealer[]
+
+  @@index([email])
+  @@index([cognitoSub])
+  @@map("users")
+}
+
+model UserDealer {
+  userId    String
+  dealerId  String
+  createdAt DateTime @default(now())
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dealer    Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+
+  @@id([userId, dealerId])
+  @@map("user_dealers")
+}

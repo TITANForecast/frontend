@@ -75,7 +75,10 @@
         "retries": 3,
         "startPeriod": 60
       },
-      "essential": true
+      "essential": true,
+      "linuxParameters": {
+        "initProcessEnabled": true
+      }
     }
   ]
 }

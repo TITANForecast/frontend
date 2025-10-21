@@ -4,6 +4,12 @@ variable "aws_region" {
   default     = "us-east-1"
 }
 
+variable "aws_profile" {
+  description = "AWS profile for local development (not used in CI/CD)"
+  type        = string
+  default     = "TitanOps"
+}
+
 variable "project_name" {
   description = "Name of the project"
   type        = string
@@ -135,4 +141,16 @@ variable "staging_github_branch" {
   description = "GitHub branch for staging deployment"
   type        = string
   default     = "staging"
+}
+
+variable "production_image_tag" {
+  description = "Docker image tag for production deployment"
+  type        = string
+  default     = "latest"
+}
+
+variable "staging_image_tag" {
+  description = "Docker image tag for staging deployment"
+  type        = string
+  default     = "latest"
 }

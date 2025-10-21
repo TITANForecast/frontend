@@ -17,6 +17,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Generate Prisma Client
+RUN npx prisma generate
+
 # Accept build arguments for Next.js public environment variables
 ARG NEXT_PUBLIC_AWS_REGION
 ARG NEXT_PUBLIC_COGNITO_USER_POOL_ID
@@ -67,6 +70,9 @@ RUN chown nextjs:nodejs .next
 # https://nextjs.org/docs/advanced-features/output-file-tracing
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Copy Prisma generated client
+COPY --from=builder --chown=nextjs:nodejs /app/generated ./generated
 
 USER nextjs
 

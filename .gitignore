@@ -153,3 +153,5 @@ logs
 *.tfstate.*
 .terraformrc
 terraform.rc
+
+/generated/prisma
