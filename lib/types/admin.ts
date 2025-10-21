@@ -5,13 +5,13 @@ import { UserRole } from './auth';
 export interface DealerApiConfig {
   id: string;
   dealerId: string;
-  dealerShortCode: string;
+  rooftopId: string;
   programId: string;
   subscriptionKey: string; // Encrypted
   xUserEmail: string;
   deliveryEndpoint: string;
   jwtTokenUrl: string;
-  fileTypeCode: string; // Fixed to "SV" for Service
+  fileTypeCodes: string[]; // Array of file types: "SV", "PTINV", etc.
   compareDateDefault: number; // Days to subtract from current date
   lastSuccess: Date | null;
   lastError: string | null;
@@ -21,15 +21,34 @@ export interface DealerApiConfig {
 }
 
 export interface DealerApiConfigInput {
-  dealerShortCode: string;
+  rooftopId: string;
   programId: string;
   subscriptionKey: string;
   xUserEmail: string;
   deliveryEndpoint?: string;
   jwtTokenUrl?: string;
-  fileTypeCode?: string;
+  fileTypeCodes?: string[];
   compareDateDefault?: number;
   isActive?: boolean;
+}
+
+export interface ImportLog {
+  id: string; // Serialized from BigInt
+  dealerId: string; // Serialized from BigInt (references Python dealer table)
+  importType: string;
+  fileType: string | null;
+  requestId: string | null;
+  status: string;
+  totalRecords: number | null;
+  processedRecords: number | null;
+  failedRecords: number | null;
+  newRecords: number | null;
+  updatedRecords: number | null;
+  errorMessage: string | null;
+  importStartTime: Date | null;
+  importEndTime: Date | null;
+  elapsedSeconds: number | null;
+  createdAt: Date | null;
 }
 
 export interface UserDealer {

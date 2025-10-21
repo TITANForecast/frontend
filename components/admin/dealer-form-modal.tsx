@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import ModalBlank from '@/components/modal-blank';
 import { DealerExtended, DealerInput, DealerApiConfigInput } from '@/lib/types/admin';
 import { authenticatedFetch } from '@/lib/utils/api';
+import MultiSelect, { MultiSelectOption } from '@/components/ui/multi-select';
+import DealerImportLogs from '@/components/admin/dealer-import-logs';
 
 interface DealerFormModalProps {
   isOpen: boolean;
@@ -20,7 +22,7 @@ export default function DealerFormModal({
   onSave,
   getAuthToken,
 }: DealerFormModalProps) {
-  const [activeTab, setActiveTab] = useState<'info' | 'api'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'api' | 'logs'>('info');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -38,16 +40,22 @@ export default function DealerFormModal({
 
   // API config form state
   const [apiForm, setApiForm] = useState<DealerApiConfigInput>({
-    dealerShortCode: '',
+    rooftopId: '',
     programId: '',
     subscriptionKey: '',
     xUserEmail: '',
     deliveryEndpoint: 'https://authenticom.azure-api.net/dv-delivery/v1/delivery',
     jwtTokenUrl: 'https://authenticom.azure-api.net/dv-delivery/v1/token',
-    fileTypeCode: 'SV',
+    fileTypeCodes: ['SV'],
     compareDateDefault: 1,
     isActive: true,
   });
+
+  // File type options
+  const fileTypeOptions: MultiSelectOption[] = [
+    { value: 'SV', label: 'SV', description: 'Service data' },
+    { value: 'PTINV', label: 'PTINV', description: 'Parts Inventory' },
+  ];
 
   useEffect(() => {
     if (dealer) {
@@ -64,13 +72,13 @@ export default function DealerFormModal({
 
       if (dealer.apiConfig) {
         setApiForm({
-          dealerShortCode: dealer.apiConfig.dealerShortCode,
+          rooftopId: dealer.apiConfig.rooftopId,
           programId: dealer.apiConfig.programId,
           subscriptionKey: dealer.apiConfig.subscriptionKey,
           xUserEmail: dealer.apiConfig.xUserEmail,
           deliveryEndpoint: dealer.apiConfig.deliveryEndpoint,
           jwtTokenUrl: dealer.apiConfig.jwtTokenUrl,
-          fileTypeCode: dealer.apiConfig.fileTypeCode,
+          fileTypeCodes: dealer.apiConfig.fileTypeCodes || ['SV'],
           compareDateDefault: dealer.apiConfig.compareDateDefault,
           isActive: dealer.apiConfig.isActive,
         });
@@ -88,13 +96,13 @@ export default function DealerFormModal({
         isActive: true,
       });
       setApiForm({
-        dealerShortCode: '',
+        rooftopId: '',
         programId: '',
         subscriptionKey: '',
         xUserEmail: '',
         deliveryEndpoint: 'https://authenticom.azure-api.net/dv-delivery/v1/delivery',
         jwtTokenUrl: 'https://authenticom.azure-api.net/dv-delivery/v1/token',
-        fileTypeCode: 'SV',
+        fileTypeCodes: ['SV'],
         compareDateDefault: 1,
         isActive: true,
       });
@@ -123,8 +131,9 @@ export default function DealerFormModal({
 
       const savedDealer = await dealerResponse.json();
 
-      // Save API config if on API tab and dealer is saved
-      if (activeTab === 'api' && savedDealer.id) {
+      // Save API config if dealer exists and has required API fields
+      const hasApiConfig = apiForm.rooftopId && apiForm.programId && apiForm.subscriptionKey && apiForm.xUserEmail;
+      if (savedDealer.id && hasApiConfig) {
         const configResponse = await authenticatedFetch(
           `/api/admin/dealers/${savedDealer.id}/config`,
           getAuthToken,
@@ -173,16 +182,28 @@ export default function DealerFormModal({
               Dealer Info
             </button>
             {dealer && (
-              <button
-                className={`py-2 px-1 font-medium text-sm border-b-2 ${
-                  activeTab === 'api'
-                    ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
-                }`}
-                onClick={() => setActiveTab('api')}
-              >
-                API Configuration
-              </button>
+              <>
+                <button
+                  className={`py-2 px-1 font-medium text-sm border-b-2 ${
+                    activeTab === 'api'
+                      ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
+                  }`}
+                  onClick={() => setActiveTab('api')}
+                >
+                  API Configuration
+                </button>
+                <button
+                  className={`py-2 px-1 font-medium text-sm border-b-2 ${
+                    activeTab === 'logs'
+                      ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
+                  }`}
+                  onClick={() => setActiveTab('logs')}
+                >
+                  Import Logs
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -298,19 +319,26 @@ export default function DealerFormModal({
           </div>
         )}
 
+        {/* Import Logs Tab */}
+        {activeTab === 'logs' && dealer && (
+          <div className="max-h-[60vh] overflow-y-auto">
+            <DealerImportLogs dealerId={dealer.id} getAuthToken={getAuthToken} />
+          </div>
+        )}
+
         {/* API Configuration Tab */}
         {activeTab === 'api' && dealer && (
           <div className="space-y-4 max-h-[60vh] overflow-y-auto">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Dealer Short Code *
+                Rooftop ID *
               </label>
               <input
                 type="text"
                 className="form-input w-full"
-                value={apiForm.dealerShortCode}
-                onChange={(e) => setApiForm({ ...apiForm, dealerShortCode: e.target.value })}
-                placeholder="e.g., TM001"
+                value={apiForm.rooftopId}
+                onChange={(e) => setApiForm({ ...apiForm, rooftopId: e.target.value })}
+                placeholder="e.g., DVD00003"
                 required
               />
             </div>
@@ -383,16 +411,16 @@ export default function DealerFormModal({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                File Type Code
+                File Type Codes *
               </label>
-              <input
-                type="text"
-                className="form-input w-full bg-gray-100 dark:bg-gray-700"
-                value={apiForm.fileTypeCode}
-                readOnly
+              <MultiSelect
+                options={fileTypeOptions}
+                selectedValues={apiForm.fileTypeCodes || []}
+                onChange={(values) => setApiForm({ ...apiForm, fileTypeCodes: values })}
+                placeholder="Select file types..."
               />
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Fixed to &quot;SV&quot; for Service data
+                Select one or more data types to pull from DealerVault API
               </p>
             </div>
 
