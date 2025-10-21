@@ -2,15 +2,14 @@
 
 import { UserRole } from './auth';
 
+export type DataSource = 'Certify-Staging' | 'DealerVault-Production';
+
 export interface DealerApiConfig {
   id: string;
   dealerId: string;
+  dataSource: DataSource;
   rooftopId: string;
   programId: string;
-  subscriptionKey: string; // Encrypted
-  xUserEmail: string;
-  deliveryEndpoint: string;
-  jwtTokenUrl: string;
   fileTypeCodes: string[]; // Array of file types: "SV", "PTINV", etc.
   compareDateDefault: number; // Days to subtract from current date
   lastSuccess: Date | null;
@@ -21,12 +20,9 @@ export interface DealerApiConfig {
 }
 
 export interface DealerApiConfigInput {
+  dataSource: DataSource;
   rooftopId: string;
   programId: string;
-  subscriptionKey: string;
-  xUserEmail: string;
-  deliveryEndpoint?: string;
-  jwtTokenUrl?: string;
   fileTypeCodes?: string[];
   compareDateDefault?: number;
   isActive?: boolean;

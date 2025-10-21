@@ -26,12 +26,9 @@ const convertToExtendedDealer = (dealer: any): DealerExtended => {
     apiConfig: dealer.apiConfig ? {
       id: dealer.apiConfig.id,
       dealerId: dealer.apiConfig.dealerId,
+      dataSource: dealer.apiConfig.dataSource,
       rooftopId: dealer.apiConfig.rooftopId,
       programId: dealer.apiConfig.programId,
-      subscriptionKey: dealer.apiConfig.subscriptionKey,
-      xUserEmail: dealer.apiConfig.xUserEmail,
-      deliveryEndpoint: dealer.apiConfig.deliveryEndpoint,
-      jwtTokenUrl: dealer.apiConfig.jwtTokenUrl,
       fileTypeCodes: dealer.apiConfig.fileTypeCodes,
       compareDateDefault: dealer.apiConfig.compareDateDefault,
       lastSuccess: dealer.apiConfig.lastSuccess,
@@ -152,12 +149,9 @@ export const prismaDb = {
       const config = await prisma.dealerApiConfig.create({
         data: {
           dealerId: data.dealerId,
+          dataSource: data.dataSource,
           rooftopId: data.rooftopId,
           programId: data.programId,
-          subscriptionKey: data.subscriptionKey,
-          xUserEmail: data.xUserEmail,
-          deliveryEndpoint: data.deliveryEndpoint,
-          jwtTokenUrl: data.jwtTokenUrl,
           fileTypeCodes: data.fileTypeCodes,
           compareDateDefault: data.compareDateDefault,
           lastSuccess: data.lastSuccess,
@@ -173,12 +167,9 @@ export const prismaDb = {
         const config = await prisma.dealerApiConfig.update({
           where: { id },
           data: {
+            dataSource: data.dataSource,
             rooftopId: data.rooftopId,
             programId: data.programId,
-            subscriptionKey: data.subscriptionKey,
-            xUserEmail: data.xUserEmail,
-            deliveryEndpoint: data.deliveryEndpoint,
-            jwtTokenUrl: data.jwtTokenUrl,
             fileTypeCodes: data.fileTypeCodes,
             compareDateDefault: data.compareDateDefault,
             lastSuccess: data.lastSuccess,

@@ -52,12 +52,9 @@ model Dealer {
 model DealerApiConfig {
   id                 String    @id @default(cuid())
   dealerId           String    @unique
+  dataSource         String    @default("Certify-Staging") // Data Source: "Certify-Staging" or "DealerVault-Production"
   rooftopId          String
   programId          String
-  subscriptionKey    String    // Encrypted in production
-  xUserEmail         String
-  deliveryEndpoint   String    @default("https://authenticom.azure-api.net/dv-delivery/v1/delivery")
-  jwtTokenUrl        String    @default("https://authenticom.azure-api.net/dv-delivery/v1/token")
   fileTypeCodes      String[]  @default(["SV"])
   compareDateDefault Int       @default(1)
   lastSuccess        DateTime?

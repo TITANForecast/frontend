@@ -55,9 +55,17 @@ export async function POST(
     const body: DealerApiConfigInput = await request.json();
 
     // Validation
-    if (!body.rooftopId || !body.programId || !body.subscriptionKey || !body.xUserEmail) {
+    if (!body.dataSource || !body.rooftopId || !body.programId) {
       return NextResponse.json(
-        { error: 'Missing required API config fields' },
+        { error: 'Missing required API config fields: Data Source, Rooftop ID, Program ID' },
+        { status: 400 }
+      );
+    }
+
+    // Validate dataSource
+    if (body.dataSource !== 'Certify-Staging' && body.dataSource !== 'DealerVault-Production') {
+      return NextResponse.json(
+        { error: 'Invalid Data Source. Must be either "Certify-Staging" or "DealerVault-Production"' },
         { status: 400 }
       );
     }
@@ -76,12 +84,9 @@ export async function POST(
 
     const configData = {
       dealerId: id,
+      dataSource: body.dataSource,
       rooftopId: body.rooftopId,
       programId: body.programId,
-      subscriptionKey: body.subscriptionKey, // TODO: Encrypt in production
-      xUserEmail: body.xUserEmail,
-      deliveryEndpoint: body.deliveryEndpoint || 'https://authenticom.azure-api.net/dv-delivery/v1/delivery',
-      jwtTokenUrl: body.jwtTokenUrl || 'https://authenticom.azure-api.net/dv-delivery/v1/token',
       fileTypeCodes: body.fileTypeCodes && body.fileTypeCodes.length > 0 ? body.fileTypeCodes : ['SV'],
       compareDateDefault: body.compareDateDefault ?? 1,
       lastSuccess: null,
