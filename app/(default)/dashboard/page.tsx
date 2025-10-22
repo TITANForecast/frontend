@@ -30,30 +30,42 @@ import {
   DMSData,
   KPIResults,
 } from "@/lib/utils/dashboard-data-processor";
+import { useAuth } from "@/components/auth-provider-multitenancy";
 
 export default function Dashboard() {
+  const { currentDealer } = useAuth();
   const [dashboardData, setDashboardData] =
     useState<ProcessedDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [dataSource, setDataSource] = useState<string>("");
-  const [hasKpiData, setHasKpiData] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
+      if (!currentDealer) {
+        console.log("No dealer selected, skipping data fetch");
+        return;
+      }
+
       try {
-        const response = await fetch("/api/dms/delivery");
+        setLoading(true);
+        console.log(
+          `Fetching dashboard data for dealer: ${currentDealer.name} (${currentDealer.id})`
+        );
+
+        const response = await fetch(
+          `/api/dms/delivery?dealerId=${currentDealer.id}`
+        );
         const result = await response.json();
 
         if (result.data) {
-          setDataSource(result.source);
-          setHasKpiData(!!result.kpis);
-
           // Process data with pre-calculated KPIs if available
           const processed = processDashboardData(
             result.data as DMSData,
             result.kpis as KPIResults | null
           );
           setDashboardData(processed);
+          console.log(
+            `Dashboard data processed: ${result.data.totalRecords} records from ${result.source}`
+          );
         }
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
@@ -63,7 +75,7 @@ export default function Dashboard() {
     }
 
     fetchData();
-  }, []);
+  }, [currentDealer]); // Re-fetch when dealer changes
 
   if (loading) {
     return (
@@ -107,46 +119,6 @@ export default function Dashboard() {
         </div> */}
       {/* </div> */}
       {/* </div> */}
-      {/* Data Source Indicator */}
-      {dataSource && (
-        <div className="mb-4 flex gap-2 flex-wrap">
-          <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200">
-            <svg
-              className="w-3 h-3 mr-1.5"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fillRule="evenodd"
-                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                clipRule="evenodd"
-              />
-            </svg>
-            Data:{" "}
-            {dataSource === "api"
-              ? "Live API"
-              : dataSource === "fallback-SV500"
-              ? "SV500.json"
-              : "SV50.json"}
-          </div>
-          {hasKpiData && (
-            <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200">
-              <svg
-                className="w-3 h-3 mr-1.5"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              KPIs: Pre-calculated (kpi_results.json)
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Main Dashboard Charts */}
       <div className="mb-8">
