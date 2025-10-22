@@ -34,7 +34,7 @@ export default function DealerImportLogs({ dealerId, getAuthToken }: DealerImpor
       params.append('daysBack', filters.daysBack);
 
       const response = await authenticatedFetch(
-        `/api/admin/dealers/${dealerId}/logs?${params.toString()}`,
+        `/api/admin/dealers/${dealerId}/import-logs?${params.toString()}`,
         getAuthToken
       );
 
