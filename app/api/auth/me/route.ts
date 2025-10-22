@@ -220,14 +220,26 @@ export async function GET(request: NextRequest) {
     }
 
     // Format response to match expected structure
-    const userProfile = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      defaultDealerId: user.defaultDealerId,
-      isActive: user.isActive,
-      dealers: user.dealers.map(ud => ({
+    // For SUPER_ADMIN and MULTI_DEALER, fetch all active dealers instead of just linked ones
+    let dealersList;
+    if (user.role === 'SUPER_ADMIN' || user.role === 'MULTI_DEALER') {
+      const allDealers = await prisma.dealer.findMany({
+        where: { isActive: true },
+        orderBy: { name: 'asc' }
+      });
+      dealersList = allDealers.map(dealer => ({
+        id: dealer.id,
+        name: dealer.name,
+        address: dealer.address,
+        phone: dealer.contactPhone,
+        city: dealer.city,
+        state: dealer.state,
+        zip: dealer.zip,
+        isActive: dealer.isActive
+      }));
+    } else {
+      // For regular users, only show dealers they have access to
+      dealersList = user.dealers.map(ud => ({
         id: ud.dealer.id,
         name: ud.dealer.name,
         address: ud.dealer.address,
@@ -236,7 +248,17 @@ export async function GET(request: NextRequest) {
         state: ud.dealer.state,
         zip: ud.dealer.zip,
         isActive: ud.dealer.isActive
-      }))
+      }));
+    }
+
+    const userProfile = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      defaultDealerId: user.defaultDealerId,
+      isActive: user.isActive,
+      dealers: dealersList
     };
 
     return NextResponse.json(userProfile);
