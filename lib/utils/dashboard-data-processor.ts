@@ -174,11 +174,15 @@ export function processDashboardData(
 
   // Process each record
   records.forEach((record) => {
+    // Use Closed RO Date if available, otherwise fall back to Open Date
     const closedDate = parseDate(record["Closed RO Date"]);
-    if (!closedDate) return;
+    const openDate = parseDate(record["Open Date"]);
+    const dateToUse = closedDate || openDate;
+    
+    if (!dateToUse) return;
 
     // Group by day instead of month for more granular data
-    const dayKey = getDayLabel(closedDate);
+    const dayKey = getDayLabel(dateToUse);
 
     if (!monthlyData.has(dayKey)) {
       monthlyData.set(dayKey, {
