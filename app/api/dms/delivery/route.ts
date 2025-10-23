@@ -18,8 +18,41 @@ function formatDate(date: any): string {
   return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
 }
 
-async function fetchFromDatabase(dealerId?: string) {
+async function fetchFromDatabase(
+  dealerId?: string,
+  startDate?: Date,
+  endDate?: Date
+) {
   try {
+    // Build WHERE clause conditions
+    const conditions: string[] = [];
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    if (dealerId) {
+      conditions.push(`sr.dealer_id = $${paramIndex}`);
+      params.push(dealerId);
+      paramIndex++;
+    }
+
+    if (startDate) {
+      conditions.push(`sr.open_date >= $${paramIndex}`);
+      params.push(startDate);
+      paramIndex++;
+    }
+
+    if (endDate) {
+      // Add one day to endDate to include records on that date
+      const endDateInclusive = new Date(endDate);
+      endDateInclusive.setDate(endDateInclusive.getDate() + 1);
+      conditions.push(`sr.open_date < $${paramIndex}`);
+      params.push(endDateInclusive);
+      paramIndex++;
+    }
+
+    const whereClause =
+      conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
     // Build query to fetch service records with joins
     const query = `
       SELECT 
@@ -94,14 +127,15 @@ async function fetchFromDatabase(dealerId?: string) {
       LEFT JOIN financial_summary fs ON sr.id = fs.service_record_id
       LEFT JOIN customer c ON sr.customer_id = c.id
       LEFT JOIN vehicle v ON sr.vehicle_id = v.id
-      ${dealerId ? "WHERE sr.dealer_id = $1" : ""}
+      ${whereClause}
       ORDER BY sr.open_date DESC, sr.id DESC
-      LIMIT 500;
+      LIMIT 5000;
     `;
 
-    const rawRecords = dealerId
-      ? await prisma.$queryRawUnsafe(query, dealerId)
-      : await prisma.$queryRawUnsafe(query);
+    const rawRecords =
+      params.length > 0
+        ? await prisma.$queryRawUnsafe(query, ...params)
+        : await prisma.$queryRawUnsafe(query);
 
     // Format records to match SV500.json structure
     const formattedRecords = (rawRecords as any[]).map((record: any) => ({
@@ -303,9 +337,11 @@ async function fetchServiceMetrics(dealerId: string) {
 
 export async function GET(request: NextRequest) {
   try {
-    // Get dealer ID from query params
+    // Get dealer ID and date range from query params
     const { searchParams } = new URL(request.url);
     const dealerId = searchParams.get("dealerId");
+    const startDateParam = searchParams.get("startDate");
+    const endDateParam = searchParams.get("endDate");
 
     if (!dealerId) {
       return NextResponse.json(
@@ -314,11 +350,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log(`📊 Fetching data for dealer: ${dealerId}`);
+    // Parse date parameters
+    const startDate = startDateParam ? new Date(startDateParam) : undefined;
+    const endDate = endDateParam ? new Date(endDateParam) : undefined;
+
+    console.log(
+      `📊 Fetching data for dealer: ${dealerId}${
+        startDate ? ` from ${startDate.toISOString()}` : ""
+      }${endDate ? ` to ${endDate.toISOString()}` : ""}`
+    );
 
     // Fetch both service records and pre-calculated KPIs
     const [dmsData, kpiData] = await Promise.all([
-      fetchFromDatabase(dealerId),
+      fetchFromDatabase(dealerId, startDate, endDate),
       fetchServiceMetrics(dealerId),
     ]);
 

@@ -1,19 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import FilterButton from "@/components/dropdown-filter";
+import { addDays } from "date-fns";
+import { DateRange } from "react-day-picker";
 import Datepicker from "@/components/datepicker";
-import DashboardCard01 from "./dashboard-card-01";
-import DashboardCard02 from "./dashboard-card-02";
-import DashboardCard03 from "./dashboard-card-03";
-import DashboardCard04 from "./dashboard-card-04";
-import DashboardCard05 from "./dashboard-card-05";
-import DashboardCard06 from "./dashboard-card-06";
-import DashboardCard07 from "./dashboard-card-07";
-import DashboardCard08 from "./dashboard-card-08";
-import DashboardCard09 from "./dashboard-card-09";
-import DashboardCard10 from "./dashboard-card-10";
-import DashboardCard11 from "./dashboard-card-11";
 import DashboardCardGrossProfit from "./dashboard-card-gross-profit";
 import DashboardCardRoCount from "./dashboard-card-ro-count";
 import DashboardCardWarrantyOpportunity from "./dashboard-card-warranty-opportunity";
@@ -21,9 +11,6 @@ import DashboardCardTechnicianProduction from "./dashboard-card-technician-produ
 import DashboardCardOpcodes from "./dashboard-card-opcodes";
 import DashboardCardAdvisorElr from "./dashboard-card-advisor-elr";
 import DashboardCardAGKPIGauge from "./dashboard-card-ag-kpi-gauge";
-import EChartsDemo from "@/components/echarts-demo";
-import EChartsComprehensiveDemo from "@/components/echarts-comprehensive-demo";
-import AgGridExamplesPage from "../ag-grid-examples/page";
 import {
   processDashboardData,
   ProcessedDashboardData,
@@ -38,6 +25,12 @@ export default function Dashboard() {
     useState<ProcessedDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Date range state - default to past 30 days
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: addDays(new Date(), -30),
+    to: new Date(),
+  });
+
   useEffect(() => {
     async function fetchData() {
       if (!currentDealer) {
@@ -47,13 +40,27 @@ export default function Dashboard() {
 
       try {
         setLoading(true);
+
+        // Build URL with date range parameters
+        const params = new URLSearchParams({
+          dealerId: currentDealer.id,
+        });
+
+        if (dateRange?.from) {
+          params.append("startDate", dateRange.from.toISOString());
+        }
+
+        if (dateRange?.to) {
+          params.append("endDate", dateRange.to.toISOString());
+        }
+
         console.log(
-          `Fetching dashboard data for dealer: ${currentDealer.name} (${currentDealer.id})`
+          `Fetching dashboard data for dealer: ${currentDealer.name} (${currentDealer.id})`,
+          dateRange?.from ? `from ${dateRange.from.toLocaleDateString()}` : "",
+          dateRange?.to ? `to ${dateRange.to.toLocaleDateString()}` : ""
         );
 
-        const response = await fetch(
-          `/api/dms/delivery?dealerId=${currentDealer.id}`
-        );
+        const response = await fetch(`/api/dms/delivery?${params.toString()}`);
         const result = await response.json();
 
         if (result.data) {
@@ -75,7 +82,7 @@ export default function Dashboard() {
     }
 
     fetchData();
-  }, [currentDealer]); // Re-fetch when dealer changes
+  }, [currentDealer, dateRange]); // Re-fetch when dealer or date range changes
 
   if (loading) {
     return (
@@ -94,31 +101,18 @@ export default function Dashboard() {
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-[96rem] mx-auto">
       {/* Dashboard actions */}
-      {/* <div className="sm:flex sm:justify-between sm:items-center mb-8"> */}
-      {/* Left: Title */}
-      {/* <div className="mb-4 sm:mb-0">
+      <div className="sm:flex sm:justify-between sm:items-center mb-8">
+        {/* Left: Title */}
+        <div className="mb-4 sm:mb-0">
           <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">
             Dashboard
           </h1>
-        </div> */}
-      {/* Right: Actions */}
-      {/* <div className="grid grid-flow-col sm:auto-cols-max justify-start sm:justify-end gap-2">
-          <FilterButton align="right" />
-          <Datepicker />
-          <button className="btn bg-gray-900 text-gray-100 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white">
-            <svg
-              className="fill-current shrink-0 xs:hidden"
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-            >
-              <path d="M15 7H9V1c0-.6-.4-1-1-1S7 .4 7 1v6H1c-.6 0-1 .4-1 1s.4 1 1 1h6v6c0 .6.4 1 1 1s1-.4 1-1V9h6c.6 0 1-.4 1-1s-.4-1-1-1z" />
-            </svg>
-            <span className="max-xs:sr-only">Add View</span>
-          </button>
-        </div> */}
-      {/* </div> */}
-      {/* </div> */}
+        </div>
+        {/* Right: Actions */}
+        <div className="grid grid-flow-col sm:auto-cols-max justify-start sm:justify-end gap-2">
+          <Datepicker date={dateRange} onDateChange={setDateRange} />
+        </div>
+      </div>
 
       {/* Main Dashboard Charts */}
       <div className="mb-8">
