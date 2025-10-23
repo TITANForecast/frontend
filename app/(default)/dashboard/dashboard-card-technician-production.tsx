@@ -39,16 +39,40 @@ export default function DashboardCardTechnicianProduction({ data }: Props) {
 
   // Use real data if available, otherwise use mock data
   const chartData = data || {
-    names: ["H. Ford", "K. Benz", "G. Kawasaki", "E. Ferrari", "G. Daimler", 
-            "S. Honda", "K. Toyoda", "L. Chevrolet", "F. Porsche", "R.E. Olds", 
-            "H. Royce", "H. Dodge", "F. Dodge", "W. Chrysler", "G Mason"],
-    customerPay: [800, 650, 580, 520, 480, 450, 420, 380, 350, 320, 300, 280, 250, 220, 180],
-    warranty: [200, 180, 160, 140, 120, 100, 90, 80, 70, 60, 50, 45, 40, 35, 30],
-    internal: [150, 120, 100, 80, 70, 60, 50, 45, 40, 35, 30, 25, 20, 15, 10],
+    names: [
+      "H. Ford",
+      "K. Benz",
+      "G. Kawasaki",
+      "E. Ferrari",
+      "G. Daimler",
+      "S. Honda",
+      "K. Toyoda",
+      "L. Chevrolet",
+      "F. Porsche",
+      "R.E. Olds",
+      "H. Royce",
+      "H. Dodge",
+      "F. Dodge",
+      "W. Chrysler",
+      "G Mason",
+    ],
+    customerPay: [
+      145.5, 125.0, 112.5, 98.0, 89.5, 82.0, 75.5, 68.0, 62.5, 58.0, 52.5, 48.0,
+      42.5, 38.0, 32.5,
+    ],
+    warranty: [
+      35.5, 32.0, 28.5, 25.0, 22.5, 19.0, 16.5, 14.5, 12.5, 11.0, 9.5, 8.5, 7.5,
+      6.5, 5.5,
+    ],
+    internal: [
+      25.0, 22.0, 19.0, 16.5, 14.5, 12.5, 10.5, 9.0, 7.5, 6.5, 5.5, 4.5, 3.5,
+      2.5, 1.5,
+    ],
   };
 
-  const totalHours = chartData.customerPay.reduce((a, b, i) => 
-    a + b + chartData.warranty[i] + chartData.internal[i], 0
+  const totalHours = chartData.customerPay.reduce(
+    (a, b, i) => a + b + chartData.warranty[i] + chartData.internal[i],
+    0
   );
 
   const chartOption = {
@@ -81,7 +105,6 @@ export default function DashboardCardTechnicianProduction({ data }: Props) {
     xAxis: {
       type: "value",
       min: 0,
-      max: 1250,
       axisLine: {
         show: false,
       },
@@ -152,11 +175,11 @@ export default function DashboardCardTechnicianProduction({ data }: Props) {
         </header>
         <div className="flex items-center justify-between mb-4">
           <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase">
-            Total Hours (x1000)
+            Total Hours
           </div>
           <div className="flex items-center text-sm font-medium text-green-700 px-2 py-1 bg-green-500/20 rounded-full">
             <span className="mr-1">↑</span>
-            {totalHours.toFixed(1)} K HRS
+            {totalHours.toFixed(0)} HRS
           </div>
         </div>
       </div>
