@@ -2,7 +2,16 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { signIn, signUp, signOut, getCurrentUser, confirmSignUp, resetPassword as cognitoResetPassword, confirmResetPassword, fetchAuthSession } from "aws-amplify/auth";
+import {
+  signIn,
+  signUp,
+  signOut,
+  getCurrentUser,
+  confirmSignUp,
+  resetPassword as cognitoResetPassword,
+  confirmResetPassword,
+  fetchAuthSession,
+} from "aws-amplify/auth";
 import "@/lib/amplify";
 import { UserProfile, Dealer, UserRole } from "@/lib/types/auth";
 
@@ -15,10 +24,16 @@ interface AuthContextType {
   signup: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
   switchDealer: (dealerId: string) => Promise<void>;
+  updateDefaultDealer: (dealerId: string) => Promise<void>;
+  refreshUser: () => Promise<void>;
   hasRole: (roles: UserRole[]) => boolean;
   confirmSignup: (email: string, code: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
-  confirmPassword: (email: string, code: string, newPassword: string) => Promise<void>;
+  confirmPassword: (
+    email: string,
+    code: string,
+    newPassword: string
+  ) => Promise<void>;
   getAuthToken: () => Promise<string | null>;
 }
 
@@ -38,9 +53,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    console.log('Auth redirect check - isLoading:', isLoading, 'isAuthenticated:', isAuthenticated, 'pathname:', pathname);
+    console.log(
+      "Auth redirect check - isLoading:",
+      isLoading,
+      "isAuthenticated:",
+      isAuthenticated,
+      "pathname:",
+      pathname
+    );
     if (!isLoading && isAuthenticated && pathname === "/") {
-      console.log('Redirecting to dashboard...');
+      console.log("Redirecting to dashboard...");
       router.push("/dashboard");
     }
   }, [isAuthenticated, isLoading, pathname, router]);
@@ -48,90 +70,108 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const checkAuthStatus = async () => {
     try {
       // Check if we should use mock authentication
-      const useMockAuth = process.env.NEXT_PUBLIC_USE_MOCK_AUTH === 'true';
-      const useCognito = process.env.NEXT_PUBLIC_USE_COGNITO === 'true';
-      
-      console.log('Auth check - useMockAuth:', useMockAuth, 'useCognito:', useCognito);
-      
+      const useMockAuth = process.env.NEXT_PUBLIC_USE_MOCK_AUTH === "true";
+      const useCognito = process.env.NEXT_PUBLIC_USE_COGNITO === "true";
+
+      console.log(
+        "Auth check - useMockAuth:",
+        useMockAuth,
+        "useCognito:",
+        useCognito
+      );
+
       // Use mock authentication if explicitly enabled
       if (useMockAuth && !useCognito) {
         const mockUser: UserProfile = {
-          id: 'dev-user-1',
-          email: 'dev@titan.com',
-          name: 'Dev User',
+          id: "dev-user-1",
+          email: "dev@titan.com",
+          name: "Dev User",
           role: UserRole.SUPER_ADMIN,
-          defaultDealerId: 'dealer-1',
+          defaultDealerId: "dealer-1",
           isActive: true,
           dealers: [
             {
-              id: 'dealer-1',
-              name: 'Titan Motors',
-              address: '123 Main St',
-              phone: '555-0123',
-              city: 'Anytown',
-              state: 'CA',
-              zip: '12345',
-              isActive: true
-            }
-          ]
+              id: "dealer-1",
+              name: "Titan Motors",
+              address: "123 Main St",
+              phone: "555-0123",
+              city: "Anytown",
+              state: "CA",
+              zip: "12345",
+              isActive: true,
+            },
+          ],
         };
-        
+
         setUser(mockUser);
-        setCurrentDealer(mockUser.dealers[0]);
+        // Set current dealer to the default one
+        const defaultDealer =
+          mockUser.dealers.find((d) => d.id === mockUser.defaultDealerId) ||
+          mockUser.dealers[0];
+        setCurrentDealer(defaultDealer);
         setIsAuthenticated(true);
         setIsLoading(false);
         return;
       }
 
       // Production Cognito authentication
-      console.log('Attempting Cognito authentication...');
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Auth timeout')), 5000)
+      console.log("Attempting Cognito authentication...");
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Auth timeout")), 5000)
       );
-      
+
       const authPromise = getCurrentUser();
       const user = await Promise.race([authPromise, timeoutPromise]);
-      
-      console.log('Cognito user result:', user);
-      
+
+      console.log("Cognito user result:", user);
+
       if (user) {
         setCognitoUser(user);
-        
+
         // Get the JWT token for API calls
         try {
           const session = await fetchAuthSession();
           const token = session.tokens?.idToken?.toString();
-          
-          console.log('JWT Token available:', !!token);
-          console.log('Session tokens:', session.tokens);
-          
+
+          console.log("JWT Token available:", !!token);
+          console.log("Session tokens:", session.tokens);
+
           if (token) {
             // Fetch user profile from API with JWT token
-            const response = await fetch('/api/auth/me/', {
+            const response = await fetch("/api/auth/me/", {
               headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-              }
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
             });
-            
+
             if (response.ok) {
               const userProfile = await response.json();
               setUser(userProfile);
-              setCurrentDealer(userProfile.dealers[0]);
+              // Set current dealer to the default one
+              const defaultDealer =
+                userProfile.dealers.find(
+                  (d: Dealer) => d.id === userProfile.defaultDealerId
+                ) || userProfile.dealers[0];
+              setCurrentDealer(defaultDealer);
               setIsAuthenticated(true);
-              console.log('User authenticated via Cognito:', userProfile.name);
+              console.log("User authenticated via Cognito:", userProfile.name);
             } else {
-              console.error('Failed to fetch user profile:', response.status, response.statusText);
+              console.error(
+                "Failed to fetch user profile:",
+                response.status,
+                response.statusText
+              );
             }
           } else {
-            console.error('No JWT token available');
+            console.error("No JWT token available");
           }
         } catch (error) {
-          console.error('Error fetching user profile:', error);
+          console.error("Error fetching user profile:", error);
         }
       }
     } catch (error) {
-      console.log('Not authenticated:', error);
+      console.log("Not authenticated:", error);
       setIsAuthenticated(false);
     } finally {
       setIsLoading(false);
@@ -143,7 +183,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await signIn({ username: email, password });
       await checkAuthStatus();
     } catch (error) {
-      console.error('Login error:', error);
+      console.error("Login error:", error);
       throw error;
     }
   };
@@ -156,57 +196,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         options: {
           userAttributes: {
             email,
-            name
-          }
-        }
+            name,
+          },
+        },
       });
     } catch (error) {
-      console.error('Signup error:', error);
+      console.error("Signup error:", error);
       throw error;
     }
   };
 
   const logout = async () => {
     try {
-      console.log('Starting logout process...');
-      
+      console.log("Starting logout process...");
+
       // Clear all local state first
       setIsAuthenticated(false);
       setUser(null);
       setCurrentDealer(null);
-      console.log('Cleared local state');
-      
+      console.log("Cleared local state");
+
       // Sign out from Cognito - handle case where user is already authenticated
       try {
         await signOut();
-        console.log('Signed out from Cognito');
+        console.log("Signed out from Cognito");
       } catch (error) {
-        console.log('SignOut error (may be expected):', error);
+        console.log("SignOut error (may be expected):", error);
         // Force signout even if there's an error
         try {
           await signOut({ global: true });
-          console.log('Force signed out from Cognito');
+          console.log("Force signed out from Cognito");
         } catch (forceError) {
-          console.log('Force signOut also failed:', forceError);
+          console.log("Force signOut also failed:", forceError);
         }
       }
-      
+
       // Clear all storage aggressively
-      if (typeof window !== 'undefined') {
+      if (typeof window !== "undefined") {
         // Clear localStorage
         localStorage.clear();
-        
+
         // Clear sessionStorage
         sessionStorage.clear();
-        
+
         // Clear Amplify-specific cache keys
-        const amplifyKeys = Object.keys(localStorage).filter(key => 
-          key.includes('amplify') || 
-          key.includes('cognito') || 
-          key.includes('aws-amplify')
+        const amplifyKeys = Object.keys(localStorage).filter(
+          (key) =>
+            key.includes("amplify") ||
+            key.includes("cognito") ||
+            key.includes("aws-amplify")
         );
-        amplifyKeys.forEach(key => localStorage.removeItem(key));
-        
+        amplifyKeys.forEach((key) => localStorage.removeItem(key));
+
         // Clear any remaining Amplify cache
         try {
           // Note: clearCache may not be available in all Amplify versions
@@ -215,50 +256,103 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Ignore if clearCache is not available
         }
       }
-      
+
       // Force page reload to clear any remaining state
-      console.log('Redirecting to home page...');
-      window.location.href = '/';
+      console.log("Redirecting to home page...");
+      window.location.href = "/";
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
       // Even if signOut fails, clear local state and redirect
       setIsAuthenticated(false);
       setUser(null);
       setCurrentDealer(null);
-      if (typeof window !== 'undefined') {
+      if (typeof window !== "undefined") {
         localStorage.clear();
         sessionStorage.clear();
-        window.location.href = '/';
+        window.location.href = "/";
       }
     }
   };
 
   const switchDealer = async (dealerId: string) => {
     try {
-      // Local development
-      if (process.env.NODE_ENV === 'development') {
-        const selectedDealer = user?.dealers.find(d => d.id === dealerId);
-        if (selectedDealer) {
-          setCurrentDealer(selectedDealer);
-        }
-        return;
+      const selectedDealer = user?.dealers.find((d) => d.id === dealerId);
+      if (selectedDealer) {
+        setCurrentDealer(selectedDealer);
+      }
+      return;
+    } catch (error) {
+      console.error("Switch dealer error:", error);
+      throw error;
+    }
+  };
+
+  const updateDefaultDealer = async (dealerId: string) => {
+    try {
+      const token = await getAuthToken();
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
       }
 
-      // Production API call
-      const response = await fetch('/api/auth/switch-dealer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dealerId })
+      const response = await fetch("/api/auth/me", {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ defaultDealerId: dealerId }),
       });
-      
-      if (response.ok) {
-        const updatedUser = await response.json();
-        setUser(updatedUser);
-        setCurrentDealer(updatedUser.dealers.find((d: Dealer) => d.id === dealerId));
+
+      if (!response.ok) {
+        throw new Error("Failed to update default dealer");
+      }
+
+      const updatedProfile = await response.json();
+      setUser(updatedProfile);
+
+      // Update current dealer to the new default
+      const newDefaultDealer = updatedProfile.dealers.find(
+        (d: Dealer) => d.id === dealerId
+      );
+      if (newDefaultDealer) {
+        setCurrentDealer(newDefaultDealer);
       }
     } catch (error) {
-      console.error('Switch dealer error:', error);
+      console.error("Update default dealer error:", error);
       throw error;
+    }
+  };
+
+  const refreshUser = async () => {
+    try {
+      const token = await getAuthToken();
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const response = await fetch("/api/auth/me", {
+        headers,
+      });
+
+      if (response.ok) {
+        const userProfile = await response.json();
+        setUser(userProfile);
+
+        // Update current dealer to match the default
+        const defaultDealer = userProfile.dealers.find(
+          (d: Dealer) => d.id === userProfile.defaultDealerId
+        );
+        if (defaultDealer) {
+          setCurrentDealer(defaultDealer);
+        }
+      }
+    } catch (error) {
+      console.error("Refresh user error:", error);
     }
   };
 
@@ -270,7 +364,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await confirmSignUp({ username: email, confirmationCode: code });
     } catch (error) {
-      console.error('Confirm signup error:', error);
+      console.error("Confirm signup error:", error);
       throw error;
     }
   };
@@ -279,20 +373,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await cognitoResetPassword({ username: email });
     } catch (error) {
-      console.error('Reset password error:', error);
+      console.error("Reset password error:", error);
       throw error;
     }
   };
 
-  const confirmPassword = async (email: string, code: string, newPassword: string) => {
+  const confirmPassword = async (
+    email: string,
+    code: string,
+    newPassword: string
+  ) => {
     try {
       await confirmResetPassword({
         username: email,
         confirmationCode: code,
-        newPassword
+        newPassword,
       });
     } catch (error) {
-      console.error('Confirm password error:', error);
+      console.error("Confirm password error:", error);
       throw error;
     }
   };
@@ -300,9 +398,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const getAuthToken = async (): Promise<string | null> => {
     try {
       // In mock auth mode, return null (API will bypass auth in dev mode)
-      const useMockAuth = process.env.NEXT_PUBLIC_USE_MOCK_AUTH === 'true';
-      const useCognito = process.env.NEXT_PUBLIC_USE_COGNITO === 'true';
-      
+      const useMockAuth = process.env.NEXT_PUBLIC_USE_MOCK_AUTH === "true";
+      const useCognito = process.env.NEXT_PUBLIC_USE_COGNITO === "true";
+
       if (useMockAuth && !useCognito) {
         return null;
       }
@@ -310,10 +408,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Get the current session from Cognito
       const session = await fetchAuthSession();
       const token = session.tokens?.idToken?.toString();
-      
+
       return token || null;
     } catch (error) {
-      console.error('Error fetching auth token:', error);
+      console.error("Error fetching auth token:", error);
       return null;
     }
   };
@@ -327,6 +425,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signup,
     logout,
     switchDealer,
+    updateDefaultDealer,
+    refreshUser,
     hasRole,
     confirmSignup,
     resetPassword,
@@ -334,17 +434,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     getAuthToken,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
