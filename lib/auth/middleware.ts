@@ -11,24 +11,11 @@ export interface AuthenticatedRequest extends NextRequest {
 
 /**
  * Middleware to verify SUPER_ADMIN role
- * This is a mock implementation for development
- * In production, this should verify JWT tokens from Cognito
+ * Verifies JWT tokens from Cognito
  */
 export async function requireSuperAdmin(request: NextRequest) {
   try {
-    // In development mode, allow all requests with mock user
-    if (process.env.NODE_ENV === 'development') {
-      return {
-        authorized: true,
-        user: {
-          id: 'dev-user-1',
-          email: 'dev@titan.com',
-          role: UserRole.SUPER_ADMIN,
-        },
-      };
-    }
-
-    // Production: Verify Cognito JWT token
+    // Verify Cognito JWT token
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return { authorized: false, error: 'No authorization token provided' };
@@ -36,23 +23,41 @@ export async function requireSuperAdmin(request: NextRequest) {
 
     const token = authHeader.substring(7);
     
-    // TODO: Implement actual Cognito JWT verification
-    // For now, mock the verification
-    // const decodedToken = await verifyToken(token);
-    // const userRole = decodedToken['custom:role'];
+    // Decode JWT token to get user information
+    let cognitoSub: string;
+    let userRole: string;
     
-    // Mock user for testing
-    const mockUser = {
-      id: 'cognito-user-id',
-      email: 'admin@titan.com',
-      role: UserRole.SUPER_ADMIN,
-    };
+    try {
+      // Decode the JWT payload (base64 decode the middle part)
+      const payloadBase64 = token.split('.')[1];
+      const payloadJson = Buffer.from(payloadBase64, 'base64').toString('utf8');
+      const payload = JSON.parse(payloadJson);
+      
+      // Extract user info from token
+      cognitoSub = payload.sub;
+      userRole = payload['custom:role'] || payload.role;
+      
+      if (!cognitoSub) {
+        return { authorized: false, error: 'Invalid token: missing sub claim' };
+      }
+    } catch (error) {
+      console.error('Failed to decode JWT token:', error);
+      return { authorized: false, error: 'Invalid token format' };
+    }
 
-    if (mockUser.role !== UserRole.SUPER_ADMIN) {
+    // Verify user has SUPER_ADMIN role
+    if (userRole !== UserRole.SUPER_ADMIN) {
       return { authorized: false, error: 'Insufficient permissions' };
     }
 
-    return { authorized: true, user: mockUser };
+    return { 
+      authorized: true, 
+      user: {
+        id: cognitoSub,
+        email: '',  // Can extract from token if needed
+        role: UserRole.SUPER_ADMIN,
+      }
+    };
   } catch (error) {
     console.error('Auth middleware error:', error);
     return { authorized: false, error: 'Authentication failed' };

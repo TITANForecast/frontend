@@ -24,35 +24,6 @@ function decodeJWT(token: string) {
 }
 
 async function getUserFromToken(request: NextRequest) {
-  // Check if we're in development mode with mock auth
-  const useMockAuth = process.env.NEXT_PUBLIC_USE_MOCK_AUTH === "true";
-  const useCognito = process.env.NEXT_PUBLIC_USE_COGNITO === "true";
-
-  if (useMockAuth && !useCognito) {
-    // Return mock data for development
-    const mockUser = {
-      id: "dev-user-1",
-      email: "dev@titan.com",
-      name: "Dev User",
-      role: "SUPER_ADMIN",
-      defaultDealerId: "dealer-1",
-      isActive: true,
-      dealers: [
-        {
-          id: "dealer-1",
-          name: "Titan Motors",
-          address: "123 Main St",
-          phone: "555-0123",
-          city: "Anytown",
-          state: "CA",
-          zip: "12345",
-          isActive: true,
-        },
-      ],
-    };
-    return mockUser;
-  }
-
   // Get authorization header
   const authHeader = request.headers.get("authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) {

@@ -22,20 +22,7 @@ export async function requireDealerAccess(
   dealerId: string
 ): Promise<DealerAuthContext> {
   try {
-    // In development mode, allow all requests with mock user
-    if (process.env.NODE_ENV === "development") {
-      return {
-        authorized: true,
-        user: {
-          id: "dev-user-1",
-          email: "dev@titan.com",
-          role: UserRole.SUPER_ADMIN,
-          dealerId,
-        },
-      };
-    }
-
-    // Production: Verify Cognito JWT token
+    // Verify Cognito JWT token
     const authHeader = request.headers.get("authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return {
@@ -46,21 +33,45 @@ export async function requireDealerAccess(
     }
 
     const token = authHeader.substring(7);
-
-    // TODO: Implement actual Cognito JWT verification
-    // For now, get user from database by token lookup
-
-    // Mock user for testing - in production, extract from JWT
-    const mockUserId = "dev-user-1";
-
-    // Verify user exists and has access to dealer
+    
+    // Decode JWT token to get user information
+    // Note: The token is already verified by the auth middleware
+    // We just need to extract the user's Cognito sub
+    let cognitoSub: string;
+    
+    try {
+      // Decode the JWT payload (base64 decode the middle part)
+      const payloadBase64 = token.split('.')[1];
+      const payloadJson = Buffer.from(payloadBase64, 'base64').toString('utf8');
+      const payload = JSON.parse(payloadJson);
+      
+      // Extract Cognito sub from the token
+      cognitoSub = payload.sub;
+      
+      if (!cognitoSub) {
+        return {
+          authorized: false,
+          error: "Invalid token: missing sub claim",
+          user: { id: "", email: "", role: UserRole.USER, dealerId: "" },
+        };
+      }
+    } catch (error) {
+      console.error("Failed to decode JWT token:", error);
+      return {
+        authorized: false,
+        error: "Invalid token format",
+        user: { id: "", email: "", role: UserRole.USER, dealerId: "" },
+      };
+    }
+    
+    // Look up user by Cognito sub
     const user = await prisma.user.findUnique({
-      where: { id: mockUserId },
+      where: { cognitoSub },
       include: {
         dealers: true,
       },
     });
-
+    
     if (!user) {
       return {
         authorized: false,

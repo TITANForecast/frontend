@@ -69,50 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkAuthStatus = async () => {
     try {
-      // Check if we should use mock authentication
-      const useMockAuth = process.env.NEXT_PUBLIC_USE_MOCK_AUTH === "true";
-      const useCognito = process.env.NEXT_PUBLIC_USE_COGNITO === "true";
-
-      console.log(
-        "Auth check - useMockAuth:",
-        useMockAuth,
-        "useCognito:",
-        useCognito
-      );
-
-      // Use mock authentication if explicitly enabled
-      if (useMockAuth && !useCognito) {
-        const mockUser: UserProfile = {
-          id: "dev-user-1",
-          email: "dev@titan.com",
-          name: "Dev User",
-          role: UserRole.SUPER_ADMIN,
-          defaultDealerId: "dealer-1",
-          isActive: true,
-          dealers: [
-            {
-              id: "dealer-1",
-              name: "Titan Motors",
-              address: "123 Main St",
-              phone: "555-0123",
-              city: "Anytown",
-              state: "CA",
-              zip: "12345",
-              isActive: true,
-            },
-          ],
-        };
-
-        setUser(mockUser);
-        // Set current dealer to the default one
-        const defaultDealer =
-          mockUser.dealers.find((d) => d.id === mockUser.defaultDealerId) ||
-          mockUser.dealers[0];
-        setCurrentDealer(defaultDealer);
-        setIsAuthenticated(true);
-        setIsLoading(false);
-        return;
-      }
+      console.log("Checking auth status with Cognito...");
 
       // Production Cognito authentication
       console.log("Attempting Cognito authentication...");
@@ -397,14 +354,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const getAuthToken = async (): Promise<string | null> => {
     try {
-      // In mock auth mode, return null (API will bypass auth in dev mode)
-      const useMockAuth = process.env.NEXT_PUBLIC_USE_MOCK_AUTH === "true";
-      const useCognito = process.env.NEXT_PUBLIC_USE_COGNITO === "true";
-
-      if (useMockAuth && !useCognito) {
-        return null;
-      }
-
       // Get the current session from Cognito
       const session = await fetchAuthSession();
       const token = session.tokens?.idToken?.toString();
