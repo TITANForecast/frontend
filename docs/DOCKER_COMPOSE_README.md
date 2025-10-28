@@ -25,10 +25,10 @@ This Docker Compose setup simulates the core TITAN Forecast Platform infrastruct
 cd /Users/jaylong/Web/Titan/frontend
 
 # Start all services
-docker-compose -f docker-compose.dev.yml up -d
+docker compose up -d
 
 # View logs
-docker-compose -f docker-compose.dev.yml logs -f
+docker compose logs -f
 ```
 
 ### 2. Access the Applications
@@ -181,9 +181,9 @@ REDIS_PORT=6379
 ```bash
 # Edit infrastructure/init-db.sql
 # Recreate database
-docker-compose -f docker-compose.dev.yml down
+docker compose down
 docker volume rm frontend_postgres_data
-docker-compose -f docker-compose.dev.yml up -d
+docker compose up -d
 ```
 
 **Data Seeding:**
@@ -196,26 +196,26 @@ docker exec -it titan-postgres-dev psql -U titan_admin -d titan_dev
 
 **Restart Specific Service:**
 ```bash
-docker-compose -f docker-compose.dev.yml restart frontend
-docker-compose -f docker-compose.dev.yml restart postgres
-docker-compose -f docker-compose.dev.yml restart redis
+docker compose restart frontend
+docker compose restart postgres
+docker compose restart redis
 ```
 
 **View Service Logs:**
 ```bash
-docker-compose -f docker-compose.dev.yml logs frontend
-docker-compose -f docker-compose.dev.yml logs postgres
-docker-compose -f docker-compose.dev.yml logs redis
+docker compose logs frontend
+docker compose logs postgres
+docker compose logs redis
 ```
 
 **Stop All Services:**
 ```bash
-docker-compose -f docker-compose.dev.yml down
+docker compose down
 ```
 
 **Stop and Remove Volumes:**
 ```bash
-docker-compose -f docker-compose.dev.yml down -v
+docker compose down -v
 ```
 
 ## Troubleshooting
@@ -231,16 +231,16 @@ lsof -i :6379
 lsof -i :5050
 lsof -i :8001
 
-# Stop conflicting services or change ports in docker-compose.dev.yml
+# Stop conflicting services or change ports in docker-compose.yml
 ```
 
 **2. Database Connection Issues:**
 ```bash
 # Check database health
-docker-compose -f docker-compose.dev.yml ps postgres
+docker compose ps postgres
 
 # View database logs
-docker-compose -f docker-compose.dev.yml logs postgres
+docker compose logs postgres
 
 # Test connection
 docker exec -it titan-postgres-dev pg_isready -U titan_admin
@@ -249,27 +249,27 @@ docker exec -it titan-postgres-dev pg_isready -U titan_admin
 **3. Service Startup Issues:**
 ```bash
 # Check all service status
-docker-compose -f docker-compose.dev.yml ps
+docker compose ps
 
 # View all logs
-docker-compose -f docker-compose.dev.yml logs
+docker compose logs
 
 # Restart specific service
-docker-compose -f docker-compose.dev.yml restart <service-name>
+docker compose restart <service-name>
 ```
 
 **4. Volume Issues:**
 ```bash
 # Remove all volumes and start fresh
-docker-compose -f docker-compose.dev.yml down -v
-docker-compose -f docker-compose.dev.yml up -d
+docker compose down -v
+docker compose up -d
 ```
 
 ### Performance Optimization
 
 **1. Resource Limits:**
 ```yaml
-# Add to services in docker-compose.dev.yml
+# Add to services in docker-compose.yml
 deploy:
   resources:
     limits:
@@ -309,7 +309,7 @@ This development environment differs from production in several ways:
 ## Support
 
 For issues or questions:
-1. Check the logs: `docker-compose -f docker-compose.dev.yml logs`
-2. Verify service health: `docker-compose -f docker-compose.dev.yml ps`
+1. Check the logs: `docker compose logs`
+2. Verify service health: `docker compose ps`
 3. Test database connectivity: `docker exec -it titan-postgres-dev psql -U titan_admin -d titan_dev`
 4. Review this documentation for common solutions
