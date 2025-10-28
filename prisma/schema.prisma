@@ -28,22 +28,26 @@ model TestConnection {
 // Admin Panel Models
 
 model Dealer {
-  id           String            @id @default(cuid())
-  name         String
-  address      String?
-  city         String?
-  state        String?
-  zip          String?
-  contactEmail String?
-  contactPhone String?
-  isActive     Boolean           @default(true)
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  id                  String               @id @default(cuid())
+  name                String
+  address             String?
+  city                String?
+  state               String?
+  zip                 String?
+  contactEmail        String?
+  contactPhone        String?
+  isActive            Boolean              @default(true)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
   
   // Relations
-  apiConfig    DealerApiConfig?
-  users        UserDealer[]
-  defaultUsers User[]            @relation("DefaultDealer")
+  apiConfig           DealerApiConfig?
+  users               UserDealer[]
+  defaultUsers        User[]               @relation("DefaultDealer")
+  importLogs          ImportLog[]
+  serviceCategories   ServiceCategory[]
+  serviceSubcategories ServiceSubcategory[]
+  services            Service[]
 
   @@map("dealers")
 }
@@ -51,13 +55,10 @@ model Dealer {
 model DealerApiConfig {
   id                 String    @id @default(cuid())
   dealerId           String    @unique
-  dealerShortCode    String
+  dataSource         String    @default("Certify-Staging") // Data Source: "Certify-Staging" or "DealerVault-Production"
+  rooftopId          String
   programId          String
-  subscriptionKey    String    // Encrypted in production
-  xUserEmail         String
-  deliveryEndpoint   String    @default("https://authenticom.azure-api.net/dv-delivery/v1/delivery")
-  jwtTokenUrl        String    @default("https://authenticom.azure-api.net/dv-delivery/v1/token")
-  fileTypeCode       String    @default("SV")
+  fileTypeCodes      String[]  @default(["SV"])
   compareDateDefault Int       @default(1)
   lastSuccess        DateTime?
   lastError          String?
@@ -88,6 +89,8 @@ model User {
   // Relations
   defaultDealer    Dealer       @relation("DefaultDealer", fields: [defaultDealerId], references: [id])
   dealers          UserDealer[]
+  servicesCreated  Service[]    @relation("ServiceCreatedBy")
+  servicesUpdated  Service[]    @relation("ServiceUpdatedBy")
 
   @@index([email])
   @@index([cognitoSub])
@@ -105,4 +108,96 @@ model UserDealer {
 
   @@id([userId, dealerId])
   @@map("user_dealers")
+}
+
+model ImportLog {
+  id                BigInt    @id @default(autoincrement())
+  dealerId          String    @map("dealer_id")
+  importType        String    @map("import_type")
+  fileType          String?   @map("file_type")
+  requestId         String?   @map("request_id")
+  status            String
+  totalRecords      Int?      @map("total_records")
+  processedRecords  Int?      @map("processed_records")
+  failedRecords     Int?      @map("failed_records")
+  newRecords        Int?      @map("new_records")
+  updatedRecords    Int?      @map("updated_records")
+  errorMessage      String?   @map("error_message") @db.Text
+  importStartTime   DateTime? @map("import_start_time") @db.Timestamp()
+  importEndTime     DateTime? @map("import_end_time") @db.Timestamp()
+  elapsedSeconds    Decimal?  @map("elapsed_seconds") @db.Decimal(8, 2)
+  createdAt         DateTime? @map("created_at") @db.Timestamp()
+  
+  // Relations
+  dealer            Dealer    @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+
+  @@index([dealerId])
+  @@index([fileType])
+  @@index([status])
+  @@index([createdAt])
+  @@map("import_log")
+}
+
+// Dealer Settings Models
+
+model ServiceCategory {
+  id             BigInt              @id @default(autoincrement())
+  dealerId       String              @map("dealer_id")
+  name           String              @db.VarChar(100)
+  isActive       Boolean             @default(true) @map("is_active")
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
+  
+  // Relations
+  dealer         Dealer              @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  subcategories  ServiceSubcategory[]
+  services       Service[]
+
+  @@unique([dealerId, name], map: "unique_dealer_category_name")
+  @@index([dealerId, isActive])
+  @@map("service_categories")
+}
+
+model ServiceSubcategory {
+  id          BigInt          @id @default(autoincrement())
+  dealerId    String          @map("dealer_id")
+  categoryId  BigInt          @map("category_id")
+  name        String          @db.VarChar(100)
+  isActive    Boolean         @default(true) @map("is_active")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+  
+  // Relations
+  dealer      Dealer          @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  category    ServiceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  services    Service[]
+
+  @@unique([dealerId, categoryId, name], map: "unique_dealer_category_subcategory_name")
+  @@index([dealerId, categoryId, isActive])
+  @@map("service_subcategories")
+}
+
+model Service {
+  id             BigInt              @id @default(autoincrement())
+  dealerId       String              @map("dealer_id")
+  name           String              @db.VarChar(100)
+  categoryId     BigInt              @map("category_id")
+  subcategoryId  BigInt?             @map("subcategory_id")
+  isActive       Boolean             @default(true) @map("is_active")
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
+  createdBy      String?             @map("created_by")
+  updatedBy      String?             @map("updated_by")
+  
+  // Relations
+  dealer         Dealer              @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  category       ServiceCategory     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  subcategory    ServiceSubcategory? @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
+  createdByUser  User?               @relation("ServiceCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  updatedByUser  User?               @relation("ServiceUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull)
+
+  @@unique([dealerId, name, categoryId, subcategoryId], map: "unique_dealer_service_name_category_subcategory")
+  @@index([dealerId, isActive])
+  @@index([dealerId, categoryId])
+  @@map("services")
 }

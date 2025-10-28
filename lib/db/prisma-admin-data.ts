@@ -2,9 +2,15 @@
  * Prisma database service for admin operations
  */
 
-import { PrismaClient } from '@/generated/prisma';
-import { DealerExtended, DealerApiConfig, UserExtended, SyncStatus, AdminStats } from '@/lib/types/admin';
-import { UserRole } from '@/lib/types/auth';
+import { PrismaClient } from "@/generated/prisma";
+import {
+  DealerExtended,
+  DealerApiConfig,
+  UserExtended,
+  SyncStatus,
+  AdminStats,
+} from "@/lib/types/admin";
+import { UserRole } from "@/lib/types/auth";
 
 // Initialize Prisma Client
 const prisma = new PrismaClient();
@@ -23,30 +29,30 @@ const convertToExtendedDealer = (dealer: any): DealerExtended => {
     isActive: dealer.isActive,
     createdAt: dealer.createdAt,
     updatedAt: dealer.updatedAt,
-    apiConfig: dealer.apiConfig ? {
-      id: dealer.apiConfig.id,
-      dealerId: dealer.apiConfig.dealerId,
-      dealerShortCode: dealer.apiConfig.dealerShortCode,
-      programId: dealer.apiConfig.programId,
-      subscriptionKey: dealer.apiConfig.subscriptionKey,
-      xUserEmail: dealer.apiConfig.xUserEmail,
-      deliveryEndpoint: dealer.apiConfig.deliveryEndpoint,
-      jwtTokenUrl: dealer.apiConfig.jwtTokenUrl,
-      fileTypeCode: dealer.apiConfig.fileTypeCode,
-      compareDateDefault: dealer.apiConfig.compareDateDefault,
-      lastSuccess: dealer.apiConfig.lastSuccess,
-      lastError: dealer.apiConfig.lastError,
-      isActive: dealer.apiConfig.isActive,
-      createdAt: dealer.apiConfig.createdAt,
-      updatedAt: dealer.apiConfig.updatedAt,
-    } : undefined,
+    apiConfig: dealer.apiConfig
+      ? {
+          id: dealer.apiConfig.id,
+          dealerId: dealer.apiConfig.dealerId,
+          dataSource: dealer.apiConfig.dataSource,
+          rooftopId: dealer.apiConfig.rooftopId,
+          programId: dealer.apiConfig.programId,
+          fileTypeCodes: dealer.apiConfig.fileTypeCodes,
+          compareDateDefault: dealer.apiConfig.compareDateDefault,
+          lastSuccess: dealer.apiConfig.lastSuccess,
+          lastError: dealer.apiConfig.lastError,
+          isActive: dealer.apiConfig.isActive,
+          createdAt: dealer.apiConfig.createdAt,
+          updatedAt: dealer.apiConfig.updatedAt,
+        }
+      : undefined,
   };
 };
 
 // Helper to convert Prisma User to UserExtended
 const convertToExtendedUser = (user: any): UserExtended => {
-  const dealers = user.dealers?.map((ud: any) => convertToExtendedDealer(ud.dealer)) || [];
-  
+  const dealers =
+    user.dealers?.map((ud: any) => convertToExtendedDealer(ud.dealer)) || [];
+
   return {
     id: user.id,
     email: user.email,
@@ -69,7 +75,7 @@ export const prismaDb = {
           apiConfig: true,
         },
         orderBy: {
-          name: 'asc',
+          name: "asc",
         },
       });
       return dealers.map(convertToExtendedDealer);
@@ -85,7 +91,9 @@ export const prismaDb = {
       return dealer ? convertToExtendedDealer(dealer) : null;
     },
 
-    create: async (data: Omit<DealerExtended, 'id' | 'createdAt' | 'updatedAt'>): Promise<DealerExtended> => {
+    create: async (
+      data: Omit<DealerExtended, "id" | "createdAt" | "updatedAt">
+    ): Promise<DealerExtended> => {
       const dealer = await prisma.dealer.create({
         data: {
           name: data.name,
@@ -104,7 +112,10 @@ export const prismaDb = {
       return convertToExtendedDealer(dealer);
     },
 
-    update: async (id: string, data: Partial<DealerExtended>): Promise<DealerExtended | null> => {
+    update: async (
+      id: string,
+      data: Partial<DealerExtended>
+    ): Promise<DealerExtended | null> => {
       try {
         const dealer = await prisma.dealer.update({
           where: { id },
@@ -141,53 +152,74 @@ export const prismaDb = {
   },
 
   apiConfigs: {
-    findByDealerId: async (dealerId: string): Promise<DealerApiConfig | null> => {
+    findByDealerId: async (
+      dealerId: string
+    ): Promise<DealerApiConfig | null> => {
       const config = await prisma.dealerApiConfig.findUnique({
         where: { dealerId },
       });
       return config as DealerApiConfig | null;
     },
 
-    create: async (data: Omit<DealerApiConfig, 'id' | 'createdAt' | 'updatedAt'>): Promise<DealerApiConfig> => {
-      const config = await prisma.dealerApiConfig.create({
-        data: {
-          dealerId: data.dealerId,
-          dealerShortCode: data.dealerShortCode,
-          programId: data.programId,
-          subscriptionKey: data.subscriptionKey,
-          xUserEmail: data.xUserEmail,
-          deliveryEndpoint: data.deliveryEndpoint,
-          jwtTokenUrl: data.jwtTokenUrl,
-          fileTypeCode: data.fileTypeCode,
-          compareDateDefault: data.compareDateDefault,
-          lastSuccess: data.lastSuccess,
-          lastError: data.lastError,
-          isActive: data.isActive,
-        },
-      });
-      return config as DealerApiConfig;
-    },
-
-    update: async (id: string, data: Partial<DealerApiConfig>): Promise<DealerApiConfig | null> => {
+    create: async (
+      data: Omit<DealerApiConfig, "id" | "createdAt" | "updatedAt">
+    ): Promise<DealerApiConfig> => {
       try {
-        const config = await prisma.dealerApiConfig.update({
-          where: { id },
+        console.log("Creating API config for dealer:", data.dealerId);
+        const config = await prisma.dealerApiConfig.create({
           data: {
-            dealerShortCode: data.dealerShortCode,
+            dealerId: data.dealerId,
+            dataSource: data.dataSource,
+            rooftopId: data.rooftopId,
             programId: data.programId,
-            subscriptionKey: data.subscriptionKey,
-            xUserEmail: data.xUserEmail,
-            deliveryEndpoint: data.deliveryEndpoint,
-            jwtTokenUrl: data.jwtTokenUrl,
-            fileTypeCode: data.fileTypeCode,
+            fileTypeCodes: data.fileTypeCodes,
             compareDateDefault: data.compareDateDefault,
             lastSuccess: data.lastSuccess,
             lastError: data.lastError,
             isActive: data.isActive,
           },
         });
+        console.log("API config created successfully:", config.id);
         return config as DealerApiConfig;
-      } catch (error) {
+      } catch (error: any) {
+        console.error("Error in prismaDb.apiConfigs.create:", {
+          dealerId: data.dealerId,
+          errorCode: error.code,
+          errorMessage: error.message,
+          errorMeta: error.meta,
+        });
+        throw error;
+      }
+    },
+
+    update: async (
+      id: string,
+      data: Partial<DealerApiConfig>
+    ): Promise<DealerApiConfig | null> => {
+      try {
+        console.log("Updating API config:", id);
+        const config = await prisma.dealerApiConfig.update({
+          where: { id },
+          data: {
+            dataSource: data.dataSource,
+            rooftopId: data.rooftopId,
+            programId: data.programId,
+            fileTypeCodes: data.fileTypeCodes,
+            compareDateDefault: data.compareDateDefault,
+            lastSuccess: data.lastSuccess,
+            lastError: data.lastError,
+            isActive: data.isActive,
+          },
+        });
+        console.log("API config updated successfully:", config.id);
+        return config as DealerApiConfig;
+      } catch (error: any) {
+        console.error("Error in prismaDb.apiConfigs.update:", {
+          configId: id,
+          errorCode: error.code,
+          errorMessage: error.message,
+          errorMeta: error.meta,
+        });
         return null;
       }
     },
@@ -219,7 +251,7 @@ export const prismaDb = {
           },
         },
         orderBy: {
-          name: 'asc',
+          name: "asc",
         },
       });
       return users.map(convertToExtendedUser);
@@ -243,7 +275,9 @@ export const prismaDb = {
       return user ? convertToExtendedUser(user) : null;
     },
 
-    create: async (data: Omit<UserExtended, 'id' | 'createdAt' | 'updatedAt' | 'dealers'>): Promise<UserExtended> => {
+    create: async (
+      data: Omit<UserExtended, "id" | "createdAt" | "updatedAt" | "dealers">
+    ): Promise<UserExtended> => {
       const user = await prisma.user.create({
         data: {
           email: data.email,
@@ -267,7 +301,10 @@ export const prismaDb = {
       return convertToExtendedUser(user);
     },
 
-    update: async (id: string, data: Partial<UserExtended>): Promise<UserExtended | null> => {
+    update: async (
+      id: string,
+      data: Partial<UserExtended>
+    ): Promise<UserExtended | null> => {
       try {
         const user = await prisma.user.update({
           where: { id },
@@ -319,11 +356,14 @@ export const prismaDb = {
         });
       } catch (error) {
         // Ignore duplicate key errors
-        console.error('Error adding user dealer:', error);
+        console.error("Error adding user dealer:", error);
       }
     },
 
-    removeUserDealer: async (userId: string, dealerId: string): Promise<void> => {
+    removeUserDealer: async (
+      userId: string,
+      dealerId: string
+    ): Promise<void> => {
       try {
         await prisma.userDealer.delete({
           where: {
@@ -334,20 +374,23 @@ export const prismaDb = {
           },
         });
       } catch (error) {
-        console.error('Error removing user dealer:', error);
+        console.error("Error removing user dealer:", error);
       }
     },
 
-    setUserDealers: async (userId: string, dealerIds: string[]): Promise<void> => {
+    setUserDealers: async (
+      userId: string,
+      dealerIds: string[]
+    ): Promise<void> => {
       // Remove all existing associations
       await prisma.userDealer.deleteMany({
         where: { userId },
       });
-      
+
       // Add new associations
       if (dealerIds.length > 0) {
         await prisma.userDealer.createMany({
-          data: dealerIds.map(dealerId => ({
+          data: dealerIds.map((dealerId) => ({
             userId,
             dealerId,
           })),
@@ -360,13 +403,19 @@ export const prismaDb = {
         where: { userId },
         select: { dealerId: true },
       });
-      return userDealers.map(ud => ud.dealerId);
+      return userDealers.map((ud) => ud.dealerId);
     },
   },
 
   stats: {
     getAdminStats: async (): Promise<AdminStats> => {
-      const [totalDealers, activeDealersCount, totalUsers, activeUsersCount, apiConfigs] = await Promise.all([
+      const [
+        totalDealers,
+        activeDealersCount,
+        totalUsers,
+        activeUsersCount,
+        apiConfigs,
+      ] = await Promise.all([
         prisma.dealer.count(),
         prisma.dealer.count({ where: { isActive: true } }),
         prisma.user.count(),
@@ -380,17 +429,20 @@ export const prismaDb = {
       ]);
 
       const lastSyncs = apiConfigs
-        .map(c => c.lastSuccess)
-        .filter(d => d != null) as Date[];
-      
-      const syncErrors = apiConfigs.filter(c => c.lastError != null).length;
+        .map((c) => c.lastSuccess)
+        .filter((d) => d != null) as Date[];
+
+      const syncErrors = apiConfigs.filter((c) => c.lastError != null).length;
 
       return {
         totalDealers,
         activeDealers: activeDealersCount,
         totalUsers,
         activeUsers: activeUsersCount,
-        lastSyncTimestamp: lastSyncs.length > 0 ? new Date(Math.max(...lastSyncs.map(d => d.getTime()))) : null,
+        lastSyncTimestamp:
+          lastSyncs.length > 0
+            ? new Date(Math.max(...lastSyncs.map((d) => d.getTime())))
+            : null,
         syncErrors,
       };
     },
@@ -401,21 +453,21 @@ export const prismaDb = {
           apiConfig: true,
         },
         orderBy: {
-          name: 'asc',
+          name: "asc",
         },
       });
 
-      return dealers.map(dealer => {
+      return dealers.map((dealer) => {
         const config = dealer.apiConfig;
-        let status: SyncStatus['status'] = 'never_run';
+        let status: SyncStatus["status"] = "never_run";
 
         if (config) {
           if (config.lastError) {
-            status = 'error';
+            status = "error";
           } else if (config.lastSuccess) {
-            status = 'success';
+            status = "success";
           } else {
-            status = 'pending';
+            status = "pending";
           }
         }
 
@@ -435,4 +487,3 @@ export const prismaDb = {
 
 // Export Prisma Client for direct access when needed
 export { prisma };
-

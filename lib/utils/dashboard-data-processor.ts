@@ -155,30 +155,37 @@ function getMonthName(date: Date): string {
 
 // Main data processor
 export function processDashboardData(
-  dmsData: DMSData, 
+  dmsData: DMSData,
   kpiResults?: KPIResults | null
 ): ProcessedDashboardData {
   const records = dmsData.records || [];
 
   // Initialize month buckets for 12 months
-  const monthlyData = new Map<string, {
-    customerPayCount: number;
-    warrantyCount: number;
-    internalCount: number;
-    customerPayGP: number;
-    warrantyGP: number;
-    internalGP: number;
-    totalLaborHours: number;
-    totalLaborSale: number;
-  }>();
+  const monthlyData = new Map<
+    string,
+    {
+      customerPayCount: number;
+      warrantyCount: number;
+      internalCount: number;
+      customerPayGP: number;
+      warrantyGP: number;
+      internalGP: number;
+      totalLaborHours: number;
+      totalLaborSale: number;
+    }
+  >();
 
   // Process each record
   records.forEach((record) => {
+    // Use Closed RO Date if available, otherwise fall back to Open Date
     const closedDate = parseDate(record["Closed RO Date"]);
-    if (!closedDate) return;
+    const openDate = parseDate(record["Open Date"]);
+    const dateToUse = closedDate || openDate;
+
+    if (!dateToUse) return;
 
     // Group by day instead of month for more granular data
-    const dayKey = getDayLabel(closedDate);
+    const dayKey = getDayLabel(dateToUse);
 
     if (!monthlyData.has(dayKey)) {
       monthlyData.set(dayKey, {
@@ -200,7 +207,8 @@ export function processDashboardData(
     const customerCost = parseCurrency(record["Customer Total Cost"]);
     if (customerSale > 0) {
       monthData.customerPayCount++;
-      monthData.customerPayGP += ((customerSale - customerCost) / customerSale) * 100;
+      monthData.customerPayGP +=
+        ((customerSale - customerCost) / customerSale) * 100;
     }
 
     // Warranty
@@ -208,7 +216,8 @@ export function processDashboardData(
     const warrantyCost = parseCurrency(record["Warranty Total Cost"]);
     if (warrantySale > 0) {
       monthData.warrantyCount++;
-      monthData.warrantyGP += ((warrantySale - warrantyCost) / warrantySale) * 100;
+      monthData.warrantyGP +=
+        ((warrantySale - warrantyCost) / warrantySale) * 100;
     }
 
     // Internal
@@ -216,13 +225,15 @@ export function processDashboardData(
     const internalCost = parseCurrency(record["Internal Total Cost"]);
     if (internalSale > 0) {
       monthData.internalCount++;
-      monthData.internalGP += ((internalSale - internalCost) / internalSale) * 100;
+      monthData.internalGP +=
+        ((internalSale - internalCost) / internalSale) * 100;
     }
 
     // Labor metrics
-    const laborSale = parseCurrency(record["Customer Labor Sale"]) + 
-                     parseCurrency(record["Warranty Labor Sale"]) + 
-                     parseCurrency(record["Internal Labor Sale"]);
+    const laborSale =
+      parseCurrency(record["Customer Labor Sale"]) +
+      parseCurrency(record["Warranty Labor Sale"]) +
+      parseCurrency(record["Internal Labor Sale"]);
     monthData.totalLaborSale += laborSale;
   });
 
@@ -241,18 +252,27 @@ export function processDashboardData(
   } else {
     // Fallback: Calculate from raw data
     const totalRecords = records.length;
-    const totalLaborCost = records.reduce((sum, r) => 
-      sum + parseCurrency(r["Customer Labor Cost"]) + 
-      parseCurrency(r["Warranty Labor Cost"]) + 
-      parseCurrency(r["Internal Labor Cost"]), 0);
-    const totalLaborSale = records.reduce((sum, r) => 
-      sum + parseCurrency(r["Customer Labor Sale"]) + 
-      parseCurrency(r["Warranty Labor Sale"]) + 
-      parseCurrency(r["Internal Labor Sale"]), 0);
+    const totalLaborCost = records.reduce(
+      (sum, r) =>
+        sum +
+        parseCurrency(r["Customer Labor Cost"]) +
+        parseCurrency(r["Warranty Labor Cost"]) +
+        parseCurrency(r["Internal Labor Cost"]),
+      0
+    );
+    const totalLaborSale = records.reduce(
+      (sum, r) =>
+        sum +
+        parseCurrency(r["Customer Labor Sale"]) +
+        parseCurrency(r["Warranty Labor Sale"]) +
+        parseCurrency(r["Internal Labor Sale"]),
+      0
+    );
 
-    laborGPPercent = totalLaborSale > 0 
-      ? ((totalLaborSale - totalLaborCost) / totalLaborSale) * 100 
-      : 0;
+    laborGPPercent =
+      totalLaborSale > 0
+        ? ((totalLaborSale - totalLaborCost) / totalLaborSale) * 100
+        : 0;
     laborPerRO = totalRecords > 0 ? totalLaborSale / totalRecords : 0;
     hoursPerRO = 1.29; // Placeholder - would need actual hours data
     elrTotal = 177.5; // Placeholder - would need actual ELR calculation
@@ -268,15 +288,17 @@ export function processDashboardData(
 
   const grossProfitData = {
     months: sortedDays,
-    customerPay: sortedDays.map(d => {
+    customerPay: sortedDays.map((d) => {
       const data = monthlyData.get(d)!;
-      return data.customerPayCount > 0 ? data.customerPayGP / data.customerPayCount : 0;
+      return data.customerPayCount > 0
+        ? data.customerPayGP / data.customerPayCount
+        : 0;
     }),
-    warranty: sortedDays.map(d => {
+    warranty: sortedDays.map((d) => {
       const data = monthlyData.get(d)!;
       return data.warrantyCount > 0 ? data.warrantyGP / data.warrantyCount : 0;
     }),
-    internal: sortedDays.map(d => {
+    internal: sortedDays.map((d) => {
       const data = monthlyData.get(d)!;
       return data.internalCount > 0 ? data.internalGP / data.internalCount : 0;
     }),
@@ -284,28 +306,34 @@ export function processDashboardData(
 
   const roCountData = {
     months: sortedDays,
-    customerPay: sortedDays.map(d => monthlyData.get(d)!.customerPayCount),
-    warranty: sortedDays.map(d => monthlyData.get(d)!.warrantyCount),
-    internal: sortedDays.map(d => monthlyData.get(d)!.internalCount),
+    customerPay: sortedDays.map((d) => monthlyData.get(d)!.customerPayCount),
+    warranty: sortedDays.map((d) => monthlyData.get(d)!.warrantyCount),
+    internal: sortedDays.map((d) => monthlyData.get(d)!.internalCount),
   };
 
   // Aggregate technician data
-  const technicianMap = new Map<string, {
-    customerPay: number;
-    warranty: number;
-    internal: number;
-  }>();
+  const technicianMap = new Map<
+    string,
+    {
+      customerPay: number;
+      warranty: number;
+      internal: number;
+    }
+  >();
 
   records.forEach((record) => {
     const techName = record["Service Advisor Name"] || "Unknown";
     if (!technicianMap.has(techName)) {
       technicianMap.set(techName, { customerPay: 0, warranty: 0, internal: 0 });
     }
-    
+
     const tech = technicianMap.get(techName)!;
-    tech.customerPay += parseCurrency(record["Customer Labor Sale"]);
-    tech.warranty += parseCurrency(record["Warranty Labor Sale"]);
-    tech.internal += parseCurrency(record["Internal Labor Sale"]);
+    // Convert labor sales to hours by dividing by effective labor rate
+    const laborRate = elrTotal > 0 ? elrTotal : 100; // Fallback to $100/hr if ELR not available
+    tech.customerPay +=
+      parseCurrency(record["Customer Labor Sale"]) / laborRate;
+    tech.warranty += parseCurrency(record["Warranty Labor Sale"]) / laborRate;
+    tech.internal += parseCurrency(record["Internal Labor Sale"]) / laborRate;
   });
 
   // Get top 15 technicians by total production
@@ -325,7 +353,7 @@ export function processDashboardData(
     if (!advisorMap.has(advisorName)) {
       advisorMap.set(advisorName, { totalSale: 0, count: 0 });
     }
-    
+
     const advisor = advisorMap.get(advisorName)!;
     advisor.totalSale += parseCurrency(record["Customer Labor Sale"]);
     advisor.count++;
@@ -356,9 +384,9 @@ export function processDashboardData(
     },
     grossProfit: {
       months: grossProfitData.months,
-      customerPay: grossProfitData.customerPay.map(v => Number(v.toFixed(1))),
-      warranty: grossProfitData.warranty.map(v => Number(v.toFixed(1))),
-      internal: grossProfitData.internal.map(v => Number(v.toFixed(1))),
+      customerPay: grossProfitData.customerPay.map((v) => Number(v.toFixed(1))),
+      warranty: grossProfitData.warranty.map((v) => Number(v.toFixed(1))),
+      internal: grossProfitData.internal.map((v) => Number(v.toFixed(1))),
     },
     roCount: roCountData,
     warranty: {
@@ -369,15 +397,16 @@ export function processDashboardData(
     },
     technicians: {
       names: sortedTechs.map(([name]) => name),
-      customerPay: sortedTechs.map(([, data]) => Number((data.customerPay / 1000).toFixed(1))),
-      warranty: sortedTechs.map(([, data]) => Number((data.warranty / 1000).toFixed(1))),
-      internal: sortedTechs.map(([, data]) => Number((data.internal / 1000).toFixed(1))),
+      customerPay: sortedTechs.map(([, data]) =>
+        Number(data.customerPay.toFixed(1))
+      ),
+      warranty: sortedTechs.map(([, data]) => Number(data.warranty.toFixed(1))),
+      internal: sortedTechs.map(([, data]) => Number(data.internal.toFixed(1))),
     },
     advisors: {
-      names: sortedAdvisors.map(a => a.name),
-      elr: sortedAdvisors.map(a => Number(a.elr.toFixed(2))),
+      names: sortedAdvisors.map((a) => a.name),
+      elr: sortedAdvisors.map((a) => Number(a.elr.toFixed(2))),
     },
     opcodes: opcodeData,
   };
 }
-
