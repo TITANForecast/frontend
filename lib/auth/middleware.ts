@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { UserRole } from '@/lib/types/auth';
+import { prisma } from '@/lib/db/prisma-admin-data';
 
 export interface AuthenticatedRequest extends NextRequest {
   user?: {
@@ -11,7 +12,7 @@ export interface AuthenticatedRequest extends NextRequest {
 
 /**
  * Middleware to verify SUPER_ADMIN role
- * Verifies JWT tokens from Cognito
+ * Verifies JWT tokens from Cognito and looks up user role in database
  */
 export async function requireSuperAdmin(request: NextRequest) {
   try {
@@ -25,7 +26,6 @@ export async function requireSuperAdmin(request: NextRequest) {
     
     // Decode JWT token to get user information
     let cognitoSub: string;
-    let userRole: string;
     
     try {
       // Decode the JWT payload (base64 decode the middle part)
@@ -33,9 +33,8 @@ export async function requireSuperAdmin(request: NextRequest) {
       const payloadJson = Buffer.from(payloadBase64, 'base64').toString('utf8');
       const payload = JSON.parse(payloadJson);
       
-      // Extract user info from token
+      // Extract Cognito sub from token
       cognitoSub = payload.sub;
-      userRole = payload['custom:role'] || payload.role;
       
       if (!cognitoSub) {
         return { authorized: false, error: 'Invalid token: missing sub claim' };
@@ -45,17 +44,26 @@ export async function requireSuperAdmin(request: NextRequest) {
       return { authorized: false, error: 'Invalid token format' };
     }
 
+    // Look up user by Cognito sub in database
+    const user = await prisma.user.findUnique({
+      where: { cognitoSub },
+    });
+    
+    if (!user) {
+      return { authorized: false, error: 'User not found in database' };
+    }
+
     // Verify user has SUPER_ADMIN role
-    if (userRole !== UserRole.SUPER_ADMIN) {
+    if (user.role !== UserRole.SUPER_ADMIN) {
       return { authorized: false, error: 'Insufficient permissions' };
     }
 
     return { 
       authorized: true, 
       user: {
-        id: cognitoSub,
-        email: '',  // Can extract from token if needed
-        role: UserRole.SUPER_ADMIN,
+        id: user.id,
+        email: user.email,
+        role: user.role as UserRole,
       }
     };
   } catch (error) {
