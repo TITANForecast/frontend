@@ -19,6 +19,9 @@ export async function GET(request: NextRequest) {
     const warrantyEligible = searchParams.get("warrantyEligible"); // 'true', 'false', 'null'
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
+    const payTypes = searchParams.get("payTypes"); // Comma-separated: C, W, I
+    const eligibleMakesOnly = searchParams.get("eligibleMakesOnly"); // 'true'
+    const eligibleOpcodesOnly = searchParams.get("eligibleOpcodesOnly"); // 'true'
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = (page - 1) * limit;
@@ -73,6 +76,19 @@ export async function GET(request: NextRequest) {
       whereConditions.push(`sr.open_date <= '${endDate}'`);
     }
 
+    if (payTypes) {
+      const payTypeArray = payTypes.split(",").map((pt) => `'${pt.trim()}'`);
+      whereConditions.push(`o.sale_type IN (${payTypeArray.join(",")})`);
+    }
+
+    if (eligibleMakesOnly === "true") {
+      whereConditions.push(`m.warranty_eligible = true`);
+    }
+
+    if (eligibleOpcodesOnly === "true") {
+      whereConditions.push(`oc.warranty_eligible = true`);
+    }
+
     const whereClause =
       whereConditions.length > 0
         ? `WHERE ${whereConditions.join(" AND ")}`
@@ -89,9 +105,14 @@ export async function GET(request: NextRequest) {
         sc.name as service_category_name,
         ss.id as service_subcategory_id,
         ss.name as service_subcategory_name,
-        u.name as updated_by_user_name
+        u.name as updated_by_user_name,
+        v.make as vehicle_make,
+        o.sale_type as pay_type
       FROM operation o
-      LEFT JOIN service_record sr ON o.service_record_id = sr.id AND o.dealer_id = sr.dealer_id
+      LEFT JOIN service_record sr ON o.service_record_id = sr.id
+      LEFT JOIN vehicle v ON sr.vehicle_id = v.id
+      LEFT JOIN makes m ON v.make = m.make_name
+      LEFT JOIN opcodes oc ON o.operation_code = oc.opcode
       LEFT JOIN services s ON o.service_id = s.id AND o.dealer_id = s.dealer_id
       LEFT JOIN service_categories sc ON s.category_id = sc.id AND s.dealer_id = sc.dealer_id
       LEFT JOIN service_subcategories ss ON s.subcategory_id = ss.id AND s.dealer_id = ss.dealer_id
@@ -104,7 +125,10 @@ export async function GET(request: NextRequest) {
     const countQuery = `
       SELECT COUNT(*) as total
       FROM operation o
-      LEFT JOIN service_record sr ON o.service_record_id = sr.id AND o.dealer_id = sr.dealer_id
+      LEFT JOIN service_record sr ON o.service_record_id = sr.id
+      LEFT JOIN vehicle v ON sr.vehicle_id = v.id
+      LEFT JOIN makes m ON v.make = m.make_name
+      LEFT JOIN opcodes oc ON o.operation_code = oc.opcode
       ${whereClause}
     `;
 

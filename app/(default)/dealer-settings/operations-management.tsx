@@ -1,9 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth-provider-multitenancy";
 import { UserRole } from "@/lib/types/auth";
-import { Edit2, Check, X as XIcon } from "lucide-react";
+import {
+  Edit2,
+  Check,
+  X as XIcon,
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react";
 import OperationEditModal from "./operation-edit-modal";
 import MultiSelectDropdown from "@/components/multi-select-dropdown";
 
@@ -30,6 +36,9 @@ interface Operation {
   labor_hours: number;
   labor_cost: number;
   parts_cost: number;
+  // Extended fields
+  pay_type: string | null;
+  vehicle_make: string | null;
 }
 
 interface Service {
@@ -67,6 +76,10 @@ export default function OperationsManagement({
   const [warrantyFilter, setWarrantyFilter] = useState<string>("all");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
+  const [payTypeFilter, setPayTypeFilter] = useState<string[]>(["C"]); // Default to Customer Pay
+  const [eligibleMakesOnly, setEligibleMakesOnly] = useState<boolean>(false);
+  const [eligibleOpcodesOnly, setEligibleOpcodesOnly] =
+    useState<boolean>(false);
 
   // Selection
   const [selectedOperations, setSelectedOperations] = useState<string[]>([]);
@@ -74,6 +87,9 @@ export default function OperationsManagement({
     null
   );
   const [showBulkUpdate, setShowBulkUpdate] = useState(false);
+  const [expandedOperations, setExpandedOperations] = useState<Set<string>>(
+    new Set()
+  );
 
   const canWrite = hasRole([UserRole.SUPER_ADMIN, UserRole.MULTI_DEALER]);
 
@@ -86,6 +102,9 @@ export default function OperationsManagement({
     warrantyFilter,
     startDate,
     endDate,
+    payTypeFilter,
+    eligibleMakesOnly,
+    eligibleOpcodesOnly,
   ]);
 
   useEffect(() => {
@@ -135,7 +154,7 @@ export default function OperationsManagement({
       const params = new URLSearchParams({
         dealerId,
         page: currentPage.toString(),
-        limit: "50",
+        limit: "25",
       });
 
       if (serviceFilter.length > 0) {
@@ -152,6 +171,18 @@ export default function OperationsManagement({
 
       if (endDate) {
         params.append("endDate", endDate);
+      }
+
+      if (payTypeFilter.length > 0) {
+        params.append("payTypes", payTypeFilter.join(","));
+      }
+
+      if (eligibleMakesOnly) {
+        params.append("eligibleMakesOnly", "true");
+      }
+
+      if (eligibleOpcodesOnly) {
+        params.append("eligibleOpcodesOnly", "true");
       }
 
       const response = await fetch(
@@ -247,6 +278,16 @@ export default function OperationsManagement({
     );
   }
 
+  const handleToggleExpand = (operationId: string) => {
+    const newExpanded = new Set(expandedOperations);
+    if (newExpanded.has(operationId)) {
+      newExpanded.delete(operationId);
+    } else {
+      newExpanded.add(operationId);
+    }
+    setExpandedOperations(newExpanded);
+  };
+
   return (
     <div className="space-y-6">
       {/* Filters */}
@@ -273,6 +314,24 @@ export default function OperationsManagement({
           />
         </div>
 
+        {/* Pay Type Filter */}
+        <div>
+          <MultiSelectDropdown
+            label="Pay Type"
+            options={[
+              { value: "C", label: "Customer Pay" },
+              { value: "W", label: "Warranty" },
+              { value: "I", label: "Internal" },
+            ]}
+            value={payTypeFilter}
+            onChange={(selected) => {
+              setPayTypeFilter(selected);
+              setCurrentPage(1);
+            }}
+            placeholder="Select pay types..."
+          />
+        </div>
+
         {/* Warranty Eligible Filter */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -294,35 +353,69 @@ export default function OperationsManagement({
         </div>
 
         {/* Date Range */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Start Date
-          </label>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => {
-              setStartDate(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="form-input w-full"
-          />
-        </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            End Date
-          </label>
+        {/* Checkbox Filters */}
+        <div className="flex items-center gap-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Start Date
+            </label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="form-input w-full"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              End Date
+            </label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="form-input w-full"
+            />
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center justify-end gap-6">
+        <label className="flex items-center cursor-pointer">
           <input
-            type="date"
-            value={endDate}
+            type="checkbox"
+            checked={eligibleMakesOnly}
             onChange={(e) => {
-              setEndDate(e.target.value);
+              setEligibleMakesOnly(e.target.checked);
               setCurrentPage(1);
             }}
-            className="form-input w-full"
+            className="form-checkbox h-4 w-4 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 mr-2"
           />
-        </div>
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Eligible Makes Only
+          </span>
+        </label>
+        <label className="flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            checked={eligibleOpcodesOnly}
+            onChange={(e) => {
+              setEligibleOpcodesOnly(e.target.checked);
+              setCurrentPage(1);
+            }}
+            className="form-checkbox h-4 w-4 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 mr-2"
+          />
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Eligible Opcodes Only
+          </span>
+        </label>
       </div>
 
       {/* Bulk Actions */}
@@ -348,6 +441,9 @@ export default function OperationsManagement({
           <table className="table-auto w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-900/50">
               <tr>
+                <th className="px-4 py-3 text-left">
+                  <span className="w-6"></span>
+                </th>
                 {canWrite && (
                   <th className="px-4 py-3 text-left">
                     <input
@@ -366,6 +462,9 @@ export default function OperationsManagement({
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Operation
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Pay Type
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Service
@@ -390,7 +489,7 @@ export default function OperationsManagement({
               {operations.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={canWrite ? 8 : 7}
+                    colSpan={canWrite ? 10 : 9}
                     className="px-4 py-8 text-center text-gray-500 dark:text-gray-400"
                   >
                     No operations found.
@@ -398,101 +497,179 @@ export default function OperationsManagement({
                 </tr>
               ) : (
                 operations.map((operation) => (
-                  <tr
-                    key={operation.id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-900/30"
-                  >
-                    {canWrite && (
+                  <React.Fragment key={operation.id}>
+                    <tr className="hover:bg-gray-50 dark:hover:bg-gray-900/30">
                       <td className="px-4 py-4">
-                        <input
-                          type="checkbox"
-                          checked={selectedOperations.includes(operation.id)}
-                          onChange={(e) =>
-                            handleSelectOperation(
-                              operation.id,
-                              e.target.checked
-                            )
-                          }
-                          className="form-checkbox"
-                        />
+                        <button
+                          onClick={() => handleToggleExpand(operation.id)}
+                          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                        >
+                          {expandedOperations.has(operation.id) ? (
+                            <ChevronDown size={18} />
+                          ) : (
+                            <ChevronRight size={18} />
+                          )}
+                        </button>
                       </td>
-                    )}
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 dark:text-gray-100">
-                        {operation.service_record_open_date
-                          ? new Date(
-                              operation.service_record_open_date
-                            ).toLocaleDateString()
-                          : "-"}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {operation.operation_code}
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {operation.operation_description}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="text-sm text-gray-600 dark:text-gray-300">
-                        {operation.service_name || (
-                          <span className="italic text-gray-400">
-                            Unassigned
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-600 dark:text-gray-300">
-                        {operation.service_category_name || "-"}
-                      </div>
-                      {operation.service_subcategory_name && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          {operation.service_subcategory_name}
-                        </div>
+                      {canWrite && (
+                        <td className="px-4 py-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedOperations.includes(operation.id)}
+                            onChange={(e) =>
+                              handleSelectOperation(
+                                operation.id,
+                                e.target.checked
+                              )
+                            }
+                            className="form-checkbox"
+                          />
+                        </td>
                       )}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      {getWarrantyBadge(operation.is_warranty_eligible)}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      {operation.ai_tagged_at ? (
-                        <div className="text-xs">
-                          <div className="text-gray-600 dark:text-gray-300">
-                            Service:{" "}
-                            {operation.ai_confidence_service
-                              ? `${operation.ai_confidence_service}%`
-                              : "-"}
-                          </div>
-                          <div className="text-gray-600 dark:text-gray-300">
-                            Warranty:{" "}
-                            {operation.ai_confidence_warranty
-                              ? `${operation.ai_confidence_warranty}%`
-                              : "-"}
-                          </div>
-                          {operation.ai_reviewed === false && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400 mt-1">
-                              Needs review
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900 dark:text-gray-100">
+                          {operation.service_record_open_date
+                            ? new Date(
+                                operation.service_record_open_date
+                              ).toLocaleDateString()
+                            : "-"}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {operation.operation_code}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          {operation.operation_description}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-600 dark:text-gray-300">
+                          {operation.pay_type === "C" && "Customer Pay"}
+                          {operation.pay_type === "W" && "Warranty"}
+                          {operation.pay_type === "I" && "Internal"}
+                          {!operation.pay_type && "-"}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="text-sm text-gray-600 dark:text-gray-300">
+                          {operation.service_name || (
+                            <span className="italic text-gray-400">
+                              Unassigned
                             </span>
                           )}
                         </div>
-                      ) : (
-                        <span className="text-xs text-gray-400">-</span>
-                      )}
-                    </td>
-                    {canWrite && (
-                      <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() => handleEditOperation(operation)}
-                          className="text-gray-600 hover:text-violet-600 dark:text-gray-400 dark:hover:text-violet-400"
-                          title="Edit operation"
-                        >
-                          <Edit2 size={16} />
-                        </button>
                       </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-600 dark:text-gray-300">
+                          {operation.service_category_name || "-"}
+                        </div>
+                        {operation.service_subcategory_name && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            {operation.service_subcategory_name}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        {getWarrantyBadge(operation.is_warranty_eligible)}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        {operation.ai_tagged_at ? (
+                          <div className="text-xs">
+                            <div className="text-gray-600 dark:text-gray-300">
+                              Service:{" "}
+                              {operation.ai_confidence_service
+                                ? `${operation.ai_confidence_service}%`
+                                : "-"}
+                            </div>
+                            <div className="text-gray-600 dark:text-gray-300">
+                              Warranty:{" "}
+                              {operation.ai_confidence_warranty
+                                ? `${operation.ai_confidence_warranty}%`
+                                : "-"}
+                            </div>
+                            {operation.ai_reviewed === false && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400 mt-1">
+                                Needs review
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-400">-</span>
+                        )}
+                      </td>
+                      {canWrite && (
+                        <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <button
+                            onClick={() => handleEditOperation(operation)}
+                            className="text-gray-600 hover:text-violet-600 dark:text-gray-400 dark:hover:text-violet-400"
+                            title="Edit operation"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                    {expandedOperations.has(operation.id) && (
+                      <tr>
+                        <td
+                          colSpan={canWrite ? 10 : 9}
+                          className="px-4 py-4 bg-gray-50 dark:bg-gray-900/30"
+                        >
+                          <div className="ml-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div>
+                              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                Vehicle Make
+                              </h4>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                {operation.vehicle_make || "N/A"}
+                              </p>
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                Labor Hours
+                              </h4>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                {operation.labor_hours || "N/A"}
+                              </p>
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                Labor Cost
+                              </h4>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                {operation.labor_cost
+                                  ? `$${Number(operation.labor_cost).toFixed(
+                                      2
+                                    )}`
+                                  : "N/A"}
+                              </p>
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                Parts Cost
+                              </h4>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                {operation.parts_cost
+                                  ? `$${Number(operation.parts_cost).toFixed(
+                                      2
+                                    )}`
+                                  : "N/A"}
+                              </p>
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                Service Record ID
+                              </h4>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                {operation.service_record_id || "N/A"}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
                     )}
-                  </tr>
+                  </React.Fragment>
                 ))
               )}
             </tbody>
