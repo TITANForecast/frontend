@@ -1,11 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "@/components/auth-provider-multitenancy";
 import { UserRole } from "@/lib/types/auth";
 import { Plus, Edit2, Power, PowerOff } from "lucide-react";
 import ServiceFormModal from "./service-form-modal";
 import MultiSelectDropdown from "@/components/multi-select-dropdown";
+import { AgGridReact } from "ag-grid-react";
+import { ColDef, ICellRendererParams } from "ag-grid-community";
+import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
+
+// Import AG Grid CSS
+import "ag-grid-community/styles/ag-grid.css";
+import "ag-grid-community/styles/ag-theme-quartz.css";
+
+ModuleRegistry.registerModules([AllCommunityModule]);
 
 interface Service {
   id: string;
@@ -51,6 +60,7 @@ export default function ServicesManagement({
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDark, setIsDark] = useState(false);
 
   // Filters
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
@@ -62,6 +72,23 @@ export default function ServicesManagement({
   const [editingService, setEditingService] = useState<Service | null>(null);
 
   const canWrite = hasRole([UserRole.SUPER_ADMIN, UserRole.MULTI_DEALER]);
+
+  // Check for dark mode
+  useEffect(() => {
+    const checkDarkMode = () => {
+      setIsDark(document.documentElement.classList.contains("dark"));
+    };
+
+    checkDarkMode();
+
+    const observer = new MutationObserver(checkDarkMode);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -195,6 +222,142 @@ export default function ServicesManagement({
       ? subcategories.filter((sub) => categoryFilter.includes(sub.categoryId))
       : subcategories;
 
+  // Cell Renderers
+  const StatusCellRenderer = useCallback(
+    (props: ICellRendererParams<Service>) => {
+      const service = props.data;
+      if (!service) return null;
+
+      return (
+        <span
+          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+            service.isActive
+              ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400"
+              : "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300"
+          }`}
+        >
+          {service.isActive ? "Active" : "Inactive"}
+        </span>
+      );
+    },
+    []
+  );
+
+  const DateCellRenderer = useCallback(
+    (props: ICellRendererParams<Service>) => {
+      return (
+        <span className="text-sm">
+          {props.data?.createdAt
+            ? new Date(props.data.createdAt).toLocaleDateString()
+            : "-"}
+        </span>
+      );
+    },
+    []
+  );
+
+  const ActionsCellRenderer = useCallback(
+    (props: ICellRendererParams<Service>) => {
+      if (!canWrite) return null;
+      const service = props.data;
+      if (!service) return null;
+
+      return (
+        <div className="flex items-center justify-end gap-2 h-full">
+          <button
+            onClick={() => handleEditService(service)}
+            className="text-gray-600 hover:text-violet-600 dark:text-gray-400 dark:hover:text-violet-400"
+            title="Edit service"
+          >
+            <Edit2 size={16} />
+          </button>
+          <button
+            onClick={() => handleToggleActive(service)}
+            className={`${
+              service.isActive
+                ? "text-gray-600 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
+                : "text-gray-600 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400"
+            }`}
+            title={service.isActive ? "Deactivate" : "Activate"}
+          >
+            {service.isActive ? <PowerOff size={16} /> : <Power size={16} />}
+          </button>
+        </div>
+      );
+    },
+    [canWrite]
+  );
+
+  // AG Grid column definitions
+  const columnDefs: ColDef<Service>[] = useMemo(() => {
+    const cols: ColDef<Service>[] = [
+      {
+        field: "name",
+        headerName: "Name",
+        flex: 1,
+        minWidth: 200,
+        filter: "agTextColumnFilter",
+        sortable: true,
+      },
+      {
+        field: "category.name",
+        headerName: "Category",
+        width: 180,
+        filter: "agTextColumnFilter",
+        sortable: true,
+        valueGetter: (params) => params.data?.category?.name || "",
+      },
+      {
+        field: "subcategory.name",
+        headerName: "Subcategory",
+        width: 180,
+        filter: "agTextColumnFilter",
+        sortable: true,
+        valueGetter: (params) => params.data?.subcategory?.name || "-",
+      },
+      {
+        field: "isActive",
+        headerName: "Status",
+        width: 120,
+        sortable: true,
+        filter: "agTextColumnFilter",
+        filterParams: {
+          valueGetter: (params: any) =>
+            params.data?.isActive ? "Active" : "Inactive",
+        },
+        cellRenderer: StatusCellRenderer,
+      },
+      {
+        field: "createdAt",
+        headerName: "Created",
+        width: 140,
+        sortable: true,
+        filter: "agDateColumnFilter",
+        cellRenderer: DateCellRenderer,
+      },
+    ];
+
+    if (canWrite) {
+      cols.push({
+        headerName: "Actions",
+        width: 120,
+        cellRenderer: ActionsCellRenderer,
+        sortable: false,
+        filter: false,
+        cellStyle: { textAlign: "right" },
+      });
+    }
+
+    return cols;
+  }, [canWrite]);
+
+  const defaultColDef: ColDef = useMemo(
+    () => ({
+      resizable: true,
+    }),
+    []
+  );
+
   if (loading) {
     return (
       <div className="text-center py-8 text-gray-500 dark:text-gray-400">
@@ -275,115 +438,26 @@ export default function ServicesManagement({
         )}
       </div>
 
-      {/* Services Table */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="table-auto w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-900/50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Name
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Category
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Subcategory
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Created
-                </th>
-                {canWrite && (
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Actions
-                  </th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {filteredServices.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={canWrite ? 6 : 5}
-                    className="px-4 py-8 text-center text-gray-500 dark:text-gray-400"
-                  >
-                    No services found.{" "}
-                    {canWrite && "Create your first service to get started."}
-                  </td>
-                </tr>
-              ) : (
-                filteredServices.map((service) => (
-                  <tr
-                    key={service.id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-900/30"
-                  >
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {service.name}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-600 dark:text-gray-300">
-                        {service.category.name}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-600 dark:text-gray-300">
-                        {service.subcategory?.name || "-"}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          service.isActive
-                            ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400"
-                            : "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300"
-                        }`}
-                      >
-                        {service.isActive ? "Active" : "Inactive"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-600 dark:text-gray-300">
-                        {new Date(service.createdAt).toLocaleDateString()}
-                      </div>
-                    </td>
-                    {canWrite && (
-                      <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => handleEditService(service)}
-                            className="text-gray-600 hover:text-violet-600 dark:text-gray-400 dark:hover:text-violet-400"
-                            title="Edit service"
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleToggleActive(service)}
-                            className={`${
-                              service.isActive
-                                ? "text-gray-600 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
-                                : "text-gray-600 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400"
-                            }`}
-                            title={service.isActive ? "Deactivate" : "Activate"}
-                          >
-                            {service.isActive ? (
-                              <PowerOff size={16} />
-                            ) : (
-                              <Power size={16} />
-                            )}
-                          </button>
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      {/* Services Grid */}
+      <div className="w-full" style={{ height: "600px" }}>
+        <div
+          className={`${
+            isDark ? "ag-theme-quartz-dark" : "ag-theme-quartz"
+          } rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700`}
+          style={{ height: "100%", width: "100%" }}
+        >
+          <AgGridReact<Service>
+            rowData={filteredServices}
+            columnDefs={columnDefs}
+            defaultColDef={defaultColDef}
+            pagination={true}
+            paginationPageSize={25}
+            paginationPageSizeSelector={[25, 50, 100]}
+            animateRows={true}
+            domLayout="normal"
+            suppressCellFocus={true}
+            theme="legacy"
+          />
         </div>
       </div>
 

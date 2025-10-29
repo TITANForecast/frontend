@@ -9,6 +9,9 @@ import {
   X as XIcon,
   ChevronDown,
   ChevronRight,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import OperationEditModal from "./operation-edit-modal";
 import MultiSelectDropdown from "@/components/multi-select-dropdown";
@@ -18,6 +21,7 @@ interface Operation {
   dealer_id: string;
   service_record_id: string;
   service_record_open_date: string | null;
+  ro_number: string | null;
   service_id: string | null;
   service_name: string | null;
   service_category_name: string | null;
@@ -33,12 +37,17 @@ interface Operation {
   // Additional operation fields
   operation_code: string;
   operation_description: string;
-  labor_hours: number;
-  labor_cost: number;
-  parts_cost: number;
   // Extended fields
   pay_type: string | null;
   vehicle_make: string | null;
+  total_labor_hours: number;
+  total_labor_cost: number;
+  total_parts_cost: number;
+  parts_count: number;
+  parts_list: string | null;
+  labor_complaint: string | null;
+  labor_cause: string | null;
+  labor_correction: string | null;
 }
 
 interface Service {
@@ -80,6 +89,8 @@ export default function OperationsManagement({
   const [eligibleMakesOnly, setEligibleMakesOnly] = useState<boolean>(false);
   const [eligibleOpcodesOnly, setEligibleOpcodesOnly] =
     useState<boolean>(false);
+  const [hasLaborOrPartsOnly, setHasLaborOrPartsOnly] =
+    useState<boolean>(false);
 
   // Selection
   const [selectedOperations, setSelectedOperations] = useState<string[]>([]);
@@ -90,6 +101,10 @@ export default function OperationsManagement({
   const [expandedOperations, setExpandedOperations] = useState<Set<string>>(
     new Set()
   );
+  const [sortColumn, setSortColumn] = useState<string>(
+    "service_record_open_date"
+  );
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
   const canWrite = hasRole([UserRole.SUPER_ADMIN, UserRole.MULTI_DEALER]);
 
@@ -105,6 +120,9 @@ export default function OperationsManagement({
     payTypeFilter,
     eligibleMakesOnly,
     eligibleOpcodesOnly,
+    hasLaborOrPartsOnly,
+    sortColumn,
+    sortDirection,
   ]);
 
   useEffect(() => {
@@ -155,6 +173,8 @@ export default function OperationsManagement({
         dealerId,
         page: currentPage.toString(),
         limit: "25",
+        sortColumn,
+        sortDirection,
       });
 
       if (serviceFilter.length > 0) {
@@ -183,6 +203,10 @@ export default function OperationsManagement({
 
       if (eligibleOpcodesOnly) {
         params.append("eligibleOpcodesOnly", "true");
+      }
+
+      if (hasLaborOrPartsOnly) {
+        params.append("hasLaborOrPartsOnly", "true");
       }
 
       const response = await fetch(
@@ -241,6 +265,52 @@ export default function OperationsManagement({
     }
   };
 
+  // Helper function to convert Prisma Decimal objects to numbers
+  const parseDecimal = (value: any): number => {
+    if (value === null || value === undefined) return 0;
+    if (typeof value === "number") return value;
+    if (typeof value === "string") return parseFloat(value) || 0;
+    // Handle Prisma Decimal object format {s: sign, e: exponent, d: [digits]}
+    if (typeof value === "object" && "d" in value && Array.isArray(value.d)) {
+      try {
+        const digits = value.d;
+        const exponent = typeof value.e === "number" ? value.e : 0;
+        const sign = value.s === -1 ? -1 : 1;
+
+        if (digits.length === 0) return 0;
+
+        // Convert digits array to string representation
+        // Handle both single-digit arrays [1, 7, 5] and chunked arrays [17, 5000000]
+        let numStr = "";
+        for (const d of digits) {
+          numStr += String(d);
+        }
+
+        // Parse as float
+        let numValue = parseFloat(numStr);
+        if (isNaN(numValue)) return 0;
+
+        // Decimal.js format: exponent indicates decimal point position
+        // For format {s: 1, e: 1, d: [17, 5000000]}
+        // Join -> "175000000", exponent=1 means decimal after first digit group
+        // More commonly: e represents the position from the start
+        // Standard interpretation: value = joined_digits * 10^(e - num_digits + 1)
+        if (exponent !== 0 && numStr.length > 0) {
+          // Try standard decimal.js parsing: exponent is relative to first digit
+          const power = exponent - numStr.length + 1;
+          numValue = numValue * Math.pow(10, power);
+        }
+
+        return sign * numValue;
+      } catch (error) {
+        console.error("Error parsing Decimal:", error, value);
+        // Fallback: try to extract any reasonable number from the object
+        return 0;
+      }
+    }
+    return 0;
+  };
+
   const getWarrantyBadge = (eligible: boolean | null) => {
     if (eligible === null) {
       return (
@@ -286,6 +356,27 @@ export default function OperationsManagement({
       newExpanded.add(operationId);
     }
     setExpandedOperations(newExpanded);
+  };
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+    setCurrentPage(1); // Reset to first page when sorting changes
+  };
+
+  const SortIcon = ({ column }: { column: string }) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown size={14} className="ml-1 opacity-50" />;
+    }
+    return sortDirection === "asc" ? (
+      <ArrowUp size={14} className="ml-1" />
+    ) : (
+      <ArrowDown size={14} className="ml-1" />
+    );
   };
 
   return (
@@ -416,6 +507,20 @@ export default function OperationsManagement({
             Eligible Opcodes Only
           </span>
         </label>
+        <label className="flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            checked={hasLaborOrPartsOnly}
+            onChange={(e) => {
+              setHasLaborOrPartsOnly(e.target.checked);
+              setCurrentPage(1);
+            }}
+            className="form-checkbox h-4 w-4 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 mr-2"
+          />
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Has Labor/Parts Only
+          </span>
+        </label>
       </div>
 
       {/* Bulk Actions */}
@@ -457,26 +562,68 @@ export default function OperationsManagement({
                     />
                   </th>
                 )}
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Date
+                <th
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                  onClick={() => handleSort("service_record_open_date")}
+                >
+                  <div className="flex items-center">
+                    Date
+                    <SortIcon column="service_record_open_date" />
+                  </div>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Operation
+                <th
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                  onClick={() => handleSort("operation_code")}
+                >
+                  <div className="flex items-center">
+                    Operation
+                    <SortIcon column="operation_code" />
+                  </div>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Pay Type
+                <th
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                  onClick={() => handleSort("pay_type")}
+                >
+                  <div className="flex items-center">
+                    Pay Type
+                    <SortIcon column="pay_type" />
+                  </div>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Service
+                <th
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                  onClick={() => handleSort("service_name")}
+                >
+                  <div className="flex items-center">
+                    Service
+                    <SortIcon column="service_name" />
+                  </div>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Category
+                <th
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                  onClick={() => handleSort("service_category_name")}
+                >
+                  <div className="flex items-center">
+                    Category
+                    <SortIcon column="service_category_name" />
+                  </div>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Warranty
+                <th
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                  onClick={() => handleSort("is_warranty_eligible")}
+                >
+                  <div className="flex items-center">
+                    Warranty
+                    <SortIcon column="is_warranty_eligible" />
+                  </div>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  AI Confidence
+                <th
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                  onClick={() => handleSort("ai_confidence_warranty")}
+                >
+                  <div className="flex items-center">
+                    AI Confidence
+                    <SortIcon column="ai_confidence_warranty" />
+                  </div>
                 </th>
                 {canWrite && (
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -616,55 +763,106 @@ export default function OperationsManagement({
                           colSpan={canWrite ? 10 : 9}
                           className="px-4 py-4 bg-gray-50 dark:bg-gray-900/30"
                         >
-                          <div className="ml-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <div>
-                              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                                Vehicle Make
-                              </h4>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">
-                                {operation.vehicle_make || "N/A"}
-                              </p>
+                          <div className="ml-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                              <div>
+                                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                  Service Record ID / RO Number
+                                </h4>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                  {operation.ro_number ||
+                                    operation.service_record_id ||
+                                    "N/A"}
+                                </p>
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                  Vehicle Make
+                                </h4>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                  {operation.vehicle_make || "N/A"}
+                                </p>
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                  Labor Hours
+                                </h4>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                  {parseDecimal(operation.total_labor_hours) > 0
+                                    ? parseDecimal(
+                                        operation.total_labor_hours
+                                      ).toFixed(2)
+                                    : "0.00"}
+                                </p>
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                  Labor Cost
+                                </h4>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                  $
+                                  {parseDecimal(
+                                    operation.total_labor_cost
+                                  ).toFixed(2)}
+                                </p>
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                  Parts Cost
+                                </h4>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                  $
+                                  {parseDecimal(
+                                    operation.total_parts_cost
+                                  ).toFixed(2)}
+                                </p>
+                              </div>
+                              {operation.parts_count > 0 && (
+                                <div>
+                                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                    Parts Used ({operation.parts_count})
+                                  </h4>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                                    {operation.parts_list &&
+                                    operation.parts_list.trim() !== ""
+                                      ? operation.parts_list
+                                      : "Parts data available but part numbers not specified"}
+                                  </p>
+                                </div>
+                              )}
                             </div>
-                            <div>
-                              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                                Labor Hours
-                              </h4>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">
-                                {operation.labor_hours || "N/A"}
-                              </p>
-                            </div>
-                            <div>
-                              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                                Labor Cost
-                              </h4>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">
-                                {operation.labor_cost
-                                  ? `$${Number(operation.labor_cost).toFixed(
-                                      2
-                                    )}`
-                                  : "N/A"}
-                              </p>
-                            </div>
-                            <div>
-                              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                                Parts Cost
-                              </h4>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">
-                                {operation.parts_cost
-                                  ? `$${Number(operation.parts_cost).toFixed(
-                                      2
-                                    )}`
-                                  : "N/A"}
-                              </p>
-                            </div>
-                            <div>
-                              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                                Service Record ID
-                              </h4>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">
-                                {operation.service_record_id || "N/A"}
-                              </p>
-                            </div>
+
+                            {/* Labor Details Section */}
+                            {(operation.labor_complaint ||
+                              operation.labor_cause ||
+                              operation.labor_correction) && (
+                              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                                    Labor Complaint
+                                  </h4>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+                                    {operation.labor_complaint || "N/A"}
+                                  </p>
+                                </div>
+                                <div>
+                                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                                    Labor Cause
+                                  </h4>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+                                    {operation.labor_cause || "N/A"}
+                                  </p>
+                                </div>
+                                <div>
+                                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                                    Labor Correction
+                                  </h4>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+                                    {operation.labor_correction || "N/A"}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </td>
                       </tr>

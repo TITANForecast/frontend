@@ -1,23 +1,24 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "@/components/auth-provider-multitenancy";
 import { UserRole } from "@/lib/types/auth";
-import { Check, X as XIcon, ChevronDown, ChevronRight } from "lucide-react";
+import { Check, X as XIcon } from "lucide-react";
+import { AgGridReact } from "ag-grid-react";
+import { ColDef, ICellRendererParams } from "ag-grid-community";
+import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
+
+// Import AG Grid CSS
+import "ag-grid-community/styles/ag-grid.css";
+import "ag-grid-community/styles/ag-theme-quartz.css";
+
+ModuleRegistry.registerModules([AllCommunityModule]);
 
 interface Opcode {
   code: string;
   is_warranty_eligible: boolean;
   opcode_id: string | null;
   usage_count: number;
-}
-
-interface Operation {
-  id: string;
-  operation_code: string;
-  operation_description: string;
-  open_date: string | null;
-  ro_number: string;
 }
 
 interface OpcodeManagementProps {
@@ -27,29 +28,36 @@ interface OpcodeManagementProps {
 export default function OpcodeManagement({ dealerId }: OpcodeManagementProps) {
   const { hasRole, getAuthToken } = useAuth();
   const [opcodes, setOpcodes] = useState<Opcode[]>([]);
+  const [originalOpcodes, setOriginalOpcodes] = useState<Opcode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [changedOpcodes, setChangedOpcodes] = useState<Set<string>>(new Set());
-  const [expandedOpcodes, setExpandedOpcodes] = useState<Set<string>>(
-    new Set()
-  );
-  const [opcodeOperations, setOpcodeOperations] = useState<
-    Record<string, Operation[]>
-  >({});
-  const [loadingOperations, setLoadingOperations] = useState<Set<string>>(
-    new Set()
-  );
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const itemsPerPage = 25;
+  const [isDark, setIsDark] = useState(false);
 
   const canWrite = hasRole([UserRole.SUPER_ADMIN, UserRole.MULTI_DEALER]);
 
+  // Check for dark mode
+  useEffect(() => {
+    const checkDarkMode = () => {
+      setIsDark(document.documentElement.classList.contains("dark"));
+    };
+
+    checkDarkMode();
+
+    const observer = new MutationObserver(checkDarkMode);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     fetchOpcodes();
-  }, [dealerId, currentPage]);
+  }, [dealerId]);
 
   const fetchOpcodes = async () => {
     setLoading(true);
@@ -76,7 +84,7 @@ export default function OpcodeManagement({ dealerId }: OpcodeManagementProps) {
 
       const data = await response.json();
       setOpcodes(data);
-      setTotalPages(Math.ceil(data.length / itemsPerPage));
+      setOriginalOpcodes(data);
     } catch (err: any) {
       setError(err.message || "Failed to load opcodes");
     } finally {
@@ -84,66 +92,33 @@ export default function OpcodeManagement({ dealerId }: OpcodeManagementProps) {
     }
   };
 
-  const fetchOpcodeOperations = async (code: string) => {
-    if (opcodeOperations[code]) {
-      return; // Already loaded
-    }
-
-    setLoadingOperations(new Set(loadingOperations).add(code));
-
-    try {
-      const token = await getAuthToken();
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-      };
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
-      const response = await fetch(
-        `/api/dealer-settings/opcodes?dealerId=${dealerId}`,
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ code }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch operations");
-      }
-
-      const data = await response.json();
-      setOpcodeOperations({ ...opcodeOperations, [code]: data });
-    } catch (err: any) {
-      console.error("Failed to load operations:", err);
-    } finally {
-      const newLoading = new Set(loadingOperations);
-      newLoading.delete(code);
-      setLoadingOperations(newLoading);
-    }
-  };
-
-  const handleToggleExpand = (code: string) => {
-    const newExpanded = new Set(expandedOpcodes);
-    if (newExpanded.has(code)) {
-      newExpanded.delete(code);
-    } else {
-      newExpanded.add(code);
-      fetchOpcodeOperations(code);
-    }
-    setExpandedOpcodes(newExpanded);
-  };
-
   const handleToggleEligibility = (code: string) => {
-    setOpcodes(
-      opcodes.map((opcode) =>
-        opcode.code === code
-          ? { ...opcode, is_warranty_eligible: !opcode.is_warranty_eligible }
-          : opcode
-      )
+    const updatedOpcodes = opcodes.map((opcode) =>
+      opcode.code === code
+        ? { ...opcode, is_warranty_eligible: !opcode.is_warranty_eligible }
+        : opcode
     );
-    setChangedOpcodes(new Set(changedOpcodes).add(code));
+    setOpcodes(updatedOpcodes);
+
+    // Find the original and updated opcode to compare
+    const originalOpcode = originalOpcodes.find((o) => o.code === code);
+    const updatedOpcode = updatedOpcodes.find((o) => o.code === code);
+
+    const newChangedOpcodes = new Set(changedOpcodes);
+
+    // If the value is different from original, add to changed set
+    // If it's the same as original, remove from changed set
+    if (
+      originalOpcode &&
+      updatedOpcode &&
+      originalOpcode.is_warranty_eligible !== updatedOpcode.is_warranty_eligible
+    ) {
+      newChangedOpcodes.add(code);
+    } else {
+      newChangedOpcodes.delete(code);
+    }
+
+    setChangedOpcodes(newChangedOpcodes);
   };
 
   const handleSaveChanges = async () => {
@@ -187,6 +162,9 @@ export default function OpcodeManagement({ dealerId }: OpcodeManagementProps) {
       );
       setChangedOpcodes(new Set());
 
+      // Update original opcodes to reflect saved state
+      setOriginalOpcodes(opcodes);
+
       // Refresh data
       await fetchOpcodes();
     } catch (err: any) {
@@ -194,6 +172,87 @@ export default function OpcodeManagement({ dealerId }: OpcodeManagementProps) {
     } finally {
       setSaving(false);
     }
+  };
+
+  // Custom cell renderer for checkbox
+  const CheckboxRenderer = useCallback(
+    (props: ICellRendererParams<Opcode>) => {
+      const opcode = props.data;
+      if (!opcode) return null;
+
+      return (
+        <div className="flex items-center justify-center h-full">
+          <input
+            type="checkbox"
+            checked={opcode.is_warranty_eligible}
+            onChange={() => handleToggleEligibility(opcode.code)}
+            disabled={!canWrite}
+            className="form-checkbox h-5 w-5 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          />
+        </div>
+      );
+    },
+    [canWrite, opcodes]
+  );
+
+  // AG Grid column definitions
+  const columnDefs: ColDef<Opcode>[] = useMemo(
+    () => [
+      {
+        field: "code",
+        headerName: "Operation Code",
+        flex: 1,
+        minWidth: 200,
+        filter: "agTextColumnFilter",
+        sortable: true,
+      },
+      {
+        field: "usage_count",
+        headerName: "Usage Count",
+        width: 180,
+        filter: "agNumberColumnFilter",
+        sortable: true,
+        valueFormatter: (params) =>
+          params.value ? params.value.toLocaleString() : "0",
+        cellStyle: { textAlign: "center" },
+        headerClass: "ag-center-header",
+        comparator: (valueA: number, valueB: number) => valueA - valueB,
+      },
+      {
+        field: "is_warranty_eligible",
+        headerName: "Warranty Eligible",
+        width: 180,
+        sortable: true,
+        filter: "agTextColumnFilter",
+        filterParams: {
+          valueGetter: (params: any) =>
+            params.data?.is_warranty_eligible ? "Yes" : "No",
+        },
+        cellRenderer: CheckboxRenderer,
+        cellStyle: { textAlign: "center" },
+        headerClass: "ag-center-header",
+      },
+    ],
+    [CheckboxRenderer]
+  );
+
+  const defaultColDef: ColDef = useMemo(
+    () => ({
+      resizable: true,
+      filter: true,
+    }),
+    []
+  );
+
+  const getRowStyle = (params: any) => {
+    if (params.data && changedOpcodes.has(params.data.code)) {
+      return {
+        backgroundColor: isDark
+          ? "rgba(139, 92, 246, 0.1)"
+          : "rgba(139, 92, 246, 0.05)",
+      };
+    }
+    return undefined;
   };
 
   if (loading) {
@@ -262,174 +321,38 @@ export default function OpcodeManagement({ dealerId }: OpcodeManagementProps) {
         </div>
       )}
 
-      {/* Opcodes Table */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="table-auto w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-900/50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  <span className="w-6"></span>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Operation Code
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Usage Count
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Warranty Eligible
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {opcodes.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={4}
-                    className="px-4 py-8 text-center text-gray-500 dark:text-gray-400"
-                  >
-                    No opcodes found.
-                  </td>
-                </tr>
-              ) : (
-                opcodes
-                  .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-                  .map((opcode) => (
-                  <React.Fragment key={opcode.code}>
-                    <tr
-                      className={`hover:bg-gray-50 dark:hover:bg-gray-900/30 ${
-                        changedOpcodes.has(opcode.code)
-                          ? "bg-violet-50/50 dark:bg-violet-900/10"
-                          : ""
-                      }`}
-                    >
-                      <td className="px-4 py-4">
-                        <button
-                          onClick={() => handleToggleExpand(opcode.code)}
-                          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                        >
-                          {expandedOpcodes.has(opcode.code) ? (
-                            <ChevronDown size={18} />
-                          ) : (
-                            <ChevronRight size={18} />
-                          )}
-                        </button>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                          {opcode.code}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 text-center">
-                        <div className="text-sm text-gray-600 dark:text-gray-300">
-                          {opcode.usage_count.toLocaleString()}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 text-center">
-                        <label className="inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={opcode.is_warranty_eligible}
-                            onChange={() =>
-                              handleToggleEligibility(opcode.code)
-                            }
-                            disabled={!canWrite}
-                            className="form-checkbox h-5 w-5 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                          />
-                        </label>
-                      </td>
-                    </tr>
-                    {expandedOpcodes.has(opcode.code) && (
-                      <tr>
-                        <td colSpan={4} className="px-4 py-4 bg-gray-50 dark:bg-gray-900/30">
-                          <div className="ml-8">
-                            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                              Last 10 Operations
-                            </h4>
-                            {loadingOperations.has(opcode.code) ? (
-                              <div className="text-sm text-gray-500 dark:text-gray-400">
-                                Loading operations...
-                              </div>
-                            ) : opcodeOperations[opcode.code]?.length > 0 ? (
-                              <div className="space-y-2">
-                                {opcodeOperations[opcode.code].map(
-                                  (operation) => (
-                                    <div
-                                      key={operation.id}
-                                      className="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-3"
-                                    >
-                                      <div className="flex items-start justify-between">
-                                        <div className="flex-1">
-                                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                            {operation.operation_description}
-                                          </div>
-                                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                            RO: {operation.ro_number} •{" "}
-                                            {operation.open_date
-                                              ? new Date(
-                                                  operation.open_date
-                                                ).toLocaleDateString()
-                                              : "N/A"}
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )
-                                )}
-                              </div>
-                            ) : (
-                              <div className="text-sm text-gray-500 dark:text-gray-400">
-                                No operations found.
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                ))
-              )}
-            </tbody>
-          </table>
+      {/* Opcodes Grid */}
+      <div className="w-full" style={{ height: "600px" }}>
+        <div
+          className={`${
+            isDark ? "ag-theme-quartz-dark" : "ag-theme-quartz"
+          } rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700`}
+          style={{ height: "100%", width: "100%" }}
+        >
+          <AgGridReact<Opcode>
+            rowData={opcodes}
+            columnDefs={columnDefs}
+            defaultColDef={defaultColDef}
+            getRowStyle={getRowStyle}
+            pagination={true}
+            paginationPageSize={25}
+            paginationPageSizeSelector={[25, 50, 100]}
+            animateRows={true}
+            domLayout="normal"
+            suppressCellFocus={true}
+            theme="legacy"
+          />
         </div>
       </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-            disabled={currentPage === 1}
-            className="btn border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Previous
-          </button>
-          <span className="text-sm text-gray-600 dark:text-gray-400">
-            Page {currentPage} of {totalPages}
-          </span>
-          <button
-            onClick={() =>
-              setCurrentPage(Math.min(totalPages, currentPage + 1))
-            }
-            disabled={currentPage === totalPages}
-            className="btn border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Next
-          </button>
-        </div>
-      )}
 
       {/* Info */}
       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
         <p className="text-sm text-blue-900 dark:text-blue-100">
-          <strong>Note:</strong> Click the arrow to expand and view the last 10
-          operations that used each operation code. Enabling warranty
-          eligibility will allow operations with that opcode to be filtered in
-          the Operations Management tab.
+          <strong>Note:</strong> Enabling warranty eligibility will allow
+          operations with that opcode to be filtered in the Operations
+          Management tab.
         </p>
       </div>
     </div>
   );
 }
-
