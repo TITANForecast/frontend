@@ -14,6 +14,7 @@ import {
   ArrowDown,
 } from "lucide-react";
 import OperationEditModal from "./operation-edit-modal";
+import PartDetailsModal from "./part-details-modal";
 import MultiSelectDropdown from "@/components/multi-select-dropdown";
 
 interface Operation {
@@ -105,6 +106,11 @@ export default function OperationsManagement({
     "service_record_open_date"
   );
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+
+  // Part details modal state
+  const [isPartModalOpen, setIsPartModalOpen] = useState(false);
+  const [selectedPartNumber, setSelectedPartNumber] = useState<string>("");
+  const [selectedOperationId, setSelectedOperationId] = useState<string>("");
 
   const canWrite = hasRole([UserRole.SUPER_ADMIN, UserRole.MULTI_DEALER]);
 
@@ -376,6 +382,45 @@ export default function OperationsManagement({
       <ArrowUp size={14} className="ml-1" />
     ) : (
       <ArrowDown size={14} className="ml-1" />
+    );
+  };
+
+  const handlePartClick = (partNumber: string, operationId: string) => {
+    setSelectedPartNumber(partNumber);
+    setSelectedOperationId(operationId);
+    setIsPartModalOpen(true);
+  };
+
+  const handlePartModalClose = () => {
+    setIsPartModalOpen(false);
+    setSelectedPartNumber("");
+    setSelectedOperationId("");
+  };
+
+  const renderPartsList = (partsList: string | null, operationId: string) => {
+    if (!partsList || partsList.trim() === "") {
+      return "Parts data available but part numbers not specified";
+    }
+
+    // Split by comma and trim each part number
+    const partNumbers = partsList.split(",").map((p) => p.trim()).filter(Boolean);
+
+    if (partNumbers.length === 0) {
+      return "Parts data available but part numbers not specified";
+    }
+
+    return (
+      <div className="flex flex-wrap gap-2">
+        {partNumbers.map((partNumber, index) => (
+          <button
+            key={index}
+            onClick={() => handlePartClick(partNumber, operationId)}
+            className="text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 hover:underline font-medium transition-colors"
+          >
+            {partNumber}
+          </button>
+        ))}
+      </div>
     );
   };
 
@@ -822,12 +867,9 @@ export default function OperationsManagement({
                                   <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                                     Parts Used ({operation.parts_count})
                                   </h4>
-                                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                                    {operation.parts_list &&
-                                    operation.parts_list.trim() !== ""
-                                      ? operation.parts_list
-                                      : "Parts data available but part numbers not specified"}
-                                  </p>
+                                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                                    {renderPartsList(operation.parts_list, operation.id)}
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -918,6 +960,17 @@ export default function OperationsManagement({
           services={services}
           onClose={handleModalClose}
           isBulk={true}
+        />
+      )}
+
+      {/* Part Details Modal */}
+      {isPartModalOpen && selectedPartNumber && selectedOperationId && (
+        <PartDetailsModal
+          isOpen={isPartModalOpen}
+          onClose={handlePartModalClose}
+          operationId={selectedOperationId}
+          partNumber={selectedPartNumber}
+          dealerId={dealerId}
         />
       )}
     </div>
