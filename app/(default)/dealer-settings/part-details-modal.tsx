@@ -18,9 +18,19 @@ interface PartDetail {
   ro_number: string | null;
 }
 
+interface PartInventoryInfo {
+  dealer_id: string | null;
+  dealer_name: string | null;
+  part_number: string | null;
+  part_description: string | null;
+  manufacturer_status: string | null;
+  make: string | null;
+}
+
 interface PartDetailsResponse {
   partNumber: string;
   parts: PartDetail[];
+  inventoryInfo: PartInventoryInfo | null;
   summary: {
     totalQuantity: number;
     totalCost: number;
@@ -137,6 +147,57 @@ export default function PartDetailsModal({
 
           {!loading && !error && data && (
             <div className="space-y-6">
+              {/* Part Inventory Information */}
+              {data.inventoryInfo && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                    Part Inventory Information
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        Dealer Name
+                      </div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {data.inventoryInfo.dealer_name || "N/A"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        Part Number
+                      </div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {data.inventoryInfo.part_number || "N/A"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        Part Description
+                      </div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {data.inventoryInfo.part_description || "N/A"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        Manufacturer Status
+                      </div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {data.inventoryInfo.manufacturer_status || "N/A"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        Make
+                      </div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {data.inventoryInfo.make || "N/A"}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Summary */}
               {data.summary && (
                 <div className="bg-gray-50 dark:bg-gray-900/30 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
@@ -181,20 +242,16 @@ export default function PartDetailsModal({
                   <div className="text-sm text-gray-600 dark:text-gray-400">
                     <div>
                       <span className="font-medium">Operation Code:</span>{" "}
-                      {data.parts[0].operation_code}
+                      {data.parts[0].operation_code || "N/A"}
                     </div>
-                    {data.parts[0].operation_description && (
-                      <div className="mt-1">
-                        <span className="font-medium">Description:</span>{" "}
-                        {data.parts[0].operation_description}
-                      </div>
-                    )}
-                    {data.parts[0].ro_number && (
-                      <div className="mt-1">
-                        <span className="font-medium">RO Number:</span>{" "}
-                        {data.parts[0].ro_number}
-                      </div>
-                    )}
+                    <div className="mt-1">
+                      <span className="font-medium">Description:</span>{" "}
+                      {data.parts[0].operation_description || "N/A"}
+                    </div>
+                    <div className="mt-1">
+                      <span className="font-medium">RO Number:</span>{" "}
+                      {data.parts[0].ro_number || "N/A"}
+                    </div>
                   </div>
                 </div>
               )}

@@ -37,7 +37,7 @@ export async function GET(
     // Escape single quotes in part number to prevent SQL injection
     const escapedPartNumber = decodedPartNumber.replace(/'/g, "''");
 
-    // Query parts_line table to get part details
+    // Query parts_line table to get part details, joined with parts_inventory for additional info
     const query = `
       SELECT 
         p.id,
@@ -50,10 +50,18 @@ export async function GET(
         COALESCE(p.parts_unit_sale, p.parts_unit_cost) * p.part_quantity as total_sale,
         o.operation_code,
         o.operation_description,
-        sr.ro_number
+        sr.ro_number,
+        pi.dealer_id as inventory_dealer_id,
+        d.name as dealer_name,
+        pi.part_number as inventory_part_number,
+        pi.part_description as inventory_part_description,
+        pi.manufacturer_status,
+        pi.make as inventory_make
       FROM parts_line p
       INNER JOIN operation o ON p.operation_id = o.id
       INNER JOIN service_record sr ON o.service_record_id = sr.id
+      LEFT JOIN parts_inventory pi ON pi.part_number = p.part_number AND pi.dealer_id = '${dealerId}'
+      LEFT JOIN dealers d ON d.id = pi.dealer_id
       WHERE p.operation_id = '${id}'
         AND p.part_number = '${escapedPartNumber}'
         AND o.dealer_id = '${dealerId}'
@@ -69,9 +77,20 @@ export async function GET(
       );
     }
 
+    // Extract inventory info from first part (since all parts have same part_number)
+    const inventoryInfo = parts[0] ? {
+      dealer_id: parts[0].inventory_dealer_id || null,
+      dealer_name: parts[0].dealer_name || null,
+      part_number: parts[0].inventory_part_number || null,
+      part_description: parts[0].inventory_part_description || null,
+      manufacturer_status: parts[0].manufacturer_status || null,
+      make: parts[0].inventory_make || null,
+    } : null;
+
     return jsonResponse({
       partNumber: decodedPartNumber,
       parts: parts,
+      inventoryInfo: inventoryInfo,
       summary: {
         totalQuantity: parts.reduce((sum, p) => {
           const qty = p.quantity ? parseFloat(p.quantity) : 0;
