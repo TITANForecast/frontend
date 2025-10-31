@@ -255,68 +255,6 @@ export default function PartDetailsModal({
                   </div>
                 </div>
               )}
-
-              {/* Part Details Table */}
-              {data.parts.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                    Part Line Items ({data.parts.length})
-                  </h3>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                      <thead className="bg-gray-50 dark:bg-gray-900/50">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Description
-                          </th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Quantity
-                          </th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Unit Cost
-                          </th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Unit Sale
-                          </th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Total Cost
-                          </th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            Total Sale
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                        {data.parts.map((part) => (
-                          <tr
-                            key={part.id}
-                            className="hover:bg-gray-50 dark:hover:bg-gray-900/30"
-                          >
-                            <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
-                              {part.part_description || "N/A"}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-right text-gray-600 dark:text-gray-300">
-                              {formatNumber(part.quantity)}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-right text-gray-600 dark:text-gray-300">
-                              {formatCurrency(part.unit_cost)}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-right text-gray-600 dark:text-gray-300">
-                              {formatCurrency(part.unit_sale)}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-right font-medium text-gray-900 dark:text-gray-100">
-                              {formatCurrency(part.total_cost)}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-right font-medium text-gray-900 dark:text-gray-100">
-                              {formatCurrency(part.total_sale)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>

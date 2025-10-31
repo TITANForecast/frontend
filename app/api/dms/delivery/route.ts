@@ -360,17 +360,25 @@ export async function GET(request: NextRequest) {
       }${endDate ? ` to ${endDate.toISOString()}` : ""}`
     );
 
-    // Fetch both service records and pre-calculated KPIs
-    const [dmsData, kpiData] = await Promise.all([
-      fetchFromDatabase(dealerId, startDate, endDate),
-      fetchServiceMetrics(dealerId),
-    ]);
+    // Fetch service records
+    const dmsData = await fetchFromDatabase(dealerId, startDate, endDate);
+
+    // Only fetch pre-calculated KPIs if no date range is specified
+    // When date range is provided, KPIs should be calculated from filtered data
+    let kpiData = null;
+    if (!startDate && !endDate) {
+      kpiData = await fetchServiceMetrics(dealerId);
+    }
 
     console.log(
       `✅ Retrieved ${dmsData.totalRecords} records for dealer ${dealerId}`
     );
     if (kpiData) {
       console.log(`✅ Retrieved pre-calculated KPIs for dealer ${dealerId}`);
+    } else if (startDate || endDate) {
+      console.log(
+        `📅 Date range provided - KPIs will be calculated from filtered data`
+      );
     }
 
     return NextResponse.json({

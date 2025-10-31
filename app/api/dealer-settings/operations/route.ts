@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
 
     // HAVING clause for labor/parts filter
     const havingClause = hasLaborOrPartsOnly === "true"
-      ? `HAVING (SUM(l.labor_tech_hours) > 0 OR SUM(l.labor_cost) > 0 OR SUM(p.parts_unit_cost * p.part_quantity) > 0)`
+      ? `HAVING (SUM(l.labor_bill_hours) > 0 OR SUM(l.labor_sale) > 0 OR SUM(p.parts_unit_sale * p.part_quantity) > 0)`
       : "";
 
     // Query operations with joins to service_record, services, labor and parts
@@ -135,9 +135,9 @@ export async function GET(request: NextRequest) {
         u.name as updated_by_user_name,
         v.make as vehicle_make,
         o.sale_type as pay_type,
-        COALESCE(SUM(l.labor_tech_hours), 0) as total_labor_hours,
-        COALESCE(SUM(l.labor_cost), 0) as total_labor_cost,
-        COALESCE(SUM(p.parts_unit_cost * p.part_quantity), 0) as total_parts_cost,
+        COALESCE(SUM(l.labor_bill_hours), 0) as total_labor_hours,
+        COALESCE(SUM(l.labor_sale), 0) as total_labor_cost,
+        COALESCE(SUM(p.parts_unit_sale * p.part_quantity), 0) as total_parts_cost,
         COUNT(DISTINCT CASE WHEN p.part_number IS NOT NULL AND p.part_number != '' THEN p.id END) as parts_count,
         STRING_AGG(DISTINCT NULLIF(p.part_number, ''), ', ') FILTER (WHERE p.part_number IS NOT NULL AND p.part_number != '') as parts_list
       FROM operation o

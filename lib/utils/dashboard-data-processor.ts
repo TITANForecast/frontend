@@ -243,39 +243,90 @@ export function processDashboardData(
   let hoursPerRO: number;
   let elrTotal: number;
 
-  if (kpiResults && kpiResults.kpis) {
-    // Use pre-calculated KPI values from kpi_results.json
+  // Always calculate from filtered data when records are available
+  // Use pre-calculated KPIs only when no filtered data is available
+  const totalRecords = records.length;
+  const totalLaborCost = records.reduce(
+    (sum, r) =>
+      sum +
+      parseCurrency(r["Customer Labor Cost"]) +
+      parseCurrency(r["Warranty Labor Cost"]) +
+      parseCurrency(r["Internal Labor Cost"]),
+    0
+  );
+  const totalLaborSale = records.reduce(
+    (sum, r) =>
+      sum +
+      parseCurrency(r["Customer Labor Sale"]) +
+      parseCurrency(r["Warranty Labor Sale"]) +
+      parseCurrency(r["Internal Labor Sale"]),
+    0
+  );
+
+  if (totalRecords > 0 && totalLaborSale > 0) {
+    // Calculate from filtered data
+    laborGPPercent =
+      totalLaborSale > 0
+        ? ((totalLaborSale - totalLaborCost) / totalLaborSale) * 100
+        : 0;
+    laborPerRO = totalLaborSale / totalRecords;
+    
+    // Debug logging
+    console.log(`📊 Calculating KPIs from filtered data:`, {
+      totalRecords,
+      totalLaborSale,
+      totalLaborCost,
+      laborGPPercent,
+      laborPerRO,
+      hasKpiResults: !!kpiResults,
+    });
+
+    // Calculate ELR (Effective Labor Rate) from customer pay labor sales
+    // ELR is typically calculated as total labor sales / total labor hours
+    // Since we don't have hours data, we'll estimate based on customer pay labor
+    const customerPayLaborSale = records.reduce(
+      (sum, r) => sum + parseCurrency(r["Customer Labor Sale"]),
+      0
+    );
+    const customerPayLaborCost = records.reduce(
+      (sum, r) => sum + parseCurrency(r["Customer Labor Cost"]),
+      0
+    );
+
+    // Count customer pay ROs (ROs with customer pay labor)
+    const customerPayROs = records.filter(
+      (r) => parseCurrency(r["Customer Labor Sale"]) > 0
+    ).length;
+
+    if (customerPayLaborSale > 0 && customerPayROs > 0) {
+      // Calculate ELR as average customer pay labor sale per RO
+      // This gives us an effective rate per repair order
+      // For a more accurate ELR, we'd need actual hours data
+      elrTotal = customerPayLaborSale / customerPayROs;
+    } else if (totalRecords > 0) {
+      // Fallback: use average total labor sale per RO
+      elrTotal = totalLaborSale / totalRecords;
+    } else {
+      // Final fallback: use pre-calculated value if available
+      elrTotal = kpiResults?.kpis?.effective_labor_rate?.value || 177.5;
+    }
+
+    // Hours per RO - would need actual hours data, use pre-calculated if available
+    hoursPerRO = kpiResults?.kpis?.hrs_per_ro?.value || 1.29;
+  } else if (kpiResults && kpiResults.kpis) {
+    // Use pre-calculated KPI values when no filtered data available
+    console.log(`⚠️ Using pre-calculated KPIs (no filtered data available)`);
     laborGPPercent = kpiResults.kpis.labor_gp_percent.value;
     laborPerRO = kpiResults.kpis.labor_per_ro.value;
     hoursPerRO = kpiResults.kpis.hrs_per_ro.value;
     elrTotal = kpiResults.kpis.effective_labor_rate.value;
   } else {
-    // Fallback: Calculate from raw data
-    const totalRecords = records.length;
-    const totalLaborCost = records.reduce(
-      (sum, r) =>
-        sum +
-        parseCurrency(r["Customer Labor Cost"]) +
-        parseCurrency(r["Warranty Labor Cost"]) +
-        parseCurrency(r["Internal Labor Cost"]),
-      0
-    );
-    const totalLaborSale = records.reduce(
-      (sum, r) =>
-        sum +
-        parseCurrency(r["Customer Labor Sale"]) +
-        parseCurrency(r["Warranty Labor Sale"]) +
-        parseCurrency(r["Internal Labor Sale"]),
-      0
-    );
-
-    laborGPPercent =
-      totalLaborSale > 0
-        ? ((totalLaborSale - totalLaborCost) / totalLaborSale) * 100
-        : 0;
-    laborPerRO = totalRecords > 0 ? totalLaborSale / totalRecords : 0;
-    hoursPerRO = 1.29; // Placeholder - would need actual hours data
-    elrTotal = 177.5; // Placeholder - would need actual ELR calculation
+    // Fallback defaults
+    console.log(`⚠️ Using fallback defaults (no data available)`);
+    laborGPPercent = 0;
+    laborPerRO = 0;
+    hoursPerRO = 1.29;
+    elrTotal = 177.5;
   }
 
   // Prepare daily charts data (sorted by date)
