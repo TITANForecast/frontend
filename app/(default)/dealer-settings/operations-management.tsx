@@ -276,41 +276,46 @@ export default function OperationsManagement({
     if (value === null || value === undefined) return 0;
     if (typeof value === "number") return value;
     if (typeof value === "string") return parseFloat(value) || 0;
+
     // Handle Prisma Decimal object format {s: sign, e: exponent, d: [digits]}
     if (typeof value === "object" && "d" in value && Array.isArray(value.d)) {
       try {
-        const digits = value.d;
+        const sign = value.s === -1 ? "-" : "";
+        const digits = value.d as number[];
         const exponent = typeof value.e === "number" ? value.e : 0;
-        const sign = value.s === -1 ? -1 : 1;
 
         if (digits.length === 0) return 0;
 
-        // Convert digits array to string representation
-        // Handle both single-digit arrays [1, 7, 5] and chunked arrays [17, 5000000]
-        let numStr = "";
-        for (const d of digits) {
-          numStr += String(d);
+        // Build coefficient from digit chunks
+        // digits[0] contains leading digits, rest are 7-digit chunks (Decimal.js uses base 1e7)
+        let coefficient = digits[0].toString();
+        for (let i = 1; i < digits.length; i++) {
+          coefficient += digits[i].toString().padStart(7, "0");
         }
 
-        // Parse as float
-        let numValue = parseFloat(numStr);
-        if (isNaN(numValue)) return 0;
+        // Place decimal point based on exponent
+        // e is the exponent of the first digit (0-indexed)
+        const decimalPosition = exponent + 1;
 
-        // Decimal.js format: exponent indicates decimal point position
-        // For format {s: 1, e: 1, d: [17, 5000000]}
-        // Join -> "175000000", exponent=1 means decimal after first digit group
-        // More commonly: e represents the position from the start
-        // Standard interpretation: value = joined_digits * 10^(e - num_digits + 1)
-        if (exponent !== 0 && numStr.length > 0) {
-          // Try standard decimal.js parsing: exponent is relative to first digit
-          const power = exponent - numStr.length + 1;
-          numValue = numValue * Math.pow(10, power);
+        let numStr: string;
+        if (decimalPosition <= 0) {
+          // Number < 1, like 0.00123
+          numStr = "0." + "0".repeat(-decimalPosition) + coefficient;
+        } else if (decimalPosition >= coefficient.length) {
+          // Whole number or has trailing zeros
+          numStr =
+            coefficient + "0".repeat(decimalPosition - coefficient.length);
+        } else {
+          // Decimal point in the middle
+          numStr =
+            coefficient.slice(0, decimalPosition) +
+            "." +
+            coefficient.slice(decimalPosition);
         }
 
-        return sign * numValue;
+        return parseFloat(sign + numStr);
       } catch (error) {
         console.error("Error parsing Decimal:", error, value);
-        // Fallback: try to extract any reasonable number from the object
         return 0;
       }
     }
