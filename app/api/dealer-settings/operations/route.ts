@@ -136,8 +136,10 @@ export async function GET(request: NextRequest) {
         v.make as vehicle_make,
         o.sale_type as pay_type,
         COALESCE(SUM(l.labor_bill_hours), 0) as total_labor_hours,
-        COALESCE(SUM(l.labor_sale), 0) as total_labor_cost,
-        COALESCE(SUM(p.parts_unit_sale * p.part_quantity), 0) as total_parts_cost,
+        COALESCE(SUM(l.labor_sale), 0) as total_labor_sale,
+        COALESCE(SUM(l.labor_cost), 0) as total_labor_cost,
+        COALESCE(SUM(p.parts_unit_sale * p.part_quantity), 0) as total_parts_sale,
+        COALESCE(SUM(p.parts_unit_cost * p.part_quantity), 0) as total_parts_cost,
         COUNT(DISTINCT CASE WHEN p.part_number IS NOT NULL AND p.part_number != '' THEN p.id END) as parts_count,
         STRING_AGG(DISTINCT NULLIF(p.part_number, ''), ', ') FILTER (WHERE p.part_number IS NOT NULL AND p.part_number != '') as parts_list
       FROM operation o

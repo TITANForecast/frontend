@@ -42,7 +42,9 @@ interface Operation {
   pay_type: string | null;
   vehicle_make: string | null;
   total_labor_hours: number;
+  total_labor_sale: number;
   total_labor_cost: number;
+  total_parts_sale: number;
   total_parts_cost: number;
   parts_count: number;
   parts_list: string | null;
@@ -855,12 +857,34 @@ export default function OperationsManagement({
                               </div>
                               <div>
                                 <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                  Labor Sale Total
+                                </h4>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                  $
+                                  {parseDecimal(
+                                    operation.total_labor_sale
+                                  ).toFixed(2)}
+                                </p>
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                                   Labor Cost
                                 </h4>
                                 <p className="text-sm text-gray-600 dark:text-gray-400">
                                   $
                                   {parseDecimal(
                                     operation.total_labor_cost
+                                  ).toFixed(2)}
+                                </p>
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                  Parts Sale Total
+                                </h4>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                  $
+                                  {parseDecimal(
+                                    operation.total_parts_sale
                                   ).toFixed(2)}
                                 </p>
                               </div>
@@ -873,6 +897,38 @@ export default function OperationsManagement({
                                   {parseDecimal(
                                     operation.total_parts_cost
                                   ).toFixed(2)}
+                                </p>
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                  ELR (Effective Labor Rate)
+                                </h4>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                  {(() => {
+                                    const laborHours = parseDecimal(operation.total_labor_hours);
+                                    const laborSale = parseDecimal(operation.total_labor_sale);
+                                    if (laborHours > 0) {
+                                      const elr = laborSale / laborHours;
+                                      return `$${elr.toFixed(2)}`;
+                                    }
+                                    return "N/A";
+                                  })()}
+                                </p>
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                  Part Profit %
+                                </h4>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                  {(() => {
+                                    const partsSale = parseDecimal(operation.total_parts_sale);
+                                    const partsCost = parseDecimal(operation.total_parts_cost);
+                                    if (partsCost > 0) {
+                                      const profitPercent = ((partsSale - partsCost) / partsCost) * 100;
+                                      return `${profitPercent.toFixed(2)}%`;
+                                    }
+                                    return "N/A";
+                                  })()}
                                 </p>
                               </div>
                               {operation.parts_count > 0 && (
