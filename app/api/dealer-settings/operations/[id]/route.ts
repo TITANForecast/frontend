@@ -89,10 +89,11 @@ export async function PATCH(
       }
     }
 
-    // Always update updated_at
-    // Note: updated_by is bigint but user.id is text (UUID), type mismatch
-    // This should be addressed in the data-api by changing updated_by to text
-    // updates.push(`updated_by = '${auth.user.id}'`);
+    // Always update updated_at and updated_by
+    const userId = auth.user?.id || null;
+    if (userId) {
+      updates.push(`updated_by = '${userId.replace(/'/g, "''")}'`);
+    }
     updates.push(`updated_at = NOW()`);
 
     if (updates.length === 0) {

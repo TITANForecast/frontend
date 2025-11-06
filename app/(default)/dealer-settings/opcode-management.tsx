@@ -50,7 +50,12 @@ export default function OpcodeManagement({ dealerId }: OpcodeManagementProps) {
     new Set()
   );
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [pagination, setPagination] = useState<{
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  } | null>(null);
   const [sortColumn, setSortColumn] = useState<
     "code" | "usage_count" | "is_warranty_eligible"
   >("code");
@@ -61,7 +66,7 @@ export default function OpcodeManagement({ dealerId }: OpcodeManagementProps) {
 
   useEffect(() => {
     fetchOpcodes();
-  }, [dealerId, currentPage]);
+  }, [dealerId, currentPage, sortColumn, sortDirection]);
 
   const fetchOpcodes = async () => {
     setLoading(true);
@@ -75,8 +80,16 @@ export default function OpcodeManagement({ dealerId }: OpcodeManagementProps) {
         headers["Authorization"] = `Bearer ${token}`;
       }
 
+      const params = new URLSearchParams({
+        dealerId,
+        page: currentPage.toString(),
+        limit: itemsPerPage.toString(),
+        sortColumn,
+        sortDirection,
+      });
+
       const response = await fetch(
-        `/api/dealer-settings/opcodes?dealerId=${dealerId}`,
+        `/api/dealer-settings/opcodes?${params.toString()}`,
         {
           headers,
         }
@@ -86,10 +99,9 @@ export default function OpcodeManagement({ dealerId }: OpcodeManagementProps) {
         throw new Error("Failed to fetch opcodes");
       }
 
-      const data = await response.json();
-      setOpcodes(data);
-      // Note: totalPages will be recalculated based on sorted data
-      setTotalPages(Math.ceil(data.length / itemsPerPage));
+      const result = await response.json();
+      setOpcodes(result.data || []);
+      setPagination(result.pagination || null);
     } catch (err: any) {
       setError(err.message || "Failed to load opcodes");
     } finally {
@@ -220,27 +232,9 @@ export default function OpcodeManagement({ dealerId }: OpcodeManagementProps) {
       setSortColumn(column);
       setSortDirection("asc");
     }
+    // Reset to page 1 when sorting changes
+    setCurrentPage(1);
   };
-
-  // Sort opcodes
-  const sortedOpcodes = [...opcodes].sort((a, b) => {
-    let comparison = 0;
-
-    if (sortColumn === "code") {
-      comparison = a.code.localeCompare(b.code);
-    } else if (sortColumn === "usage_count") {
-      comparison = a.usage_count - b.usage_count;
-    } else if (sortColumn === "is_warranty_eligible") {
-      comparison =
-        a.is_warranty_eligible === b.is_warranty_eligible
-          ? 0
-          : a.is_warranty_eligible
-          ? -1
-          : 1;
-    }
-
-    return sortDirection === "asc" ? comparison : -comparison;
-  });
 
   const SortIcon = ({
     column,
@@ -356,7 +350,7 @@ export default function OpcodeManagement({ dealerId }: OpcodeManagementProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {sortedOpcodes.length === 0 ? (
+              {opcodes.length === 0 ? (
                 <tr>
                   <td
                     colSpan={4}
@@ -366,108 +360,103 @@ export default function OpcodeManagement({ dealerId }: OpcodeManagementProps) {
                   </td>
                 </tr>
               ) : (
-                sortedOpcodes
-                  .slice(
-                    (currentPage - 1) * itemsPerPage,
-                    currentPage * itemsPerPage
-                  )
-                  .map((opcode) => (
-                    <React.Fragment key={opcode.code}>
-                      <tr
-                        className={`hover:bg-gray-50 dark:hover:bg-gray-900/30 ${
-                          changedOpcodes.has(opcode.code)
-                            ? "bg-violet-50/50 dark:bg-violet-900/10"
-                            : ""
-                        }`}
-                      >
-                        <td className="px-4 py-4">
-                          <button
-                            onClick={() => handleToggleExpand(opcode.code)}
-                            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                          >
-                            {expandedOpcodes.has(opcode.code) ? (
-                              <ChevronDown size={18} />
-                            ) : (
-                              <ChevronRight size={18} />
-                            )}
-                          </button>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                            {opcode.code}
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 text-center">
-                          <div className="text-sm text-gray-600 dark:text-gray-300">
-                            {opcode.usage_count.toLocaleString()}
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 text-center">
-                          <label className="inline-flex items-center cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={opcode.is_warranty_eligible}
-                              onChange={() =>
-                                handleToggleEligibility(opcode.code)
-                              }
-                              disabled={!canWrite}
-                              className="form-checkbox h-5 w-5 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                            />
-                          </label>
-                        </td>
-                      </tr>
-                      {expandedOpcodes.has(opcode.code) && (
-                        <tr>
-                          <td
-                            colSpan={4}
-                            className="px-4 py-4 bg-gray-50 dark:bg-gray-900/30"
-                          >
-                            <div className="ml-8">
-                              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                                Last 10 Operations
-                              </h4>
-                              {loadingOperations.has(opcode.code) ? (
-                                <div className="text-sm text-gray-500 dark:text-gray-400">
-                                  Loading operations...
-                                </div>
-                              ) : opcodeOperations[opcode.code]?.length > 0 ? (
-                                <div className="space-y-2">
-                                  {opcodeOperations[opcode.code].map(
-                                    (operation) => (
-                                      <div
-                                        key={operation.id}
-                                        className="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-3"
-                                      >
-                                        <div className="flex items-start justify-between">
-                                          <div className="flex-1">
-                                            <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                              {operation.operation_description}
-                                            </div>
-                                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                              RO: {operation.ro_number} •{" "}
-                                              {operation.open_date
-                                                ? new Date(
-                                                    operation.open_date
-                                                  ).toLocaleDateString()
-                                                : "N/A"}
-                                            </div>
+                opcodes.map((opcode) => (
+                  <React.Fragment key={opcode.code}>
+                    <tr
+                      className={`hover:bg-gray-50 dark:hover:bg-gray-900/30 ${
+                        changedOpcodes.has(opcode.code)
+                          ? "bg-violet-50/50 dark:bg-violet-900/10"
+                          : ""
+                      }`}
+                    >
+                      <td className="px-4 py-4">
+                        <button
+                          onClick={() => handleToggleExpand(opcode.code)}
+                          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                        >
+                          {expandedOpcodes.has(opcode.code) ? (
+                            <ChevronDown size={18} />
+                          ) : (
+                            <ChevronRight size={18} />
+                          )}
+                        </button>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {opcode.code}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <div className="text-sm text-gray-600 dark:text-gray-300">
+                          {opcode.usage_count.toLocaleString()}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <label className="inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={opcode.is_warranty_eligible}
+                            onChange={() =>
+                              handleToggleEligibility(opcode.code)
+                            }
+                            disabled={!canWrite}
+                            className="form-checkbox h-5 w-5 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                          />
+                        </label>
+                      </td>
+                    </tr>
+                    {expandedOpcodes.has(opcode.code) && (
+                      <tr>
+                        <td
+                          colSpan={4}
+                          className="px-4 py-4 bg-gray-50 dark:bg-gray-900/30"
+                        >
+                          <div className="ml-8">
+                            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                              Last 10 Operations
+                            </h4>
+                            {loadingOperations.has(opcode.code) ? (
+                              <div className="text-sm text-gray-500 dark:text-gray-400">
+                                Loading operations...
+                              </div>
+                            ) : opcodeOperations[opcode.code]?.length > 0 ? (
+                              <div className="space-y-2">
+                                {opcodeOperations[opcode.code].map(
+                                  (operation) => (
+                                    <div
+                                      key={operation.id}
+                                      className="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-3"
+                                    >
+                                      <div className="flex items-start justify-between">
+                                        <div className="flex-1">
+                                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                            {operation.operation_description}
+                                          </div>
+                                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                            RO: {operation.ro_number} •{" "}
+                                            {operation.open_date
+                                              ? new Date(
+                                                  operation.open_date
+                                                ).toLocaleDateString()
+                                              : "N/A"}
                                           </div>
                                         </div>
                                       </div>
-                                    )
-                                  )}
-                                </div>
-                              ) : (
-                                <div className="text-sm text-gray-500 dark:text-gray-400">
-                                  No operations found.
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  ))
+                                    </div>
+                                  )
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-sm text-gray-500 dark:text-gray-400">
+                                No operations found.
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))
               )}
             </tbody>
           </table>
@@ -475,27 +464,32 @@ export default function OpcodeManagement({ dealerId }: OpcodeManagementProps) {
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-            disabled={currentPage === 1}
-            className="btn border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Previous
-          </button>
-          <span className="text-sm text-gray-600 dark:text-gray-400">
-            Page {currentPage} of {totalPages}
-          </span>
-          <button
-            onClick={() =>
-              setCurrentPage(Math.min(totalPages, currentPage + 1))
-            }
-            disabled={currentPage === totalPages}
-            className="btn border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Next
-          </button>
+      {pagination && pagination.totalPages > 1 && (
+        <div className="px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
+            {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
+            {pagination.total} results
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage(pagination.page - 1)}
+              disabled={pagination.page === 1}
+              className="btn border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <span className="text-sm text-gray-600 dark:text-gray-400 px-2">
+              Page {pagination.page} of {pagination.totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(pagination.page + 1)}
+              disabled={pagination.page === pagination.totalPages}
+              className="btn border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
 
