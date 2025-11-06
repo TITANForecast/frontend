@@ -78,7 +78,12 @@ export default function OperationsManagement({
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [totalPages, setTotalPages] = useState(1);
+  const [pagination, setPagination] = useState<{
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
   // Filters
@@ -228,7 +233,7 @@ export default function OperationsManagement({
 
       const result = await response.json();
       setOperations(result.data);
-      setTotalPages(result.pagination.totalPages);
+      setPagination(result.pagination || null);
     } catch (err: any) {
       setError(err.message || "Failed to load operations");
     } finally {
@@ -408,7 +413,10 @@ export default function OperationsManagement({
     }
 
     // Split by comma and trim each part number
-    const partNumbers = partsList.split(",").map((p) => p.trim()).filter(Boolean);
+    const partNumbers = partsList
+      .split(",")
+      .map((p) => p.trim())
+      .filter(Boolean);
 
     if (partNumbers.length === 0) {
       return "Parts data available but part numbers not specified";
@@ -873,7 +881,10 @@ export default function OperationsManagement({
                                     Parts Used ({operation.parts_count})
                                   </h4>
                                   <div className="text-sm text-gray-600 dark:text-gray-400">
-                                    {renderPartsList(operation.parts_list, operation.id)}
+                                    {renderPartsList(
+                                      operation.parts_list,
+                                      operation.id
+                                    )}
                                   </div>
                                 </div>
                               )}
@@ -923,27 +934,32 @@ export default function OperationsManagement({
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-            disabled={currentPage === 1}
-            className="btn border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Previous
-          </button>
-          <span className="text-sm text-gray-600 dark:text-gray-400">
-            Page {currentPage} of {totalPages}
-          </span>
-          <button
-            onClick={() =>
-              setCurrentPage(Math.min(totalPages, currentPage + 1))
-            }
-            disabled={currentPage === totalPages}
-            className="btn border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Next
-          </button>
+      {pagination && pagination.totalPages > 1 && (
+        <div className="px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
+            {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
+            {pagination.total} results
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage(pagination.page - 1)}
+              disabled={pagination.page === 1}
+              className="btn border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <span className="text-sm text-gray-600 dark:text-gray-400 px-2">
+              Page {pagination.page} of {pagination.totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(pagination.page + 1)}
+              disabled={pagination.page === pagination.totalPages}
+              className="btn border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
 

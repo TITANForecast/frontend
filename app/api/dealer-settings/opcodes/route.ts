@@ -8,12 +8,17 @@ import { jsonResponse } from "@/lib/utils/bigint-json";
 
 /**
  * GET /api/dealer-settings/opcodes
- * List all opcodes for a dealer with warranty eligibility status
+ * List opcodes for a dealer with warranty eligibility status and pagination
  */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const dealerId = searchParams.get("dealerId");
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "25");
+    const offset = (page - 1) * limit;
+    const sortColumn = searchParams.get("sortColumn") || "code";
+    const sortDirection = searchParams.get("sortDirection") || "asc";
 
     if (!dealerId) {
       return NextResponse.json(
@@ -27,7 +32,18 @@ export async function GET(request: NextRequest) {
       return dealerUnauthorizedResponse(auth.error);
     }
 
-    // Query all distinct opcodes for this dealer
+    // Map frontend column names to SQL columns
+    const columnMap: Record<string, string> = {
+      code: "o.operation_code",
+      usage_count: "usage_count",
+      is_warranty_eligible: "is_warranty_eligible",
+    };
+
+    const validColumn = columnMap[sortColumn] || "o.operation_code";
+    const validDirection =
+      sortDirection.toLowerCase() === "asc" ? "ASC" : "DESC";
+
+    // Query distinct opcodes for this dealer with pagination
     const query = `
       SELECT 
         o.operation_code as code,
@@ -40,12 +56,35 @@ export async function GET(request: NextRequest) {
         AND o.operation_code IS NOT NULL
         AND o.operation_code != ''
       GROUP BY o.operation_code, oc.warranty_eligible, oc.id
-      ORDER BY o.operation_code ASC
+      ORDER BY ${validColumn} ${validDirection}
+      LIMIT ${limit} OFFSET ${offset}
     `;
 
-    const opcodes = await prisma.$queryRawUnsafe<any[]>(query, dealerId);
+    // Count query for total
+    const countQuery = `
+      SELECT COUNT(DISTINCT o.operation_code) as total
+      FROM operation o
+      WHERE o.dealer_id = $1
+        AND o.operation_code IS NOT NULL
+        AND o.operation_code != ''
+    `;
 
-    return jsonResponse(opcodes);
+    const [opcodes, countResult] = await Promise.all([
+      prisma.$queryRawUnsafe<any[]>(query, dealerId),
+      prisma.$queryRawUnsafe<any[]>(countQuery, dealerId),
+    ]);
+
+    const total = Number(countResult[0]?.total || 0);
+
+    return jsonResponse({
+      data: opcodes,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
   } catch (error) {
     console.error("Error fetching opcodes:", error);
     return NextResponse.json(
@@ -80,10 +119,7 @@ export async function POST(request: NextRequest) {
     const { code } = body;
 
     if (!code) {
-      return NextResponse.json(
-        { error: "code is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "code is required" }, { status: 400 });
     }
 
     // Get last 10 operations with this opcode
@@ -102,7 +138,11 @@ export async function POST(request: NextRequest) {
       LIMIT 10
     `;
 
-    const operations = await prisma.$queryRawUnsafe<any[]>(query, dealerId, code);
+    const operations = await prisma.$queryRawUnsafe<any[]>(
+      query,
+      dealerId,
+      code
+    );
 
     return jsonResponse(operations);
   } catch (error) {
@@ -182,4 +222,3 @@ export async function PATCH(request: NextRequest) {
     );
   }
 }
-
