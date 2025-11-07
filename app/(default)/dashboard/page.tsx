@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { addDays } from "date-fns";
 import { DateRange } from "react-day-picker";
-import Datepicker from "@/components/datepicker";
+import DateRangePicker from "@/components/date-range-picker";
 import DashboardCardGrossProfit from "./dashboard-card-gross-profit";
 import DashboardCardRoCount from "./dashboard-card-ro-count";
 import DashboardCardWarrantyOpportunity from "./dashboard-card-warranty-opportunity";
@@ -109,8 +109,8 @@ export default function Dashboard() {
           </h1>
         </div>
         {/* Right: Actions */}
-        <div className="grid grid-flow-col sm:auto-cols-max justify-start sm:justify-end gap-2">
-          <Datepicker date={dateRange} onDateChange={setDateRange} />
+        <div className="flex justify-start sm:justify-end">
+          <DateRangePicker date={dateRange} onDateChange={setDateRange} />
         </div>
       </div>
 

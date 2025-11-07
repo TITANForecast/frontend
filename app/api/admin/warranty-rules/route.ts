@@ -22,6 +22,22 @@ export async function GET(request: NextRequest) {
     const sortColumn = searchParams.get("sortColumn") || "priority";
     const sortDirection = searchParams.get("sortDirection") || "asc";
 
+    // Filter parameters
+    const makesParam = searchParams.get("makes");
+    const statesParam = searchParams.get("states");
+    const categoriesParam = searchParams.get("categories");
+    const statusesParam = searchParams.get("statuses");
+    const searchQuery = searchParams.get("search") || "";
+
+    const selectedMakes = makesParam ? makesParam.split(",").filter(Boolean) : [];
+    const selectedStates = statesParam ? statesParam.split(",").filter(Boolean) : [];
+    const selectedCategories = categoriesParam
+      ? categoriesParam.split(",").filter(Boolean)
+      : [];
+    const selectedStatuses = statusesParam
+      ? statusesParam.split(",").filter(Boolean)
+      : [];
+
     // Map frontend column names to SQL columns
     const columnMap: Record<string, string> = {
       ruleType: "rule_type",
@@ -38,6 +54,47 @@ export async function GET(request: NextRequest) {
     const validColumn = columnMap[sortColumn] || "priority";
     const validDirection =
       sortDirection.toLowerCase() === "asc" ? "ASC" : "DESC";
+
+    // Build WHERE clause
+    const whereConditions: string[] = [];
+
+    if (selectedMakes.length > 0) {
+      const makesList = selectedMakes
+        .map((make) => `'${make.replace(/'/g, "''")}'`)
+        .join(",");
+      whereConditions.push(`oem_make IN (${makesList})`);
+    }
+
+    if (selectedStates.length > 0) {
+      const statesList = selectedStates
+        .map((state) => `'${state.replace(/'/g, "''")}'`)
+        .join(",");
+      whereConditions.push(`state IN (${statesList})`);
+    }
+
+    if (selectedCategories.length > 0) {
+      const categoriesList = selectedCategories
+        .map((cat) => `'${cat.replace(/'/g, "''")}'`)
+        .join(",");
+      whereConditions.push(`category IN (${categoriesList})`);
+    }
+
+    if (selectedStatuses.length > 0) {
+      const statusList = selectedStatuses
+        .map((s) => (s === "true" ? "true" : "false"))
+        .join(",");
+      whereConditions.push(`is_active IN (${statusList})`);
+    }
+
+    if (searchQuery.trim()) {
+      const escapedSearch = searchQuery.trim().replace(/'/g, "''");
+      whereConditions.push(
+        `keyword_pattern ILIKE '%${escapedSearch}%'`
+      );
+    }
+
+    const whereClause =
+      whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : "";
 
     const query = `
       SELECT 
@@ -57,11 +114,12 @@ export async function GET(request: NextRequest) {
         created_at as "createdAt",
         updated_at as "updatedAt"
       FROM warranty_rules
+      ${whereClause}
       ORDER BY ${validColumn} ${validDirection}, priority ASC
       LIMIT ${limit} OFFSET ${offset}
     `;
 
-    const countQuery = `SELECT COUNT(*) as total FROM warranty_rules`;
+    const countQuery = `SELECT COUNT(*) as total FROM warranty_rules ${whereClause}`;
 
     const [rules, countResult] = await Promise.all([
       prisma.$queryRawUnsafe<WarrantyRule[]>(query),

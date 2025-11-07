@@ -10,6 +10,7 @@ import UserListTable from "@/components/admin/user-list-table";
 import UserFormModal from "@/components/admin/user-form-modal";
 import WarrantyRulesTable from "@/components/admin/warranty-rules-table";
 import WarrantyRuleFormModal from "@/components/admin/warranty-rule-form-modal";
+import WarrantyRulesFilters from "@/components/admin/warranty-rules-filters";
 import SyncStatusDashboard from "@/components/admin/sync-status-dashboard";
 import { authenticatedFetch } from "@/lib/utils/api";
 
@@ -35,6 +36,17 @@ export default function AdministrationPage() {
   >("asc");
   const [loading, setLoading] = useState(true);
 
+  // Filter states
+  const [selectedMakes, setSelectedMakes] = useState<string[]>([]);
+  const [selectedStates, setSelectedStates] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>("");
+  const [availableMakes, setAvailableMakes] = useState<string[]>([]);
+  const [availableStates, setAvailableStates] = useState<string[]>([]);
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+
   // Modal states
   const [dealerModalOpen, setDealerModalOpen] = useState(false);
   const [selectedDealer, setSelectedDealer] = useState<
@@ -56,9 +68,19 @@ export default function AdministrationPage() {
     }
   }, [isSuperAdmin]);
 
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   useEffect(() => {
     if (isSuperAdmin && activeTab === "warranty-rules") {
       fetchWarrantyRules();
+      fetchFilterValues();
     }
   }, [
     isSuperAdmin,
@@ -66,6 +88,11 @@ export default function AdministrationPage() {
     warrantyRulesPage,
     warrantyRulesSortColumn,
     warrantyRulesSortDirection,
+    selectedMakes,
+    selectedStates,
+    selectedCategories,
+    selectedStatuses,
+    debouncedSearchQuery,
   ]);
 
   const fetchData = async () => {
@@ -101,6 +128,23 @@ export default function AdministrationPage() {
         sortDirection: warrantyRulesSortDirection,
       });
 
+      // Add filter parameters
+      if (selectedMakes.length > 0) {
+        params.append("makes", selectedMakes.join(","));
+      }
+      if (selectedStates.length > 0) {
+        params.append("states", selectedStates.join(","));
+      }
+      if (selectedCategories.length > 0) {
+        params.append("categories", selectedCategories.join(","));
+      }
+      if (selectedStatuses.length > 0) {
+        params.append("statuses", selectedStatuses.join(","));
+      }
+      if (debouncedSearchQuery.trim()) {
+        params.append("search", debouncedSearchQuery.trim());
+      }
+
       const response = await authenticatedFetch(
         `/api/admin/warranty-rules?${params.toString()}`,
         getAuthToken
@@ -113,6 +157,65 @@ export default function AdministrationPage() {
       }
     } catch (error) {
       console.error("Error fetching warranty rules:", error);
+    }
+  };
+
+  const fetchFilterValues = async () => {
+    try {
+      const [makesRes, statesRes, categoriesRes] = await Promise.all([
+        authenticatedFetch(
+          "/api/admin/warranty-rules/filter-values?type=makes",
+          getAuthToken
+        ),
+        authenticatedFetch(
+          "/api/admin/warranty-rules/filter-values?type=states",
+          getAuthToken
+        ),
+        authenticatedFetch(
+          "/api/admin/warranty-rules/filter-values?type=categories",
+          getAuthToken
+        ),
+      ]);
+
+      if (makesRes.ok) {
+        const makesData = await makesRes.json();
+        setAvailableMakes(makesData.values || []);
+      }
+
+      if (statesRes.ok) {
+        const statesData = await statesRes.json();
+        setAvailableStates(statesData.values || []);
+      }
+
+      if (categoriesRes.ok) {
+        const categoriesData = await categoriesRes.json();
+        setAvailableCategories(categoriesData.values || []);
+      }
+    } catch (error) {
+      console.error("Error fetching filter values:", error);
+    }
+  };
+
+  const fetchSearchSuggestions = async (query: string): Promise<string[]> => {
+    try {
+      const params = new URLSearchParams({
+        type: "suggestions",
+        query: query,
+      });
+
+      const response = await authenticatedFetch(
+        `/api/admin/warranty-rules/filter-values?${params.toString()}`,
+        getAuthToken
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.suggestions || [];
+      }
+      return [];
+    } catch (error) {
+      console.error("Error fetching search suggestions:", error);
+      return [];
     }
   };
 
@@ -225,6 +328,10 @@ export default function AdministrationPage() {
     setWarrantyRulesPage(1); // Reset to page 1 when sorting changes
   };
 
+  const handleFilterChange = () => {
+    setWarrantyRulesPage(1); // Reset to page 1 when filters change
+  };
+
   // Show unauthorized message for non-super-admins
   if (!isSuperAdmin) {
     return (
@@ -322,9 +429,11 @@ export default function AdministrationPage() {
               }`}
             >
               Warranty Rules
-              <span className="ml-2 py-0.5 px-2 rounded-full text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
-                {warrantyRulesPagination?.total || warrantyRules.length}
-              </span>
+              {(warrantyRulesPagination?.total || warrantyRules.length) > 0 && (
+                <span className="ml-2 py-0.5 px-2 rounded-full text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                  {warrantyRulesPagination?.total || warrantyRules.length}
+                </span>
+              )}
             </button>
           </nav>
         </div>
@@ -426,6 +535,37 @@ export default function AdministrationPage() {
               <span>Create Rule</span>
             </button>
           </div>
+          <WarrantyRulesFilters
+            makes={availableMakes}
+            states={availableStates}
+            categories={availableCategories}
+            selectedMakes={selectedMakes}
+            selectedStates={selectedStates}
+            selectedCategories={selectedCategories}
+            selectedStatuses={selectedStatuses}
+            searchQuery={searchQuery}
+            onMakesChange={(makes) => {
+              setSelectedMakes(makes);
+              handleFilterChange();
+            }}
+            onStatesChange={(states) => {
+              setSelectedStates(states);
+              handleFilterChange();
+            }}
+            onCategoriesChange={(categories) => {
+              setSelectedCategories(categories);
+              handleFilterChange();
+            }}
+            onStatusesChange={(statuses) => {
+              setSelectedStatuses(statuses);
+              handleFilterChange();
+            }}
+            onSearchChange={(query) => {
+              setSearchQuery(query);
+              handleFilterChange();
+            }}
+            onSearchSuggestions={fetchSearchSuggestions}
+          />
           <WarrantyRulesTable
             rules={warrantyRules}
             onEdit={handleEditWarrantyRule}
