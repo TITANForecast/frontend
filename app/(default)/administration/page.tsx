@@ -283,6 +283,7 @@ export default function AdministrationPage() {
     }
   };
 
+
   const handleCreateWarrantyRule = () => {
     setSelectedWarrantyRule(undefined);
     setWarrantyRuleModalOpen(true);
