@@ -1,8 +1,8 @@
 // Database types for administration
 
-import { UserRole } from './auth';
+import { UserRole } from "./auth";
 
-export type DataSource = 'Certify-Staging' | 'DealerVault-Production';
+export type DataSource = "Certify-Staging" | "DealerVault-Production";
 
 export interface DealerApiConfig {
   id: string;
@@ -107,7 +107,7 @@ export interface SyncStatus {
   lastSync: Date | null;
   lastSuccess: Date | null;
   lastError: string | null;
-  status: 'success' | 'error' | 'pending' | 'never_run';
+  status: "success" | "error" | "pending" | "never_run";
   isActive: boolean;
 }
 
@@ -120,3 +120,35 @@ export interface AdminStats {
   syncErrors: number;
 }
 
+export type WarrantyRuleType = "maintenance" | "exclusion" | "positive";
+
+export interface WarrantyRule {
+  id: string; // Serialized from BigInt
+  ruleType: WarrantyRuleType;
+  category: string;
+  keywordPattern: string;
+  adjustment: number;
+  description: string | null;
+  notes: string | null;
+  state: string | null;
+  oemMake: string | null;
+  isActive: boolean;
+  priority: number;
+  createdBy: string | null; // Serialized from BigInt
+  updatedBy: string | null; // Serialized from BigInt
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface WarrantyRuleInput {
+  ruleType: WarrantyRuleType;
+  category: string;
+  keywordPattern: string;
+  adjustment: number;
+  description?: string | null;
+  notes?: string | null;
+  state?: string | null;
+  oemMake?: string | null;
+  isActive?: boolean;
+  priority?: number;
+}
