@@ -129,7 +129,7 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    
+
     // Get user before deleting to access email and cognitoSub
     const user = await prismaDb.users.findById(id);
     if (!user) {

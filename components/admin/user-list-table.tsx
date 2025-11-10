@@ -76,7 +76,7 @@ export default function UserListTable({ users, onEdit, onDelete }: UserListTable
     return (
       <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
           {cognitoStatus || 'Unknown'}
-        </span>
+      </span>
     );
   };
 
@@ -166,22 +166,22 @@ export default function UserListTable({ users, onEdit, onDelete }: UserListTable
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end gap-3">
-                      <button
-                        onClick={() => onEdit(user)}
+                    <button
+                      onClick={() => onEdit(user)}
                         className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteClick(user.id)}
-                        className={`${
-                          deleteConfirm === user.id
-                            ? 'text-red-600 dark:text-red-400 font-semibold'
-                            : 'text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300'
-                        }`}
-                      >
-                        {deleteConfirm === user.id ? 'Confirm?' : 'Delete'}
-                      </button>
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteClick(user.id)}
+                      className={`${
+                        deleteConfirm === user.id
+                          ? 'text-red-600 dark:text-red-400 font-semibold'
+                          : 'text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300'
+                      }`}
+                    >
+                      {deleteConfirm === user.id ? 'Confirm?' : 'Delete'}
+                    </button>
                     </div>
                   </td>
                 </tr>

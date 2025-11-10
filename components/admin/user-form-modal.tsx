@@ -159,8 +159,8 @@ export default function UserFormModal({
 
       // Close dialog after short delay to show success message
       setTimeout(() => {
-        onSave();
-        setIsOpen(false);
+      onSave();
+      setIsOpen(false);
       }, 2000);
       
     } catch (err: any) {
@@ -212,14 +212,14 @@ export default function UserFormModal({
 
   return (
     <>
-      <ModalBlank isOpen={isOpen} setIsOpen={setIsOpen}>
-        <div className="p-6">
-          {/* Header */}
-          <div className="mb-5">
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
-              {user ? 'Edit User' : 'Create New User'}
-            </h2>
-          </div>
+    <ModalBlank isOpen={isOpen} setIsOpen={setIsOpen}>
+      <div className="p-6">
+        {/* Header */}
+        <div className="mb-5">
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+            {user ? 'Edit User' : 'Create New User'}
+          </h2>
+        </div>
 
           {/* Success message */}
           {successMessage && (
@@ -228,12 +228,12 @@ export default function UserFormModal({
             </div>
           )}
 
-          {/* Error message */}
-          {error && (
-            <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded">
-              {error}
-            </div>
-          )}
+        {/* Error message */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded">
+            {error}
+          </div>
+        )}
 
         {/* Form */}
         <div className="space-y-4 max-h-[60vh] overflow-y-auto">
