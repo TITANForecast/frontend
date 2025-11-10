@@ -917,7 +917,7 @@ export default function OperationsManagement({
                               </div>
                               <div>
                                 <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                                  Part Profit %
+                                  Part Markup %
                                 </h4>
                                 <p className="text-sm text-gray-600 dark:text-gray-400">
                                   {(() => {
