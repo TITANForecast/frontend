@@ -12,6 +12,7 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Download,
 } from "lucide-react";
 import OperationEditModal from "./operation-edit-modal";
 import PartDetailsModal from "./part-details-modal";
@@ -31,6 +32,7 @@ interface Operation {
   eligibility_notes: string | null;
   ai_confidence_warranty: number | null;
   ai_confidence_service: number | null;
+  ai_reasoning_summary: string | null;
   ai_tagged_at: string | null;
   ai_reviewed: boolean | null;
   updated_at: string | null;
@@ -409,6 +411,197 @@ export default function OperationsManagement({
     setSelectedOperationId("");
   };
 
+  const exportToCSV = async () => {
+    try {
+      setLoading(true);
+      const token = await getAuthToken();
+      const fetchHeaders: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        fetchHeaders["Authorization"] = `Bearer ${token}`;
+      }
+
+      // Build params with same filters but no pagination (fetch all)
+      const params = new URLSearchParams({
+        dealerId,
+        page: "1",
+        limit: "10000", // Large limit to get all records
+        sortColumn,
+        sortDirection,
+      });
+
+      if (serviceFilter.length > 0) {
+        params.append("serviceIds", serviceFilter.join(","));
+      }
+
+      if (warrantyFilter !== "all") {
+        params.append("warrantyEligible", warrantyFilter);
+      }
+
+      if (startDate) {
+        params.append("startDate", startDate);
+      }
+
+      if (endDate) {
+        params.append("endDate", endDate);
+      }
+
+      if (payTypeFilter.length > 0) {
+        params.append("payTypes", payTypeFilter.join(","));
+      }
+
+      if (eligibleMakesOnly) {
+        params.append("eligibleMakesOnly", "true");
+      }
+
+      if (eligibleOpcodesOnly) {
+        params.append("eligibleOpcodesOnly", "true");
+      }
+
+      if (hasLaborOrPartsOnly) {
+        params.append("hasLaborOrPartsOnly", "true");
+      }
+
+      const response = await fetch(
+        `/api/dealer-settings/operations?${params.toString()}`,
+        {
+          headers: fetchHeaders,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch operations for export");
+      }
+
+      const result = await response.json();
+      const allOperations: Operation[] = result.data || [];
+
+      // Convert to CSV
+      const csvHeaders = [
+        "Service Record Open Date",
+        "RO Number",
+        "Operation Code",
+        "Operation Description",
+        "Pay Type",
+        "Service Name",
+        "Service Category",
+        "Service Subcategory",
+        "Warranty Eligible",
+        "AI Confidence Service (%)",
+        "AI Confidence Warranty (%)",
+        "AI Reasoning Summary",
+        "Vehicle Make",
+        "Labor Hours",
+        "Labor Sale Total",
+        "Labor Cost",
+        "Parts Sale Total",
+        "Parts Cost",
+        "Parts Count",
+        "Parts List",
+        "ELR (Effective Labor Rate)",
+        "Part Markup %",
+        "Labor Complaint",
+        "Labor Cause",
+        "Labor Correction",
+        "Eligibility Notes",
+        "Updated At",
+      ];
+
+      const csvRows = [csvHeaders.join(",")];
+
+      for (const op of allOperations) {
+        const laborHours = parseDecimal(op.total_labor_hours);
+        const laborSale = parseDecimal(op.total_labor_sale);
+        const partsSale = parseDecimal(op.total_parts_sale);
+        const partsCost = parseDecimal(op.total_parts_cost);
+
+        const elr = laborHours > 0 ? laborSale / laborHours : null;
+        const partMarkup =
+          partsCost > 0 ? ((partsSale - partsCost) / partsCost) * 100 : null;
+
+        const row = [
+          op.service_record_open_date
+            ? new Date(op.service_record_open_date).toLocaleDateString()
+            : "",
+          escapeCSV(op.ro_number || op.service_record_id || ""),
+          escapeCSV(op.operation_code || ""),
+          escapeCSV(op.operation_description || ""),
+          op.pay_type === "C"
+            ? "Customer Pay"
+            : op.pay_type === "W"
+            ? "Warranty"
+            : op.pay_type === "I"
+            ? "Internal"
+            : "",
+          escapeCSV(op.service_name || ""),
+          escapeCSV(op.service_category_name || ""),
+          escapeCSV(op.service_subcategory_name || ""),
+          op.is_warranty_eligible === null
+            ? "Unset"
+            : op.is_warranty_eligible
+            ? "Yes"
+            : "No",
+          op.ai_confidence_service !== null &&
+          op.ai_confidence_service !== undefined
+            ? (op.ai_confidence_service * 100).toFixed(1)
+            : "",
+          op.ai_confidence_warranty !== null &&
+          op.ai_confidence_warranty !== undefined
+            ? (op.ai_confidence_warranty * 100).toFixed(1)
+            : "",
+          escapeCSV(op.ai_reasoning_summary || ""),
+          escapeCSV(op.vehicle_make || ""),
+          laborHours > 0 ? laborHours.toFixed(2) : "0.00",
+          laborSale.toFixed(2),
+          parseDecimal(op.total_labor_cost).toFixed(2),
+          partsSale.toFixed(2),
+          partsCost.toFixed(2),
+          op.parts_count || 0,
+          escapeCSV(op.parts_list || ""),
+          elr !== null ? `$${elr.toFixed(2)}` : "N/A",
+          partMarkup !== null ? `${partMarkup.toFixed(2)}%` : "N/A",
+          escapeCSV(op.labor_complaint || ""),
+          escapeCSV(op.labor_cause || ""),
+          escapeCSV(op.labor_correction || ""),
+          escapeCSV(op.eligibility_notes || ""),
+          op.updated_at ? new Date(op.updated_at).toLocaleString() : "",
+        ];
+
+        csvRows.push(row.join(","));
+      }
+
+      const csvContent = csvRows.join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute(
+        "download",
+        `operations_export_${new Date().toISOString().split("T")[0]}.csv`
+      );
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err: any) {
+      console.error("Failed to export CSV:", err);
+      setError(err.message || "Failed to export CSV");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const escapeCSV = (value: string): string => {
+    if (value === null || value === undefined) return "";
+    const stringValue = String(value);
+    // If value contains comma, newline, or quote, wrap in quotes and escape quotes
+    if (stringValue.includes(",") || stringValue.includes("\n") || stringValue.includes('"')) {
+      return `"${stringValue.replace(/"/g, '""')}"`;
+    }
+    return stringValue;
+  };
+
   const renderPartsList = (partsList: string | null, operationId: string) => {
     if (!partsList || partsList.trim() === "") {
       return "Parts data available but part numbers not specified";
@@ -538,49 +731,59 @@ export default function OperationsManagement({
           </div>
         </div>
       </div>
-      <div className="flex items-center justify-end gap-6">
-        <label className="flex items-center cursor-pointer">
-          <input
-            type="checkbox"
-            checked={eligibleMakesOnly}
-            onChange={(e) => {
-              setEligibleMakesOnly(e.target.checked);
-              setCurrentPage(1);
-            }}
-            className="form-checkbox h-4 w-4 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 mr-2"
-          />
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Eligible Makes Only
-          </span>
-        </label>
-        <label className="flex items-center cursor-pointer">
-          <input
-            type="checkbox"
-            checked={eligibleOpcodesOnly}
-            onChange={(e) => {
-              setEligibleOpcodesOnly(e.target.checked);
-              setCurrentPage(1);
-            }}
-            className="form-checkbox h-4 w-4 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 mr-2"
-          />
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Eligible Opcodes Only
-          </span>
-        </label>
-        <label className="flex items-center cursor-pointer">
-          <input
-            type="checkbox"
-            checked={hasLaborOrPartsOnly}
-            onChange={(e) => {
-              setHasLaborOrPartsOnly(e.target.checked);
-              setCurrentPage(1);
-            }}
-            className="form-checkbox h-4 w-4 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 mr-2"
-          />
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Has Labor/Parts Only
-          </span>
-        </label>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-6">
+          <label className="flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={eligibleMakesOnly}
+              onChange={(e) => {
+                setEligibleMakesOnly(e.target.checked);
+                setCurrentPage(1);
+              }}
+              className="form-checkbox h-4 w-4 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 mr-2"
+            />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Eligible Makes Only
+            </span>
+          </label>
+          <label className="flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={eligibleOpcodesOnly}
+              onChange={(e) => {
+                setEligibleOpcodesOnly(e.target.checked);
+                setCurrentPage(1);
+              }}
+              className="form-checkbox h-4 w-4 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 mr-2"
+            />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Eligible Opcodes Only
+            </span>
+          </label>
+          <label className="flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={hasLaborOrPartsOnly}
+              onChange={(e) => {
+                setHasLaborOrPartsOnly(e.target.checked);
+                setCurrentPage(1);
+              }}
+              className="form-checkbox h-4 w-4 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 mr-2"
+            />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Has Labor/Parts Only
+            </span>
+          </label>
+        </div>
+        <button
+          onClick={exportToCSV}
+          disabled={loading}
+          className="btn bg-violet-500 hover:bg-violet-600 text-white flex items-center gap-2"
+        >
+          <Download size={16} />
+          Export to CSV
+        </button>
       </div>
 
       {/* Bulk Actions */}
@@ -782,17 +985,17 @@ export default function OperationsManagement({
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         {operation.ai_tagged_at ? (
-                          <div className="text-xs">
+                            <div className="text-xs">
                             <div className="text-gray-600 dark:text-gray-300">
                               Service:{" "}
-                              {operation.ai_confidence_service
-                                ? `${operation.ai_confidence_service}%`
+                              {operation.ai_confidence_service !== null && operation.ai_confidence_service !== undefined
+                                ? `${(operation.ai_confidence_service * 100).toFixed(1)}%`
                                 : "-"}
                             </div>
                             <div className="text-gray-600 dark:text-gray-300">
                               Warranty:{" "}
-                              {operation.ai_confidence_warranty
-                                ? `${operation.ai_confidence_warranty}%`
+                              {operation.ai_confidence_warranty !== null && operation.ai_confidence_warranty !== undefined
+                                ? `${(operation.ai_confidence_warranty * 100).toFixed(1)}%`
                                 : "-"}
                             </div>
                             {operation.ai_reviewed === false && (

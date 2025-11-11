@@ -141,7 +141,8 @@ export async function GET(request: NextRequest) {
         COALESCE(SUM(p.parts_unit_sale * p.part_quantity), 0) as total_parts_sale,
         COALESCE(SUM(p.parts_unit_cost * p.part_quantity), 0) as total_parts_cost,
         COUNT(DISTINCT CASE WHEN p.part_number IS NOT NULL AND p.part_number != '' THEN p.id END) as parts_count,
-        STRING_AGG(DISTINCT NULLIF(p.part_number, ''), ', ') FILTER (WHERE p.part_number IS NOT NULL AND p.part_number != '') as parts_list
+        STRING_AGG(DISTINCT NULLIF(p.part_number, ''), ', ') FILTER (WHERE p.part_number IS NOT NULL AND p.part_number != '') as parts_list,
+        o.ai_reasoning_summary
       FROM operation o
       LEFT JOIN service_record sr ON o.service_record_id = sr.id
       LEFT JOIN vehicle v ON sr.vehicle_id = v.id
