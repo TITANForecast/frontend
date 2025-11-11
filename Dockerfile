@@ -71,6 +71,9 @@ RUN chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Copy Prisma schema and migrations for runtime migration support
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+
 # Copy Prisma generated client
 COPY --from=builder --chown=nextjs:nodejs /app/generated ./generated
 
@@ -84,4 +87,5 @@ ENV HOSTNAME "0.0.0.0"
 
 # server.js is created by next build from the standalone output
 # https://nextjs.org/docs/pages/api-reference/next-config-js/output
-CMD ["node", "server.js"]
+# Run Prisma migrations before starting the server
+CMD ["sh", "-c", "npx prisma migrate deploy && exec node server.js"]

@@ -137,10 +137,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      await signIn({ username: email, password });
+      const result = await signIn({ username: email, password });
+      console.log("Sign in result:", result);
       await checkAuthStatus();
-    } catch (error) {
-      console.error("Login error:", error);
+    } catch (error: any) {
+      console.error("Login error details:", {
+        message: error.message,
+        name: error.name,
+        code: error.code,
+        statusCode: error.$metadata?.httpStatusCode,
+        full: error
+      });
       throw error;
     }
   };

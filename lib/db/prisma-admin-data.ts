@@ -60,6 +60,8 @@ const convertToExtendedUser = (user: any): UserExtended => {
     role: user.role as UserRole,
     defaultDealerId: user.defaultDealerId,
     isActive: user.isActive,
+    cognitoSub: user.cognitoSub || null,
+    cognitoStatus: user.cognitoStatus || null,
     dealers,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
