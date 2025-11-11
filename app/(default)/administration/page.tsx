@@ -8,6 +8,7 @@ import DealerListTable from "@/components/admin/dealer-list-table";
 import DealerFormModal from "@/components/admin/dealer-form-modal";
 import UserListTable from "@/components/admin/user-list-table";
 import UserFormModal from "@/components/admin/user-form-modal";
+import LinkCognitoDialog from "@/components/admin/link-cognito-dialog";
 import WarrantyRulesTable from "@/components/admin/warranty-rules-table";
 import WarrantyRuleFormModal from "@/components/admin/warranty-rule-form-modal";
 import WarrantyRulesFilters from "@/components/admin/warranty-rules-filters";
@@ -54,6 +55,8 @@ export default function AdministrationPage() {
   >();
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserExtended | undefined>();
+  const [linkCognitoDialogOpen, setLinkCognitoDialogOpen] = useState(false);
+  const [userToLinkCognito, setUserToLinkCognito] = useState<UserExtended | undefined>();
   const [warrantyRuleModalOpen, setWarrantyRuleModalOpen] = useState(false);
   const [selectedWarrantyRule, setSelectedWarrantyRule] = useState<
     WarrantyRule | undefined
@@ -283,6 +286,40 @@ export default function AdministrationPage() {
     }
   };
 
+  const handleLinkCognito = (user: UserExtended) => {
+    setUserToLinkCognito(user);
+    setLinkCognitoDialogOpen(true);
+  };
+
+  const handleConfirmLinkCognito = async (password: string) => {
+    if (!userToLinkCognito) return;
+
+    try {
+      const response = await authenticatedFetch(
+        `/api/admin/users/${userToLinkCognito.id}/link-cognito`,
+        getAuthToken,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ password }),
+        }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+        alert(result.message || "Successfully linked user to Cognito");
+        fetchData(); // Refresh user list
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to link user to Cognito");
+      }
+    } catch (error: any) {
+      console.error("Error linking user to Cognito:", error);
+      throw error; // Re-throw to be handled by the dialog
+    }
+  };
 
   const handleCreateWarrantyRule = () => {
     setSelectedWarrantyRule(undefined);
@@ -510,6 +547,7 @@ export default function AdministrationPage() {
             users={users}
             onEdit={handleEditUser}
             onDelete={handleDeleteUser}
+            onLinkCognito={handleLinkCognito}
           />
         </div>
       )}
@@ -597,6 +635,18 @@ export default function AdministrationPage() {
         onSave={fetchData}
         getAuthToken={getAuthToken}
       />
+
+      {userToLinkCognito && (
+        <LinkCognitoDialog
+          user={userToLinkCognito}
+          isOpen={linkCognitoDialogOpen}
+          onClose={() => {
+            setLinkCognitoDialogOpen(false);
+            setUserToLinkCognito(undefined);
+          }}
+          onConfirm={handleConfirmLinkCognito}
+        />
+      )}
 
       <WarrantyRuleFormModal
         isOpen={warrantyRuleModalOpen}
