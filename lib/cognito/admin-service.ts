@@ -101,6 +101,29 @@ export async function updateCognitoUser(
 }
 
 /**
+ * Set a permanent password for an existing Cognito user
+ */
+export async function setCognitoUserPassword(
+  email: string,
+  password: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const command = new AdminSetUserPasswordCommand({
+      UserPoolId: USER_POOL_ID,
+      Username: email,
+      Password: password,
+      Permanent: true, // Set as permanent password (no reset required)
+    });
+
+    await cognitoClient.send(command);
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error setting Cognito user password:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
  * Disable user in Cognito (soft delete - user cannot login)
  */
 export async function disableCognitoUser(

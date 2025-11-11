@@ -9,9 +9,10 @@ interface UserListTableProps {
   users: UserExtended[];
   onEdit: (user: UserExtended) => void;
   onDelete: (userId: string) => void;
+  onLinkCognito: (user: UserExtended) => void;
 }
 
-export default function UserListTable({ users, onEdit, onDelete }: UserListTableProps) {
+export default function UserListTable({ users, onEdit, onDelete, onLinkCognito }: UserListTableProps) {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const handleDeleteClick = (userId: string) => {
@@ -101,9 +102,6 @@ export default function UserListTable({ users, onEdit, onDelete }: UserListTable
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Status
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Cognito
-              </th>
               <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Actions
               </th>
@@ -112,7 +110,7 @@ export default function UserListTable({ users, onEdit, onDelete }: UserListTable
           <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
             {users.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                <td colSpan={6} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
                   No users found. Create your first user to get started.
                 </td>
               </tr>
@@ -161,18 +159,30 @@ export default function UserListTable({ users, onEdit, onDelete }: UserListTable
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    {getCognitoStatusBadge(user.cognitoSub, user.cognitoStatus)}
-                  </td>
                   <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end gap-3">
                     <button
+                      type="button"
                       onClick={() => onEdit(user)}
                         className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
                     >
                       Edit
                     </button>
+                    {!user.cognitoSub && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onLinkCognito(user);
+                        }}
+                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                      >
+                        Link Cognito
+                      </button>
+                    )}
                     <button
+                      type="button"
                       onClick={() => handleDeleteClick(user.id)}
                       className={`${
                         deleteConfirm === user.id
