@@ -6,7 +6,8 @@ import {
   updateCognitoUser, 
   deleteCognitoUser, 
   disableCognitoUser, 
-  enableCognitoUser 
+  enableCognitoUser,
+  setCognitoUserPassword,
 } from '@/lib/cognito/admin-service';
 
 /**
@@ -82,6 +83,17 @@ export async function PATCH(
       // Update name in Cognito if changed
       if (body.name && body.name !== currentUser.name) {
         await updateCognitoUser(currentUser.email, { name: body.name });
+      }
+
+      // Update password in Cognito if provided
+      if (body.password) {
+        const passwordResult = await setCognitoUserPassword(currentUser.email, body.password);
+        if (!passwordResult.success) {
+          return NextResponse.json(
+            { error: `Failed to update password in Cognito: ${passwordResult.error}` },
+            { status: 500 }
+          );
+        }
       }
 
       // Handle isActive change - disable/enable in Cognito

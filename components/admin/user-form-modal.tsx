@@ -88,8 +88,8 @@ export default function UserFormModal({
         throw new Error('Password is required for new users');
       }
 
-      // Validate password strength for new users
-      if (!user && userForm.password && userForm.password.length < 8) {
+      // Validate password strength if provided
+      if (userForm.password && userForm.password.length < 8) {
         throw new Error('Password must be at least 8 characters long');
       }
 
@@ -264,25 +264,26 @@ export default function UserFormModal({
             />
           </div>
 
-          {!user && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Password *
-              </label>
-              <input
-                type="password"
-                className="form-input w-full"
-                value={userForm.password}
-                onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
-                required
-                minLength={8}
-                placeholder="Enter password (min 8 characters)"
-              />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Set a password for this user. Share these credentials with them securely.
-              </p>
-            </div>
-          )}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Password {!user && '*'}
+            </label>
+            <input
+              type="password"
+              className="form-input w-full"
+              value={userForm.password || ''}
+              onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+              required={!user}
+              minLength={8}
+              placeholder={user ? "Leave blank to keep current password" : "Enter password (min 8 characters)"}
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              {user 
+                ? "Leave blank to keep current password, or enter a new password to update it."
+                : "Set a password for this user. Share these credentials with them securely."
+              }
+            </p>
+          </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
