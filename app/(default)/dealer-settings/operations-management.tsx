@@ -101,6 +101,8 @@ export default function OperationsManagement({
     useState<boolean>(false);
   const [hasLaborOrPartsOnly, setHasLaborOrPartsOnly] =
     useState<boolean>(false);
+  const [laborFieldsFilter, setLaborFieldsFilter] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Selection
   const [selectedOperations, setSelectedOperations] = useState<string[]>([]);
@@ -136,6 +138,8 @@ export default function OperationsManagement({
     eligibleMakesOnly,
     eligibleOpcodesOnly,
     hasLaborOrPartsOnly,
+    laborFieldsFilter,
+    searchQuery,
     sortColumn,
     sortDirection,
   ]);
@@ -222,6 +226,14 @@ export default function OperationsManagement({
 
       if (hasLaborOrPartsOnly) {
         params.append("hasLaborOrPartsOnly", "true");
+      }
+
+      if (laborFieldsFilter.length > 0) {
+        params.append("laborFields", laborFieldsFilter.join(","));
+      }
+
+      if (searchQuery.trim()) {
+        params.append("search", searchQuery.trim());
       }
 
       const response = await fetch(
@@ -463,6 +475,14 @@ export default function OperationsManagement({
         params.append("hasLaborOrPartsOnly", "true");
       }
 
+      if (laborFieldsFilter.length > 0) {
+        params.append("laborFields", laborFieldsFilter.join(","));
+      }
+
+      if (searchQuery.trim()) {
+        params.append("search", searchQuery.trim());
+      }
+
       const response = await fetch(
         `/api/dealer-settings/operations?${params.toString()}`,
         {
@@ -596,7 +616,11 @@ export default function OperationsManagement({
     if (value === null || value === undefined) return "";
     const stringValue = String(value);
     // If value contains comma, newline, or quote, wrap in quotes and escape quotes
-    if (stringValue.includes(",") || stringValue.includes("\n") || stringValue.includes('"')) {
+    if (
+      stringValue.includes(",") ||
+      stringValue.includes("\n") ||
+      stringValue.includes('"')
+    ) {
       return `"${stringValue.replace(/"/g, '""')}"`;
     }
     return stringValue;
@@ -636,6 +660,56 @@ export default function OperationsManagement({
     <div className="space-y-6">
       {/* Filters */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Search Bar */}
+        <div className="col-span-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Search Operation Code / Description
+          </label>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
+            placeholder="Search by operation code or description..."
+            className="form-input w-full"
+          />
+        </div>
+
+        {/* Date Range */}
+        <div className="col-span-2 flex items-center gap-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Start Date
+            </label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="form-input w-full"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              End Date
+            </label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="form-input w-full"
+            />
+          </div>
+        </div>
+
         {/* Service Filter */}
         <div>
           <MultiSelectDropdown
@@ -696,41 +770,25 @@ export default function OperationsManagement({
           </select>
         </div>
 
-        {/* Date Range */}
-
-        {/* Checkbox Filters */}
-        <div className="flex items-center gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Start Date
-            </label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => {
-                setStartDate(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="form-input w-full"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              End Date
-            </label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => {
-                setEndDate(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="form-input w-full"
-            />
-          </div>
+        {/* Labor Fields Filter */}
+        <div>
+          <MultiSelectDropdown
+            label="Labor Fields"
+            options={[
+              { value: "complaint", label: "Has Labor Complaint" },
+              { value: "cause", label: "Has Labor Cause" },
+              { value: "correction", label: "Has Labor Correction" },
+            ]}
+            value={laborFieldsFilter}
+            onChange={(selected) => {
+              setLaborFieldsFilter(selected);
+              setCurrentPage(1);
+            }}
+            placeholder="Select labor fields..."
+          />
         </div>
       </div>
+
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-6">
           <label className="flex items-center cursor-pointer">
@@ -985,17 +1043,23 @@ export default function OperationsManagement({
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         {operation.ai_tagged_at ? (
-                            <div className="text-xs">
+                          <div className="text-xs">
                             <div className="text-gray-600 dark:text-gray-300">
                               Service:{" "}
-                              {operation.ai_confidence_service !== null && operation.ai_confidence_service !== undefined
-                                ? `${(operation.ai_confidence_service * 100).toFixed(1)}%`
+                              {operation.ai_confidence_service !== null &&
+                              operation.ai_confidence_service !== undefined
+                                ? `${(
+                                    operation.ai_confidence_service * 100
+                                  ).toFixed(1)}%`
                                 : "-"}
                             </div>
                             <div className="text-gray-600 dark:text-gray-300">
                               Warranty:{" "}
-                              {operation.ai_confidence_warranty !== null && operation.ai_confidence_warranty !== undefined
-                                ? `${(operation.ai_confidence_warranty * 100).toFixed(1)}%`
+                              {operation.ai_confidence_warranty !== null &&
+                              operation.ai_confidence_warranty !== undefined
+                                ? `${(
+                                    operation.ai_confidence_warranty * 100
+                                  ).toFixed(1)}%`
                                 : "-"}
                             </div>
                             {operation.ai_reviewed === false && (
@@ -1108,8 +1172,12 @@ export default function OperationsManagement({
                                 </h4>
                                 <p className="text-sm text-gray-600 dark:text-gray-400">
                                   {(() => {
-                                    const laborHours = parseDecimal(operation.total_labor_hours);
-                                    const laborSale = parseDecimal(operation.total_labor_sale);
+                                    const laborHours = parseDecimal(
+                                      operation.total_labor_hours
+                                    );
+                                    const laborSale = parseDecimal(
+                                      operation.total_labor_sale
+                                    );
                                     if (laborHours > 0) {
                                       const elr = laborSale / laborHours;
                                       return `$${elr.toFixed(2)}`;
@@ -1124,10 +1192,16 @@ export default function OperationsManagement({
                                 </h4>
                                 <p className="text-sm text-gray-600 dark:text-gray-400">
                                   {(() => {
-                                    const partsSale = parseDecimal(operation.total_parts_sale);
-                                    const partsCost = parseDecimal(operation.total_parts_cost);
+                                    const partsSale = parseDecimal(
+                                      operation.total_parts_sale
+                                    );
+                                    const partsCost = parseDecimal(
+                                      operation.total_parts_cost
+                                    );
                                     if (partsCost > 0) {
-                                      const profitPercent = ((partsSale - partsCost) / partsCost) * 100;
+                                      const profitPercent =
+                                        ((partsSale - partsCost) / partsCost) *
+                                        100;
                                       return `${profitPercent.toFixed(2)}%`;
                                     }
                                     return "N/A";
@@ -1150,36 +1224,33 @@ export default function OperationsManagement({
                             </div>
 
                             {/* Labor Details Section */}
-                            {(operation.labor_complaint ||
-                              operation.labor_cause ||
-                              operation.labor_correction) && (
-                              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                                    Labor Complaint
-                                  </h4>
-                                  <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
-                                    {operation.labor_complaint || "N/A"}
-                                  </p>
-                                </div>
-                                <div>
-                                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                                    Labor Cause
-                                  </h4>
-                                  <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
-                                    {operation.labor_cause || "N/A"}
-                                  </p>
-                                </div>
-                                <div>
-                                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                                    Labor Correction
-                                  </h4>
-                                  <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
-                                    {operation.labor_correction || "N/A"}
-                                  </p>
-                                </div>
+
+                            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div>
+                                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                                  Labor Complaint
+                                </h4>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+                                  {operation.labor_complaint || "N/A"}
+                                </p>
                               </div>
-                            )}
+                              <div>
+                                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                                  Labor Cause
+                                </h4>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+                                  {operation.labor_cause || "N/A"}
+                                </p>
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                                  Labor Correction
+                                </h4>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+                                  {operation.labor_correction || "N/A"}
+                                </p>
+                              </div>
+                            </div>
                           </div>
                         </td>
                       </tr>

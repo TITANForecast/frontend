@@ -23,6 +23,8 @@ export async function GET(request: NextRequest) {
     const eligibleMakesOnly = searchParams.get("eligibleMakesOnly"); // 'true'
     const eligibleOpcodesOnly = searchParams.get("eligibleOpcodesOnly"); // 'true'
     const hasLaborOrPartsOnly = searchParams.get("hasLaborOrPartsOnly"); // 'true'
+    const laborFields = searchParams.get("laborFields"); // Comma-separated: complaint, cause, correction
+    const search = searchParams.get("search"); // Text search for operation code/description
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = (page - 1) * limit;
@@ -90,6 +92,33 @@ export async function GET(request: NextRequest) {
 
     if (eligibleOpcodesOnly === "true") {
       whereConditions.push(`oc.warranty_eligible = true`);
+    }
+
+    if (laborFields) {
+      const laborFieldArray = laborFields.split(",").map((field) => field.trim());
+      const laborConditions: string[] = [];
+      
+      if (laborFieldArray.includes("complaint")) {
+        laborConditions.push(`(o.labor_complaint IS NOT NULL AND o.labor_complaint != '')`);
+      }
+      if (laborFieldArray.includes("cause")) {
+        laborConditions.push(`(o.labor_cause IS NOT NULL AND o.labor_cause != '')`);
+      }
+      if (laborFieldArray.includes("correction")) {
+        laborConditions.push(`(o.labor_correction IS NOT NULL AND o.labor_correction != '')`);
+      }
+      
+      if (laborConditions.length > 0) {
+        whereConditions.push(`(${laborConditions.join(" OR ")})`);
+      }
+    }
+
+    if (search) {
+      // Escape single quotes in search term to prevent SQL injection
+      const escapedSearch = search.replace(/'/g, "''");
+      whereConditions.push(
+        `(o.operation_code ILIKE '%${escapedSearch}%' OR o.operation_description ILIKE '%${escapedSearch}%')`
+      );
     }
 
     const whereClause =
