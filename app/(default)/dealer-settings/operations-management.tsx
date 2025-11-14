@@ -53,6 +53,7 @@ interface Operation {
   labor_complaint: string | null;
   labor_cause: string | null;
   labor_correction: string | null;
+  labor_comments: string | null;
 }
 
 interface Service {
@@ -99,8 +100,7 @@ export default function OperationsManagement({
   const [eligibleMakesOnly, setEligibleMakesOnly] = useState<boolean>(false);
   const [eligibleOpcodesOnly, setEligibleOpcodesOnly] =
     useState<boolean>(false);
-  const [hasLaborOrPartsOnly, setHasLaborOrPartsOnly] =
-    useState<boolean>(false);
+  const [laborPartsFilter, setLaborPartsFilter] = useState<string>(""); // "" (none), "labor", "parts", "laborOrParts"
   const [laborFieldsFilter, setLaborFieldsFilter] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
 
@@ -137,7 +137,7 @@ export default function OperationsManagement({
     payTypeFilter,
     eligibleMakesOnly,
     eligibleOpcodesOnly,
-    hasLaborOrPartsOnly,
+    laborPartsFilter,
     laborFieldsFilter,
     searchQuery,
     sortColumn,
@@ -224,8 +224,8 @@ export default function OperationsManagement({
         params.append("eligibleOpcodesOnly", "true");
       }
 
-      if (hasLaborOrPartsOnly) {
-        params.append("hasLaborOrPartsOnly", "true");
+      if (laborPartsFilter) {
+        params.append("laborPartsFilter", laborPartsFilter);
       }
 
       if (laborFieldsFilter.length > 0) {
@@ -471,8 +471,8 @@ export default function OperationsManagement({
         params.append("eligibleOpcodesOnly", "true");
       }
 
-      if (hasLaborOrPartsOnly) {
-        params.append("hasLaborOrPartsOnly", "true");
+      if (laborPartsFilter) {
+        params.append("laborPartsFilter", laborPartsFilter);
       }
 
       if (laborFieldsFilter.length > 0) {
@@ -524,6 +524,7 @@ export default function OperationsManagement({
         "Labor Complaint",
         "Labor Cause",
         "Labor Correction",
+        "Labor Comments",
         "Eligibility Notes",
         "Updated At",
       ];
@@ -584,6 +585,7 @@ export default function OperationsManagement({
           escapeCSV(op.labor_complaint || ""),
           escapeCSV(op.labor_cause || ""),
           escapeCSV(op.labor_correction || ""),
+          escapeCSV(op.labor_comments || ""),
           escapeCSV(op.eligibility_notes || ""),
           op.updated_at ? new Date(op.updated_at).toLocaleString() : "",
         ];
@@ -659,7 +661,7 @@ export default function OperationsManagement({
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         {/* Search Bar */}
         <div className="col-span-2">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -678,7 +680,6 @@ export default function OperationsManagement({
         </div>
 
         {/* Date Range */}
-        <div className="col-span-2 flex items-center gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Start Date
@@ -708,6 +709,36 @@ export default function OperationsManagement({
               className="form-input w-full"
             />
           </div>
+
+        <div className="flex items-center gap-6">
+          <label className="flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={eligibleMakesOnly}
+              onChange={(e) => {
+                setEligibleMakesOnly(e.target.checked);
+                setCurrentPage(1);
+              }}
+              className="form-checkbox h-4 w-4 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 mr-2"
+            />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Eligible Makes Only
+            </span>
+          </label>
+          <label className="flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={eligibleOpcodesOnly}
+              onChange={(e) => {
+                setEligibleOpcodesOnly(e.target.checked);
+                setCurrentPage(1);
+              }}
+              className="form-checkbox h-4 w-4 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 mr-2"
+            />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Eligible Opcodes Only
+            </span>
+          </label>
         </div>
 
         {/* Service Filter */}
@@ -778,6 +809,7 @@ export default function OperationsManagement({
               { value: "complaint", label: "Has Labor Complaint" },
               { value: "cause", label: "Has Labor Cause" },
               { value: "correction", label: "Has Labor Correction" },
+              { value: "comment", label: "Has Labor Comment" },
             ]}
             value={laborFieldsFilter}
             onChange={(selected) => {
@@ -787,53 +819,29 @@ export default function OperationsManagement({
             placeholder="Select labor fields..."
           />
         </div>
+
+        {/* Labor/Parts Filter */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Labor/Parts Filter
+          </label>
+          <select
+            value={laborPartsFilter}
+            onChange={(e) => {
+              setLaborPartsFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="form-select w-full min-w-[180px]"
+          >
+            <option value="">All</option>
+            <option value="labor">Has Labor</option>
+            <option value="parts">Has Parts</option>
+            <option value="laborOrParts">Has Labor or Parts</option>
+          </select>
+        </div>
       </div>
 
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-6">
-          <label className="flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={eligibleMakesOnly}
-              onChange={(e) => {
-                setEligibleMakesOnly(e.target.checked);
-                setCurrentPage(1);
-              }}
-              className="form-checkbox h-4 w-4 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 mr-2"
-            />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Eligible Makes Only
-            </span>
-          </label>
-          <label className="flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={eligibleOpcodesOnly}
-              onChange={(e) => {
-                setEligibleOpcodesOnly(e.target.checked);
-                setCurrentPage(1);
-              }}
-              className="form-checkbox h-4 w-4 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 mr-2"
-            />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Eligible Opcodes Only
-            </span>
-          </label>
-          <label className="flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={hasLaborOrPartsOnly}
-              onChange={(e) => {
-                setHasLaborOrPartsOnly(e.target.checked);
-                setCurrentPage(1);
-              }}
-              className="form-checkbox h-4 w-4 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 mr-2"
-            />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Has Labor/Parts Only
-            </span>
-          </label>
-        </div>
+      <div className="flex justify-end">
         <button
           onClick={exportToCSV}
           disabled={loading}
@@ -1225,7 +1233,7 @@ export default function OperationsManagement({
 
                             {/* Labor Details Section */}
 
-                            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                               <div>
                                 <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
                                   Labor Complaint
@@ -1248,6 +1256,14 @@ export default function OperationsManagement({
                                 </h4>
                                 <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
                                   {operation.labor_correction || "N/A"}
+                                </p>
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                                  Labor Comments
+                                </h4>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+                                  {operation.labor_comments || "N/A"}
                                 </p>
                               </div>
                             </div>

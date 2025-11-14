@@ -171,6 +171,33 @@ export default function OpcodeManagement({ dealerId }: OpcodeManagementProps) {
     setChangedOpcodes(new Set(changedOpcodes).add(code));
   };
 
+  const handleSelectAllOnPage = () => {
+    // Check if all current page opcodes are already selected
+    const allSelected = opcodes.every(
+      (opcode) => opcode.is_warranty_eligible === true
+    );
+
+    // Toggle all opcodes on current page
+    const updatedOpcodes = opcodes.map((opcode) => ({
+      ...opcode,
+      is_warranty_eligible: !allSelected,
+    }));
+
+    setOpcodes(updatedOpcodes);
+
+    // Mark all as changed
+    const newChangedOpcodes = new Set(changedOpcodes);
+    opcodes.forEach((opcode) => {
+      newChangedOpcodes.add(opcode.code);
+    });
+    setChangedOpcodes(newChangedOpcodes);
+  };
+
+  // Check if all opcodes on current page are selected
+  const allPageOpcodesSelected =
+    opcodes.length > 0 &&
+    opcodes.every((opcode) => opcode.is_warranty_eligible === true);
+
   const handleSaveChanges = async () => {
     setSaving(true);
     setError(null);
@@ -341,11 +368,27 @@ export default function OpcodeManagement({ dealerId }: OpcodeManagementProps) {
                   <SortIcon column="usage_count" />
                 </th>
                 <th
-                  className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200"
-                  onClick={() => handleSort("is_warranty_eligible")}
+                  className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
-                  Warranty Eligible
-                  <SortIcon column="is_warranty_eligible" />
+                  <div className="flex items-center justify-center gap-2">
+                    <label className="inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={allPageOpcodesSelected}
+                        onChange={handleSelectAllOnPage}
+                        disabled={!canWrite || opcodes.length === 0}
+                        className="form-checkbox h-5 w-5 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </label>
+                    <span
+                      className="cursor-pointer hover:text-gray-700 dark:hover:text-gray-200"
+                      onClick={() => handleSort("is_warranty_eligible")}
+                    >
+                      Warranty Eligible
+                      <SortIcon column="is_warranty_eligible" />
+                    </span>
+                  </div>
                 </th>
               </tr>
             </thead>

@@ -22,8 +22,8 @@ export async function GET(request: NextRequest) {
     const payTypes = searchParams.get("payTypes"); // Comma-separated: C, W, I
     const eligibleMakesOnly = searchParams.get("eligibleMakesOnly"); // 'true'
     const eligibleOpcodesOnly = searchParams.get("eligibleOpcodesOnly"); // 'true'
-    const hasLaborOrPartsOnly = searchParams.get("hasLaborOrPartsOnly"); // 'true'
-    const laborFields = searchParams.get("laborFields"); // Comma-separated: complaint, cause, correction
+    const laborPartsFilter = searchParams.get("laborPartsFilter"); // 'labor', 'parts', 'laborOrParts'
+    const laborFields = searchParams.get("laborFields"); // Comma-separated: complaint, cause, correction, comment
     const search = searchParams.get("search"); // Text search for operation code/description
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "50");
@@ -107,6 +107,9 @@ export async function GET(request: NextRequest) {
       if (laborFieldArray.includes("correction")) {
         laborConditions.push(`(o.labor_correction IS NOT NULL AND o.labor_correction != '')`);
       }
+      if (laborFieldArray.includes("comment")) {
+        laborConditions.push(`(o.labor_comments IS NOT NULL AND o.labor_comments != '')`);
+      }
       
       if (laborConditions.length > 0) {
         whereConditions.push(`(${laborConditions.join(" OR ")})`);
@@ -145,9 +148,17 @@ export async function GET(request: NextRequest) {
     const orderByClause = `ORDER BY ${validColumn} ${validDirection}, o.id DESC`;
 
     // HAVING clause for labor/parts filter
-    const havingClause = hasLaborOrPartsOnly === "true"
-      ? `HAVING (SUM(l.labor_bill_hours) > 0 OR SUM(l.labor_sale) > 0 OR SUM(p.parts_unit_sale * p.part_quantity) > 0)`
-      : "";
+    let havingClause = "";
+    if (laborPartsFilter === "labor") {
+      // Has labor only
+      havingClause = `HAVING (SUM(l.labor_bill_hours) > 0 OR SUM(l.labor_sale) > 0)`;
+    } else if (laborPartsFilter === "parts") {
+      // Has parts only
+      havingClause = `HAVING SUM(p.parts_unit_sale * p.part_quantity) > 0`;
+    } else if (laborPartsFilter === "laborOrParts") {
+      // Has labor OR parts
+      havingClause = `HAVING (SUM(l.labor_bill_hours) > 0 OR SUM(l.labor_sale) > 0 OR SUM(p.parts_unit_sale * p.part_quantity) > 0)`;
+    }
 
     // Query operations with joins to service_record, services, labor and parts
     const query = `
@@ -191,7 +202,7 @@ export async function GET(request: NextRequest) {
     `;
 
     // Count query - need to account for HAVING clause if used
-    const countQuery = hasLaborOrPartsOnly === "true"
+    const countQuery = laborPartsFilter
       ? `
         SELECT COUNT(*) as total
         FROM (
