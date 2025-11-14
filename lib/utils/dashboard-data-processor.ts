@@ -270,7 +270,7 @@ export function processDashboardData(
         ? ((totalLaborSale - totalLaborCost) / totalLaborSale) * 100
         : 0;
     laborPerRO = totalLaborSale / totalRecords;
-    
+
     // Debug logging
     console.log(`📊 Calculating KPIs from filtered data:`, {
       totalRecords,
@@ -307,26 +307,25 @@ export function processDashboardData(
       // Fallback: use average total labor sale per RO
       elrTotal = totalLaborSale / totalRecords;
     } else {
-      // Final fallback: use pre-calculated value if available
-      elrTotal = kpiResults?.kpis?.effective_labor_rate?.value || 177.5;
+      // Final fallback: use pre-calculated value if available, otherwise 0
+      elrTotal = kpiResults?.kpis?.effective_labor_rate?.value ?? 0;
     }
 
-    // Hours per RO - would need actual hours data, use pre-calculated if available
-    hoursPerRO = kpiResults?.kpis?.hrs_per_ro?.value || 1.29;
+    // Hours per RO - would need actual hours data, use pre-calculated if available, otherwise 0
+    hoursPerRO = kpiResults?.kpis?.hrs_per_ro?.value ?? 0;
   } else if (kpiResults && kpiResults.kpis) {
     // Use pre-calculated KPI values when no filtered data available
     console.log(`⚠️ Using pre-calculated KPIs (no filtered data available)`);
-    laborGPPercent = kpiResults.kpis.labor_gp_percent.value;
-    laborPerRO = kpiResults.kpis.labor_per_ro.value;
-    hoursPerRO = kpiResults.kpis.hrs_per_ro.value;
-    elrTotal = kpiResults.kpis.effective_labor_rate.value;
+    laborGPPercent = kpiResults.kpis.labor_gp_percent?.value ?? 0;
+    laborPerRO = kpiResults.kpis.labor_per_ro?.value ?? 0;
+    hoursPerRO = kpiResults.kpis.hrs_per_ro?.value ?? 0;
+    elrTotal = kpiResults.kpis.effective_labor_rate?.value ?? 0;
   } else {
     // Fallback defaults
-    console.log(`⚠️ Using fallback defaults (no data available)`);
     laborGPPercent = 0;
     laborPerRO = 0;
-    hoursPerRO = 1.29;
-    elrTotal = 177.5;
+    hoursPerRO = 0;
+    elrTotal = 0;
   }
 
   // Prepare daily charts data (sorted by date)

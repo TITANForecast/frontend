@@ -14,13 +14,6 @@ interface Props {
 }
 
 export default function DashboardCardWarrantyOpportunity({ data }: Props) {
-  // Use real data if available, otherwise use mock data
-  const warrantyData = data || {
-    currentLaborRate: 166.59,
-    trackingPotentialHours: 175.42,
-    currentPartsGP: 67,
-    trackingPotentialPartsGP: 69,
-  };
   return (
     <div className="flex flex-col col-span-full sm:col-span-6 xl:col-span-4 bg-white dark:bg-gray-800 shadow-sm rounded-xl">
       <div className="px-5 pt-5">
@@ -39,7 +32,7 @@ export default function DashboardCardWarrantyOpportunity({ data }: Props) {
               Current Warranty Labor
             </div>
             <div className="text-2xl font-bold text-yellow-800 dark:text-yellow-200">
-              ${warrantyData.currentLaborRate.toFixed(2)}
+              ${data?.currentLaborRate.toFixed(2)}
             </div>
           </div>
 
@@ -49,7 +42,7 @@ export default function DashboardCardWarrantyOpportunity({ data }: Props) {
               Tracking Potential
             </div>
             <div className="text-2xl font-bold text-green-800 dark:text-green-200">
-              {warrantyData.trackingPotentialHours.toFixed(2)}
+              {data?.trackingPotentialHours.toFixed(2)}
             </div>
             <div className="text-xs text-green-600 dark:text-green-400 mt-1">
               ELIGIBLE 11/13/2025
@@ -62,7 +55,7 @@ export default function DashboardCardWarrantyOpportunity({ data }: Props) {
               Current Warranty Parts
             </div>
             <div className="text-2xl font-bold text-yellow-800 dark:text-yellow-200">
-              {warrantyData.currentPartsGP}%
+              {data?.currentPartsGP}%
             </div>
           </div>
 
@@ -72,7 +65,7 @@ export default function DashboardCardWarrantyOpportunity({ data }: Props) {
               Tracking Potential
             </div>
             <div className="text-2xl font-bold text-red-800 dark:text-red-200">
-              {warrantyData.trackingPotentialPartsGP}%
+              {data?.trackingPotentialPartsGP}%
             </div>
             <div className="text-xs text-red-600 dark:text-red-400 mt-1">
               ELIGIBLE TO FILE
