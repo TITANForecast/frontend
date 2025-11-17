@@ -89,8 +89,20 @@ export default function UserFormModal({
       }
 
       // Validate password strength if provided
-      if (userForm.password && userForm.password.length < 8) {
-        throw new Error('Password must be at least 8 characters long');
+      if (userForm.password) {
+        if (userForm.password.length < 8) {
+          throw new Error('Password must be at least 8 characters long');
+        }
+        
+        // Check Cognito password policy requirements
+        const hasUpperCase = /[A-Z]/.test(userForm.password);
+        const hasLowerCase = /[a-z]/.test(userForm.password);
+        const hasNumber = /[0-9]/.test(userForm.password);
+        const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(userForm.password);
+        
+        if (!hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecial) {
+          throw new Error('Password must contain uppercase, lowercase, number, and special character');
+        }
       }
 
       // Ensure default dealer is in dealer list
