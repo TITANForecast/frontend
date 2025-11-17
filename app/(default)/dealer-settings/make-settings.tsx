@@ -5,7 +5,11 @@ import { useAuth } from "@/components/auth-provider-multitenancy";
 import { UserRole } from "@/lib/types/auth";
 import { Check, X as XIcon } from "lucide-react";
 import { AgGridReact } from "ag-grid-react";
-import { ColDef, ICellRendererParams } from "ag-grid-community";
+import {
+  ColDef,
+  ICellRendererParams,
+  IHeaderParams,
+} from "ag-grid-community";
 import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
 
 // Import AG Grid CSS
@@ -35,6 +39,8 @@ export default function MakeSettings({ dealerId }: MakeSettingsProps) {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [changedMakes, setChangedMakes] = useState<Set<string>>(new Set());
   const [isDark, setIsDark] = useState(false);
+  const [gridApi, setGridApi] = useState<any>(null);
+  const [headerRefreshKey, setHeaderRefreshKey] = useState(0);
 
   const canWrite = hasRole([UserRole.SUPER_ADMIN, UserRole.MULTI_DEALER]);
 
@@ -99,6 +105,7 @@ export default function MakeSettings({ dealerId }: MakeSettingsProps) {
         : make
     );
     setMakes(updatedMakes);
+    setHeaderRefreshKey((prev) => prev + 1); // Force header refresh
 
     // Find the original and updated make to compare
     const originalMake = originalMakes.find((m) => m.name === makeName);
@@ -120,6 +127,105 @@ export default function MakeSettings({ dealerId }: MakeSettingsProps) {
 
     setChangedMakes(newChangedMakes);
   };
+
+  const handleSelectAllOnPage = () => {
+    if (!gridApi) return;
+
+    // Get only rows visible on the current page
+    const currentPage = gridApi.paginationGetCurrentPage();
+    const pageSize = gridApi.paginationGetPageSize();
+    const startIndex = currentPage * pageSize;
+    const endIndex = startIndex + pageSize;
+    const totalDisplayedRows = gridApi.getDisplayedRowCount();
+
+    const displayedRows: Make[] = [];
+    for (let i = startIndex; i < Math.min(endIndex, totalDisplayedRows); i++) {
+      const rowNode = gridApi.getDisplayedRowAtIndex(i);
+      if (rowNode && rowNode.data) {
+        displayedRows.push(rowNode.data);
+      }
+    }
+
+    if (displayedRows.length === 0) return;
+
+    // Check if all displayed rows are already selected
+    const allSelected = displayedRows.every(
+      (make) => make.is_warranty_eligible === true
+    );
+
+    // Toggle all displayed makes
+    const updatedMakes = makes.map((make) => {
+      const displayedMake = displayedRows.find((m) => m.name === make.name);
+      if (displayedMake) {
+        return { ...make, is_warranty_eligible: !allSelected };
+      }
+      return make;
+    });
+
+    setMakes(updatedMakes);
+    setHeaderRefreshKey((prev) => prev + 1); // Force header refresh
+
+    // Update changed makes set
+    const newChangedMakes = new Set(changedMakes);
+    displayedRows.forEach((make) => {
+      const originalMake = originalMakes.find((m) => m.name === make.name);
+      const updatedMake = updatedMakes.find((m) => m.name === make.name);
+      if (
+        originalMake &&
+        updatedMake &&
+        originalMake.is_warranty_eligible !== updatedMake.is_warranty_eligible
+      ) {
+        newChangedMakes.add(make.name);
+      } else {
+        newChangedMakes.delete(make.name);
+      }
+    });
+    setChangedMakes(newChangedMakes);
+  };
+
+  // Custom header component with checkbox
+  const WarrantyEligibleHeader = useCallback(
+    (params: IHeaderParams) => {
+      if (!gridApi) return <span>Warranty Eligible</span>;
+
+      // Get only rows visible on the current page
+      const currentPage = gridApi.paginationGetCurrentPage();
+      const pageSize = gridApi.paginationGetPageSize();
+      const startIndex = currentPage * pageSize;
+      const endIndex = startIndex + pageSize;
+      const totalDisplayedRows = gridApi.getDisplayedRowCount();
+
+      const displayedRows: Make[] = [];
+      for (let i = startIndex; i < Math.min(endIndex, totalDisplayedRows); i++) {
+        const rowNode = gridApi.getDisplayedRowAtIndex(i);
+        if (rowNode && rowNode.data) {
+          displayedRows.push(rowNode.data);
+        }
+      }
+
+      const allPageMakesSelected =
+        displayedRows.length > 0 &&
+        displayedRows.every((make) => make.is_warranty_eligible === true);
+
+      return (
+        <div className="flex items-center justify-center gap-2 h-full">
+          <label className="inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={allPageMakesSelected}
+              onChange={handleSelectAllOnPage}
+              disabled={!canWrite || displayedRows.length === 0}
+              className="form-checkbox h-5 w-5 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            />
+          </label>
+          <span className="cursor-pointer hover:text-gray-700 dark:hover:text-gray-200">
+            Warranty Eligible
+          </span>
+        </div>
+      );
+    },
+    [gridApi, makes, originalMakes, changedMakes, canWrite, headerRefreshKey]
+  );
 
   const handleSaveChanges = async () => {
     setSaving(true);
@@ -227,9 +333,10 @@ export default function MakeSettings({ dealerId }: MakeSettingsProps) {
         cellRenderer: CheckboxRenderer,
         cellStyle: { textAlign: "center" },
         headerClass: "ag-center-header",
+        headerComponent: WarrantyEligibleHeader,
       },
     ],
-    [CheckboxRenderer]
+    [CheckboxRenderer, WarrantyEligibleHeader]
   );
 
   const defaultColDef: ColDef = useMemo(
@@ -337,6 +444,9 @@ export default function MakeSettings({ dealerId }: MakeSettingsProps) {
             domLayout="normal"
             suppressCellFocus={true}
             theme="legacy"
+            onGridReady={(params) => {
+              setGridApi(params.api);
+            }}
           />
         </div>
       </div>
