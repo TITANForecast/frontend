@@ -39,37 +39,81 @@ Custom HTML email templates for AWS Cognito authentication flows, branded to mat
 - **Accessibility**: High contrast, readable fonts
 - **Security**: Clear expiration times and security notices
 
+## Environment Configuration
+
+The email templates use a variable `${app_domain}` for the domain, allowing you to test in different environments.
+
+### Generate Templates for Your Environment
+
+Use the provided script to generate environment-specific templates:
+
+```bash
+# For local development
+./generate-templates.sh local
+# Generates templates with domain: localhost:3000
+
+# For staging
+./generate-templates.sh staging
+# Generates templates with domain: app-staging.titanforecast.com
+
+# For production
+./generate-templates.sh production
+# Generates templates with domain: app.titanforecast.com
+```
+
+Generated templates will be placed in `generated/<environment>/` directory.
+
+**Supported Environments:**
+- `local` → `localhost:3000`
+- `staging` → `app-staging.titanforecast.com`
+- `production` → `app.titanforecast.com`
+
 ## Configuring in AWS Cognito
 
 ### Option 1: Via AWS Console
 
-1. Go to **AWS Cognito Console**
-2. Select **User Pools** → `titan-users-staging` (or production)
-3. Navigate to **Messaging** → **Email**
-4. Under **Email message customization**:
+1. **Generate templates** for your environment first:
+   ```bash
+   ./generate-templates.sh staging
+   ```
+
+2. Go to **AWS Cognito Console**
+3. Select **User Pools** → `titan-users-staging` (or production)
+4. Navigate to **Messaging** → **Email**
+5. Under **Email message customization**:
    - Click **Edit** for "Verification message"
    - Choose **Custom message**
-   - Copy content from `verification-email.html`
+   - Copy content from `generated/staging/verification-email.html`
    - Save
-5. Repeat for "Forgot password message" using `password-reset-email.html`
+6. Repeat for "Forgot password message" using `generated/staging/password-reset-email.html`
 
 ### Option 2: Via Terraform (Recommended)
 
-Update your Cognito User Pool configuration in `infrastructure/cognito.tf`:
+Use Terraform's `templatefile()` function to inject the correct domain:
 
 ```hcl
+locals {
+  app_domain = var.environment == "production" ? "app.titanforecast.com" : "app-staging.titanforecast.com"
+}
+
 resource "aws_cognito_user_pool" "main" {
   # ... existing config ...
   
-  # Custom email templates
-  email_verification_message = file("${path.module}/email-templates/verification-email.html")
+  # Custom email templates with domain variable
+  email_verification_message = templatefile(
+    "${path.module}/../frontend/email-templates/verification-email.html",
+    { app_domain = local.app_domain }
+  )
   email_verification_subject = "Verify Your Email - TITAN Forecast"
   
-  # For forgot password (requires verification template)
+  # For forgot password
   verification_message_template {
-    default_email_option = "CONFIRM_WITH_LINK"
-    email_message_by_link = file("${path.module}/email-templates/password-reset-email.html")
-    email_subject_by_link = "Reset Your Password - TITAN Forecast"
+    default_email_option = "CONFIRM_WITH_CODE"
+    email_message = templatefile(
+      "${path.module}/../frontend/email-templates/password-reset-email.html",
+      { app_domain = local.app_domain }
+    )
+    email_subject = "Reset Your Password - TITAN Forecast"
   }
 }
 ```

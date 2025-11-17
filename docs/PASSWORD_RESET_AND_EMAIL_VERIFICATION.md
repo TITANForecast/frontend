@@ -195,8 +195,20 @@ Both email templates include "magic links" that automatically pre-fill the verif
 - ✅ Still supports manual entry for accessibility/fallback
 
 **URLs Generated:**
-- Email verification: `https://app.titanforecast.com/verify-email?email=user@example.com&code=123456`
-- Password reset: `https://app.titanforecast.com/forgot-password?email=user@example.com&code=123456`
+- Email verification: `https://${app_domain}/verify-email?email=user@example.com&code=123456`
+- Password reset: `https://${app_domain}/forgot-password?email=user@example.com&code=123456`
+
+**Environment Support:**
+The templates use `${app_domain}` variable for flexibility:
+- **Local**: `localhost:3000`
+- **Staging**: `app-staging.titanforecast.com`
+- **Production**: `app.titanforecast.com`
+
+Generate environment-specific templates using:
+```bash
+cd email-templates
+./generate-templates.sh staging  # or local, production
+```
 
 ## Email Templates
 
