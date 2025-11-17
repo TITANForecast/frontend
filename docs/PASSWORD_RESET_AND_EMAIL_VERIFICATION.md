@@ -14,6 +14,7 @@ This document describes the complete password reset and email verification flows
 
 ✅ **Email Verification Flow**
 - Verify email with 6-digit code
+- Magic link support (code pre-filled from email button)
 - Resend verification code
 - Auto-redirect after successful verification
 - Deep linking from login errors
@@ -161,6 +162,41 @@ validatePassword(password: string): {
 - At least one lowercase letter
 - At least one number
 - At least one special character (!@#$%^&*)
+
+## Magic Link Feature
+
+Both email templates include "magic links" that automatically pre-fill the verification code when users click the button in their email.
+
+**How it works:**
+
+1. **Email Template**: The button/link includes the code as a URL parameter
+   ```html
+   <a href="https://app.titanforecast.com/verify-email?email={username}&code={####}">
+   ```
+
+2. **Cognito Processing**: AWS Cognito replaces the placeholders before sending:
+   - `{username}` → User's email address
+   - `{####}` → The 6-digit verification code
+
+3. **Frontend Handling**: Our Next.js pages detect URL parameters and auto-fill:
+   ```typescript
+   const emailParam = searchParams.get("email");
+   const codeParam = searchParams.get("code");
+   ```
+
+4. **User Experience**: 
+   - **Best case**: Click button → Code pre-filled → Click verify → Done!
+   - **Fallback**: Manually enter the code if link doesn't work
+
+**Benefits:**
+- ✅ One-click verification (almost)
+- ✅ Reduced user friction
+- ✅ Better conversion rates
+- ✅ Still supports manual entry for accessibility/fallback
+
+**URLs Generated:**
+- Email verification: `https://app.titanforecast.com/verify-email?email=user@example.com&code=123456`
+- Password reset: `https://app.titanforecast.com/forgot-password?email=user@example.com&code=123456`
 
 ## Email Templates
 

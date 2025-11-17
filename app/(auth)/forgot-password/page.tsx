@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, Mail, Lock, CheckCircle } from "lucide-react";
 import { requestPasswordReset, confirmPasswordReset, validatePassword } from "@/lib/cognito/auth-flows";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [step, setStep] = useState<"request" | "confirm" | "success">("request");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -17,6 +18,25 @@ export default function ForgotPasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [destination, setDestination] = useState("");
+
+  // Handle magic link - auto-fill email and code from URL params
+  useEffect(() => {
+    const emailParam = searchParams.get("email");
+    const codeParam = searchParams.get("code");
+    
+    if (emailParam) {
+      setEmail(emailParam);
+    }
+    
+    if (codeParam) {
+      setCode(codeParam);
+      // If we have a code in URL, skip to confirm step
+      if (emailParam) {
+        setStep("confirm");
+        setDestination(emailParam); // Show the email they'll reset
+      }
+    }
+  }, [searchParams]);
 
   const handleRequestReset = async (e: React.FormEvent) => {
     e.preventDefault();

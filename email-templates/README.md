@@ -10,7 +10,12 @@ Custom HTML email templates for AWS Cognito authentication flows, branded to mat
 
 **Placeholders:**
 - `{####}` - Verification code (6 digits)
-- `{##Verify Email##}` - Verification link URL
+- `{username}` - User's email address
+
+**Magic Link:**
+- Button links to: `https://app.titanforecast.com/verify-email?email={username}&code={####}`
+- This automatically pre-fills the email and code on the verification page
+- Users can click the button or manually enter the code
 
 ### 2. `password-reset-email.html`
 **Purpose:** Password reset request  
@@ -18,7 +23,12 @@ Custom HTML email templates for AWS Cognito authentication flows, branded to mat
 
 **Placeholders:**
 - `{####}` - Reset code (6 digits)
-- `{##Reset Password##}` - Password reset link URL
+- `{username}` - User's email address
+
+**Magic Link:**
+- Button links to: `https://app.titanforecast.com/forgot-password?email={username}&code={####}`
+- This automatically pre-fills the email and code, skipping to the password entry step
+- Users can click the button or manually enter the code
 
 ## Design Features
 

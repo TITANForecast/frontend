@@ -19,10 +19,18 @@ export default function VerifyEmailPage() {
   const [destination, setDestination] = useState("");
 
   useEffect(() => {
-    // Get email from query params if redirected from signup/login
+    // Get email and code from query params (magic link support)
     const emailParam = searchParams.get("email");
+    const codeParam = searchParams.get("code");
+    
     if (emailParam) {
       setEmail(emailParam);
+    }
+    
+    if (codeParam) {
+      setCode(codeParam);
+      // If we have both email and code, we could auto-submit
+      // For now, just pre-fill and let user click verify
     }
   }, [searchParams]);
 
