@@ -19,18 +19,13 @@ export default function VerifyEmailPage() {
   const [destination, setDestination] = useState("");
 
   useEffect(() => {
-    // Get email and code from query params (magic link support)
-    const emailParam = searchParams.get("email");
+    // Get code from query params (magic link support)
+    // Note: Email is not included because Cognito doesn't support {username} placeholder
     const codeParam = searchParams.get("code");
-    
-    if (emailParam) {
-      setEmail(emailParam);
-    }
     
     if (codeParam) {
       setCode(codeParam);
-      // If we have both email and code, we could auto-submit
-      // For now, just pre-fill and let user click verify
+      // Pre-fill the code from magic link
     }
   }, [searchParams]);
 

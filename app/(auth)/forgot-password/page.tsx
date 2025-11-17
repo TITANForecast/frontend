@@ -19,22 +19,16 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState("");
   const [destination, setDestination] = useState("");
 
-  // Handle magic link - auto-fill email and code from URL params
+  // Handle magic link - auto-fill code from URL params
+  // Note: Email is not included because Cognito doesn't support {username} placeholder
   useEffect(() => {
-    const emailParam = searchParams.get("email");
     const codeParam = searchParams.get("code");
-    
-    if (emailParam) {
-      setEmail(emailParam);
-    }
     
     if (codeParam) {
       setCode(codeParam);
       // If we have a code in URL, skip to confirm step
-      if (emailParam) {
-        setStep("confirm");
-        setDestination(emailParam); // Show the email they'll reset
-      }
+      // User will need to enter their email (the one where they received the code)
+      setStep("confirm");
     }
   }, [searchParams]);
 
@@ -191,9 +185,34 @@ export default function ForgotPasswordPage() {
             {/* Confirm Reset Step */}
             {step === "confirm" && (
               <form onSubmit={handleConfirmReset} className="space-y-6">
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
-                  <p className="text-sm text-blue-800 dark:text-blue-200">
-                    We sent a 6-digit code to <strong>{destination}</strong>
+                {destination && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                      We sent a 6-digit code to <strong>{destination}</strong>
+                    </p>
+                  </div>
+                )}
+
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Mail className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="block w-full pl-10 pr-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-maroon-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      placeholder="Enter your email"
+                    />
+                  </div>
+                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                    Enter the email address where you received the code
                   </p>
                 </div>
 
@@ -211,6 +230,11 @@ export default function ForgotPasswordPage() {
                     className="block w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-maroon-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-center text-2xl tracking-widest font-mono"
                     placeholder="000000"
                   />
+                  {code && (
+                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 text-center">
+                      ✓ Code auto-filled from email link
+                    </p>
+                  )}
                 </div>
 
                 <div>
