@@ -99,43 +99,26 @@ async function fetchFromDatabase(
         fs.total_parts_cost,
         fs.total_parts_sale,
         
-        -- Total labor hours per RO
-        COALESCE((
-          SELECT SUM(l.labor_bill_hours)
-          FROM operation o
-          LEFT JOIN labor_line l ON o.id = l.operation_id
-          WHERE o.service_record_id = sr.id
-        ), 0) as total_labor_hours,
-        
-        -- Customer data
-        c.customer_number,
-        c.first_name,
-        c.last_name,
-        c.full_name,
-        c.address_line_1,
-        c.address_line_2,
-        c.city,
-        c.state,
-        c.zip_code,
-        c.home_phone,
-        c.cell_phone,
-        c.work_phone,
-        c.email_1,
-        
-        -- Vehicle data
-        v.vin,
-        v.year,
-        v.make,
-        v.model,
-        v.trim,
-        v.exterior_color,
-        v.license_plate_number
+        -- Total labor hours per RO (using JOIN instead of subquery for better performance)
+        COALESCE(SUM(l.labor_bill_hours), 0) as total_labor_hours
         
       FROM service_record sr
       LEFT JOIN financial_summary fs ON sr.id = fs.service_record_id
-      LEFT JOIN customer c ON sr.customer_id = c.id
-      LEFT JOIN vehicle v ON sr.vehicle_id = v.id
+      LEFT JOIN operation o ON o.service_record_id = sr.id
+      LEFT JOIN labor_line l ON o.id = l.operation_id
       ${whereClause}
+      GROUP BY 
+        sr.id, sr.ro_number, sr.dealer_id, sr.file_type, sr.open_date, sr.close_date,
+        sr.appointment_date, sr.appointment_flag, sr.service_advisor_number,
+        sr.service_advisor_name, sr.ro_department, sr.ro_store, sr.accounting_make,
+        sr.ro_status, sr.ro_mileage, sr.mileage_out, sr.total_cost, sr.total_sale,
+        fs.customer_total_cost, fs.customer_total_sale, fs.customer_labor_cost,
+        fs.customer_labor_sale, fs.customer_parts_cost, fs.customer_parts_sale,
+        fs.warranty_total_cost, fs.warranty_total_sale, fs.warranty_labor_cost,
+        fs.warranty_labor_sale, fs.warranty_parts_cost, fs.warranty_parts_sale,
+        fs.internal_total_cost, fs.internal_total_sale, fs.internal_labor_cost,
+        fs.internal_labor_sale, fs.internal_parts_cost, fs.internal_parts_sale,
+        fs.total_labor_cost, fs.total_labor_sale, fs.total_parts_cost, fs.total_parts_sale
       ORDER BY sr.open_date DESC, sr.id DESC
       LIMIT 5000;
     `;
@@ -351,11 +334,11 @@ export async function GET(request: NextRequest) {
       }${endDate ? ` to ${endDate.toISOString()}` : ""}`
     );
 
-    // Fetch service records
-    const dmsData = await fetchFromDatabase(dealerId, startDate, endDate);
-
-    // Fetch top opcodes
-    const opcodesData = await fetchTopOpcodes(dealerId, startDate, endDate, 5);
+    // Fetch service records and opcodes in parallel for better performance
+    const [dmsData, opcodesData] = await Promise.all([
+      fetchFromDatabase(dealerId, startDate, endDate),
+      fetchTopOpcodes(dealerId, startDate, endDate, 5),
+    ]);
 
     console.log(
       `✅ Retrieved ${dmsData.totalRecords} records for dealer ${dealerId}`

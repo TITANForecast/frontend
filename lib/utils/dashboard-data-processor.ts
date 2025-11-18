@@ -191,35 +191,41 @@ export function processDashboardData(
     monthData.totalLaborSale += laborSale;
   });
 
-  // Calculate KPIs from real data only
+  // Calculate KPIs from real data only - optimized single pass
   let laborGPPercent: number = 0;
   let laborPerRO: number = 0;
   let hoursPerRO: number = 0;
   let elrTotal: number = 0;
 
   const totalRecords = records.length;
-  const totalLaborCost = records.reduce(
-    (sum, r) =>
-      sum +
-      parseCurrency(r["Customer Labor Cost"]) +
-      parseCurrency(r["Warranty Labor Cost"]) +
-      parseCurrency(r["Internal Labor Cost"]),
-    0
-  );
-  const totalLaborSale = records.reduce(
-    (sum, r) =>
-      sum +
-      parseCurrency(r["Customer Labor Sale"]) +
-      parseCurrency(r["Warranty Labor Sale"]) +
-      parseCurrency(r["Internal Labor Sale"]),
-    0
-  );
-  const totalLaborHours = records.reduce(
-    (sum, r) => sum + parseCurrency(r["Total Labor Hours"] || "0"),
-    0
-  );
+  
+  // Single pass calculation for all metrics (much faster than multiple reduces)
+  let totalLaborCost = 0;
+  let totalLaborSale = 0;
+  let totalLaborHours = 0;
+  let customerPayLaborSale = 0;
+  let customerPayROs = 0;
 
-  // Calculate KPIs from real data only
+  for (const r of records) {
+    const customerLaborCost = parseCurrency(r["Customer Labor Cost"]);
+    const warrantyLaborCost = parseCurrency(r["Warranty Labor Cost"]);
+    const internalLaborCost = parseCurrency(r["Internal Labor Cost"]);
+    const customerLaborSale = parseCurrency(r["Customer Labor Sale"]);
+    const warrantyLaborSale = parseCurrency(r["Warranty Labor Sale"]);
+    const internalLaborSale = parseCurrency(r["Internal Labor Sale"]);
+    const laborHours = parseCurrency(r["Total Labor Hours"] || "0");
+
+    totalLaborCost += customerLaborCost + warrantyLaborCost + internalLaborCost;
+    totalLaborSale += customerLaborSale + warrantyLaborSale + internalLaborSale;
+    totalLaborHours += laborHours;
+    
+    if (customerLaborSale > 0) {
+      customerPayLaborSale += customerLaborSale;
+      customerPayROs++;
+    }
+  }
+
+  // Calculate KPIs from aggregated values
   if (totalRecords > 0) {
     // Labor GP Percent
     if (totalLaborSale > 0) {
@@ -237,14 +243,6 @@ export function processDashboardData(
     }
 
     // ELR (Effective Labor Rate) - calculate from customer pay labor sales
-    const customerPayLaborSale = records.reduce(
-      (sum, r) => sum + parseCurrency(r["Customer Labor Sale"]),
-      0
-    );
-    const customerPayROs = records.filter(
-      (r) => parseCurrency(r["Customer Labor Sale"]) > 0
-    ).length;
-
     if (customerPayLaborSale > 0 && customerPayROs > 0) {
       elrTotal = customerPayLaborSale / customerPayROs;
     } else if (totalLaborSale > 0) {
