@@ -1,50 +1,3 @@
-// Types for Pre-calculated KPI data
-export interface KPIResults {
-  kpis: {
-    effective_labor_rate: {
-      value: number;
-      unit: string;
-    };
-    labor_gp_percent: {
-      value: number;
-      unit: string;
-    };
-    hrs_per_ro: {
-      value: number;
-      unit: string;
-    };
-    labor_per_ro: {
-      value: number;
-      unit: string;
-    };
-    customer_pay: {
-      total_sale: number;
-      labor_sale: number;
-      parts_sale: number;
-      gross_profit: number;
-    };
-    warranty: {
-      total_sale: number;
-      labor_sale: number;
-      parts_sale: number;
-      gross_profit: number;
-    };
-    internal: {
-      total_sale: number;
-      labor_sale: number;
-      parts_sale: number;
-      gross_profit: number;
-    };
-    parts_gp_percent: {
-      value: number;
-      unit: string;
-    };
-  };
-  metadata: {
-    total_repair_orders: number;
-  };
-}
-
 // Types for DMS Service Data
 export interface ServiceRecord {
   "File Type": string;
@@ -77,6 +30,7 @@ export interface ServiceRecord {
   "Internal Labor Sale": string;
   "Internal Parts Cost": string;
   "Internal Parts Sale": string;
+  "Total Labor Hours": string;
   [key: string]: any;
 }
 
@@ -156,7 +110,7 @@ function getMonthName(date: Date): string {
 // Main data processor
 export function processDashboardData(
   dmsData: DMSData,
-  kpiResults?: KPIResults | null
+  opcodesData?: { labels: string[]; values: number[] } | null
 ): ProcessedDashboardData {
   const records = dmsData.records || [];
 
@@ -237,14 +191,12 @@ export function processDashboardData(
     monthData.totalLaborSale += laborSale;
   });
 
-  // Calculate KPIs - use pre-calculated values if available, otherwise calculate from raw data
-  let laborGPPercent: number;
-  let laborPerRO: number;
-  let hoursPerRO: number;
-  let elrTotal: number;
+  // Calculate KPIs from real data only
+  let laborGPPercent: number = 0;
+  let laborPerRO: number = 0;
+  let hoursPerRO: number = 0;
+  let elrTotal: number = 0;
 
-  // Always calculate from filtered data when records are available
-  // Use pre-calculated KPIs only when no filtered data is available
   const totalRecords = records.length;
   const totalLaborCost = records.reduce(
     (sum, r) =>
@@ -262,70 +214,43 @@ export function processDashboardData(
       parseCurrency(r["Internal Labor Sale"]),
     0
   );
+  const totalLaborHours = records.reduce(
+    (sum, r) => sum + parseCurrency(r["Total Labor Hours"] || "0"),
+    0
+  );
 
-  if (totalRecords > 0 && totalLaborSale > 0) {
-    // Calculate from filtered data
-    laborGPPercent =
-      totalLaborSale > 0
-        ? ((totalLaborSale - totalLaborCost) / totalLaborSale) * 100
-        : 0;
-    laborPerRO = totalLaborSale / totalRecords;
+  // Calculate KPIs from real data only
+  if (totalRecords > 0) {
+    // Labor GP Percent
+    if (totalLaborSale > 0) {
+      laborGPPercent = ((totalLaborSale - totalLaborCost) / totalLaborSale) * 100;
+    }
 
-    // Debug logging
-    console.log(`📊 Calculating KPIs from filtered data:`, {
-      totalRecords,
-      totalLaborSale,
-      totalLaborCost,
-      laborGPPercent,
-      laborPerRO,
-      hasKpiResults: !!kpiResults,
-    });
+    // Labor per RO
+    if (totalLaborSale > 0) {
+      laborPerRO = totalLaborSale / totalRecords;
+    }
 
-    // Calculate ELR (Effective Labor Rate) from customer pay labor sales
-    // ELR is typically calculated as total labor sales / total labor hours
-    // Since we don't have hours data, we'll estimate based on customer pay labor
+    // Hours per RO - calculate from actual hours data
+    if (totalLaborHours > 0) {
+      hoursPerRO = totalLaborHours / totalRecords;
+    }
+
+    // ELR (Effective Labor Rate) - calculate from customer pay labor sales
     const customerPayLaborSale = records.reduce(
       (sum, r) => sum + parseCurrency(r["Customer Labor Sale"]),
       0
     );
-    const customerPayLaborCost = records.reduce(
-      (sum, r) => sum + parseCurrency(r["Customer Labor Cost"]),
-      0
-    );
-
-    // Count customer pay ROs (ROs with customer pay labor)
     const customerPayROs = records.filter(
       (r) => parseCurrency(r["Customer Labor Sale"]) > 0
     ).length;
 
     if (customerPayLaborSale > 0 && customerPayROs > 0) {
-      // Calculate ELR as average customer pay labor sale per RO
-      // This gives us an effective rate per repair order
-      // For a more accurate ELR, we'd need actual hours data
       elrTotal = customerPayLaborSale / customerPayROs;
-    } else if (totalRecords > 0) {
-      // Fallback: use average total labor sale per RO
+    } else if (totalLaborSale > 0) {
+      // Fallback to average total labor sale per RO if no customer pay data
       elrTotal = totalLaborSale / totalRecords;
-    } else {
-      // Final fallback: use pre-calculated value if available, otherwise 0
-      elrTotal = kpiResults?.kpis?.effective_labor_rate?.value ?? 0;
     }
-
-    // Hours per RO - would need actual hours data, use pre-calculated if available, otherwise 0
-    hoursPerRO = kpiResults?.kpis?.hrs_per_ro?.value ?? 0;
-  } else if (kpiResults && kpiResults.kpis) {
-    // Use pre-calculated KPI values when no filtered data available
-    console.log(`⚠️ Using pre-calculated KPIs (no filtered data available)`);
-    laborGPPercent = kpiResults.kpis.labor_gp_percent?.value ?? 0;
-    laborPerRO = kpiResults.kpis.labor_per_ro?.value ?? 0;
-    hoursPerRO = kpiResults.kpis.hrs_per_ro?.value ?? 0;
-    elrTotal = kpiResults.kpis.effective_labor_rate?.value ?? 0;
-  } else {
-    // Fallback defaults
-    laborGPPercent = 0;
-    laborPerRO = 0;
-    hoursPerRO = 0;
-    elrTotal = 0;
   }
 
   // Prepare daily charts data (sorted by date)
@@ -418,11 +343,10 @@ export function processDashboardData(
     .sort((a, b) => b.elr - a.elr)
     .slice(0, 9);
 
-  // Aggregate opcode data (would need actual opcode field in data)
-  // For now, using mock data structure
-  const opcodeData = {
-    labels: ["MA10", "FS02", "DIAG", "99P", "BG44K"],
-    values: [35, 25, 20, 15, 5],
+  // Use real opcode data if available, otherwise return empty
+  const opcodeData = opcodesData || {
+    labels: [],
+    values: [],
   };
 
   return {

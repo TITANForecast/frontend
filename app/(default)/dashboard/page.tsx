@@ -15,7 +15,6 @@ import {
   processDashboardData,
   ProcessedDashboardData,
   DMSData,
-  KPIResults,
 } from "@/lib/utils/dashboard-data-processor";
 import { useAuth } from "@/components/auth-provider-multitenancy";
 
@@ -64,10 +63,10 @@ export default function Dashboard() {
         const result = await response.json();
 
         if (result.data) {
-          // Process data with pre-calculated KPIs if available
+          // Process data from API response
           const processed = processDashboardData(
             result.data as DMSData,
-            result.kpis as KPIResults | null
+            result.opcodes as { labels: string[]; values: number[] } | null
           );
           setDashboardData(processed);
           console.log(
