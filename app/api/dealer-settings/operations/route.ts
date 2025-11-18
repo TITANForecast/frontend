@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
       }
       
       if (laborConditions.length > 0) {
-        whereConditions.push(`(${laborConditions.join(" OR ")})`);
+        whereConditions.push(`(${laborConditions.join(" AND ")})`);
       }
     }
 
