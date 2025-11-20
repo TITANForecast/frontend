@@ -28,7 +28,8 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = (page - 1) * limit;
-    const sortColumn = searchParams.get("sortColumn") || "service_record_open_date";
+    const sortColumn =
+      searchParams.get("sortColumn") || "service_record_open_date";
     const sortDirection = searchParams.get("sortDirection") || "desc";
 
     if (!dealerId) {
@@ -95,22 +96,32 @@ export async function GET(request: NextRequest) {
     }
 
     if (laborFields) {
-      const laborFieldArray = laborFields.split(",").map((field) => field.trim());
+      const laborFieldArray = laborFields
+        .split(",")
+        .map((field) => field.trim());
       const laborConditions: string[] = [];
-      
+
       if (laborFieldArray.includes("complaint")) {
-        laborConditions.push(`(o.labor_complaint IS NOT NULL AND o.labor_complaint != '')`);
+        laborConditions.push(
+          `(o.labor_complaint IS NOT NULL AND o.labor_complaint != '')`
+        );
       }
       if (laborFieldArray.includes("cause")) {
-        laborConditions.push(`(o.labor_cause IS NOT NULL AND o.labor_cause != '')`);
+        laborConditions.push(
+          `(o.labor_cause IS NOT NULL AND o.labor_cause != '')`
+        );
       }
       if (laborFieldArray.includes("correction")) {
-        laborConditions.push(`(o.labor_correction IS NOT NULL AND o.labor_correction != '')`);
+        laborConditions.push(
+          `(o.labor_correction IS NOT NULL AND o.labor_correction != '')`
+        );
       }
       if (laborFieldArray.includes("comment")) {
-        laborConditions.push(`(o.labor_comments IS NOT NULL AND o.labor_comments != '')`);
+        laborConditions.push(
+          `(o.labor_comments IS NOT NULL AND o.labor_comments != '')`
+        );
       }
-      
+
       if (laborConditions.length > 0) {
         whereConditions.push(`(${laborConditions.join(" AND ")})`);
       }
@@ -120,7 +131,7 @@ export async function GET(request: NextRequest) {
       // Escape single quotes in search term to prevent SQL injection
       const escapedSearch = search.replace(/'/g, "''");
       whereConditions.push(
-        `(o.operation_code ILIKE '%${escapedSearch}%' OR o.operation_description ILIKE '%${escapedSearch}%')`
+        `(o.operation_code ILIKE '%${escapedSearch}%' OR o.operation_description ILIKE '%${escapedSearch}%' OR o.labor_complaint ILIKE '%${escapedSearch}%' OR o.labor_cause ILIKE '%${escapedSearch}%' OR o.labor_correction ILIKE '%${escapedSearch}%' OR o.labor_comments ILIKE '%${escapedSearch}%')`
       );
     }
 
@@ -144,7 +155,8 @@ export async function GET(request: NextRequest) {
 
     // Sanitize sort parameters
     const validColumn = columnMap[sortColumn] || "sr.open_date";
-    const validDirection = sortDirection.toLowerCase() === "asc" ? "ASC" : "DESC";
+    const validDirection =
+      sortDirection.toLowerCase() === "asc" ? "ASC" : "DESC";
     const orderByClause = `ORDER BY ${validColumn} ${validDirection}, o.id DESC`;
 
     // HAVING clause for labor/parts filter
@@ -174,6 +186,31 @@ export async function GET(request: NextRequest) {
         ss.name as service_subcategory_name,
         u.name as updated_by_user_name,
         v.make as vehicle_make,
+        v.year as vehicle_year,
+        v.model as vehicle_model,
+        v.trim as vehicle_trim,
+        v.vin as vehicle_vin,
+        COALESCE(
+          NULLIF(c.full_name, ''),
+          TRIM(
+            COALESCE(NULLIF(c.salutation, ''), '') || ' ' ||
+            COALESCE(NULLIF(c.first_name, ''), '') || ' ' ||
+            COALESCE(NULLIF(c.middle_name, ''), '') || ' ' ||
+            COALESCE(NULLIF(c.last_name, ''), '') || ' ' ||
+            COALESCE(NULLIF(c.suffix, ''), '')
+          )
+        ) as customer_name,
+        COALESCE(NULLIF(c.cell_phone, ''), NULLIF(c.home_phone, ''), NULLIF(c.work_phone, '')) as customer_phone,
+        c.email_1 as customer_email,
+        TRIM(
+          COALESCE(NULLIF(c.address_line_1, ''), '') || 
+          CASE WHEN c.address_line_2 IS NOT NULL AND c.address_line_2 != '' THEN ', ' || c.address_line_2 ELSE '' END ||
+          CASE 
+            WHEN (c.city IS NOT NULL AND c.city != '') OR (c.state IS NOT NULL AND c.state != '') OR (c.zip_code IS NOT NULL AND c.zip_code != '') 
+            THEN ', ' || TRIM(COALESCE(NULLIF(c.city, ''), '') || ' ' || COALESCE(NULLIF(c.state, ''), '') || ' ' || COALESCE(NULLIF(c.zip_code, ''), ''))
+            ELSE '' 
+          END
+        ) as customer_address,
         o.sale_type as pay_type,
         COALESCE(SUM(l.labor_bill_hours), 0) as total_labor_hours,
         COALESCE(SUM(l.labor_sale), 0) as total_labor_sale,
@@ -186,6 +223,7 @@ export async function GET(request: NextRequest) {
       FROM operation o
       LEFT JOIN service_record sr ON o.service_record_id = sr.id
       LEFT JOIN vehicle v ON sr.vehicle_id = v.id
+      LEFT JOIN customer c ON sr.customer_id = c.id
       LEFT JOIN makes m ON v.make = m.make_name
       LEFT JOIN opcodes oc ON o.operation_code = oc.opcode
       LEFT JOIN services s ON o.service_id = s.id AND o.dealer_id = s.dealer_id
@@ -195,7 +233,7 @@ export async function GET(request: NextRequest) {
       LEFT JOIN labor_line l ON o.id = l.operation_id
       LEFT JOIN parts_line p ON o.id = p.operation_id
       ${whereClause}
-      GROUP BY o.id, sr.open_date, sr.ro_number, s.id, s.name, sc.id, sc.name, ss.id, ss.name, u.name, v.make
+      GROUP BY o.id, sr.open_date, sr.ro_number, s.id, s.name, sc.id, sc.name, ss.id, ss.name, u.name, v.make, v.year, v.model, v.trim, v.vin, c.full_name, c.salutation, c.first_name, c.middle_name, c.last_name, c.suffix, c.cell_phone, c.home_phone, c.work_phone, c.email_1, c.address_line_1, c.address_line_2, c.city, c.state, c.zip_code
       ${havingClause}
       ${orderByClause}
       LIMIT ${limit} OFFSET ${offset}

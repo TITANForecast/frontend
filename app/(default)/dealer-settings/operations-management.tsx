@@ -13,9 +13,12 @@ import {
   ArrowUp,
   ArrowDown,
   Download,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 import OperationEditModal from "./operation-edit-modal";
 import PartDetailsModal from "./part-details-modal";
+import AIEvaluationModal from "./ai-evaluation-modal";
 import MultiSelectDropdown from "@/components/multi-select-dropdown";
 
 interface Operation {
@@ -43,6 +46,14 @@ interface Operation {
   // Extended fields
   pay_type: string | null;
   vehicle_make: string | null;
+  vehicle_year: string | null;
+  vehicle_model: string | null;
+  vehicle_trim: string | null;
+  vehicle_vin: string | null;
+  customer_name: string | null;
+  customer_phone: string | null;
+  customer_email: string | null;
+  customer_address: string | null;
   total_labor_hours: number;
   total_labor_sale: number;
   total_labor_cost: number;
@@ -103,6 +114,9 @@ export default function OperationsManagement({
   const [laborPartsFilter, setLaborPartsFilter] = useState<string>(""); // "" (none), "labor", "parts", "laborOrParts"
   const [laborFieldsFilter, setLaborFieldsFilter] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>("");
+  const [searchLoading, setSearchLoading] = useState<boolean>(false);
+  const [searchComplete, setSearchComplete] = useState<boolean>(false);
 
   // Selection
   const [selectedOperations, setSelectedOperations] = useState<string[]>([]);
@@ -123,7 +137,21 @@ export default function OperationsManagement({
   const [selectedPartNumber, setSelectedPartNumber] = useState<string>("");
   const [selectedOperationId, setSelectedOperationId] = useState<string>("");
 
+  // AI evaluation modal state
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+  const [aiEvaluationOperationId, setAIEvaluationOperationId] =
+    useState<string>("");
+
   const canWrite = hasRole([UserRole.SUPER_ADMIN, UserRole.MULTI_DEALER]);
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     fetchOperations();
@@ -139,7 +167,7 @@ export default function OperationsManagement({
     eligibleOpcodesOnly,
     laborPartsFilter,
     laborFieldsFilter,
-    searchQuery,
+    debouncedSearchQuery,
     sortColumn,
     sortDirection,
   ]);
@@ -177,6 +205,11 @@ export default function OperationsManagement({
   };
 
   const fetchOperations = async () => {
+    // Only show search loading if there's a search query
+    if (debouncedSearchQuery.trim()) {
+      setSearchLoading(true);
+      setSearchComplete(false);
+    }
     setLoading(true);
     setError(null);
     try {
@@ -232,8 +265,8 @@ export default function OperationsManagement({
         params.append("laborFields", laborFieldsFilter.join(","));
       }
 
-      if (searchQuery.trim()) {
-        params.append("search", searchQuery.trim());
+      if (debouncedSearchQuery.trim()) {
+        params.append("search", debouncedSearchQuery.trim());
       }
 
       const response = await fetch(
@@ -250,8 +283,22 @@ export default function OperationsManagement({
       const result = await response.json();
       setOperations(result.data);
       setPagination(result.pagination || null);
+
+      // Show success indicator for search
+      if (debouncedSearchQuery.trim()) {
+        setSearchLoading(false);
+        setSearchComplete(true);
+        // Fade out checkmark after 1.5 seconds
+        setTimeout(() => {
+          setSearchComplete(false);
+        }, 1500);
+      }
     } catch (err: any) {
       setError(err.message || "Failed to load operations");
+      if (debouncedSearchQuery.trim()) {
+        setSearchLoading(false);
+        setSearchComplete(false);
+      }
     } finally {
       setLoading(false);
     }
@@ -511,7 +558,15 @@ export default function OperationsManagement({
         "AI Confidence Service (%)",
         "AI Confidence Warranty (%)",
         "AI Reasoning Summary",
+        "Customer Name",
+        "Customer Phone",
+        "Customer Email",
+        "Customer Address",
+        "Vehicle Year",
         "Vehicle Make",
+        "Vehicle Model",
+        "Vehicle Trim",
+        "Vehicle VIN",
         "Labor Hours",
         "Labor Sale Total",
         "Labor Cost",
@@ -572,7 +627,15 @@ export default function OperationsManagement({
             ? (op.ai_confidence_warranty * 100).toFixed(1)
             : "",
           escapeCSV(op.ai_reasoning_summary || ""),
+          escapeCSV(op.customer_name || ""),
+          escapeCSV(op.customer_phone || ""),
+          escapeCSV(op.customer_email || ""),
+          escapeCSV(op.customer_address || ""),
+          escapeCSV(op.vehicle_year || ""),
           escapeCSV(op.vehicle_make || ""),
+          escapeCSV(op.vehicle_model || ""),
+          escapeCSV(op.vehicle_trim || ""),
+          escapeCSV(op.vehicle_vin || ""),
           laborHours > 0 ? laborHours.toFixed(2) : "0.00",
           laborSale.toFixed(2),
           parseDecimal(op.total_labor_cost).toFixed(2),
@@ -665,50 +728,69 @@ export default function OperationsManagement({
         {/* Search Bar */}
         <div className="col-span-2">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Search Operation Code / Description
+            Search Operation
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+                setSearchComplete(false);
+                setSearchLoading(false);
+              }}
+              placeholder="Search operation code, description, or labor fields..."
+              className="form-input w-full pr-10"
+            />
+            {(searchLoading || searchComplete) && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                {searchLoading ? (
+                  <Loader2
+                    size={18}
+                    className="animate-spin text-gray-400 dark:text-gray-500"
+                  />
+                ) : searchComplete ? (
+                  <Check
+                    size={18}
+                    className="text-green-500 dark:text-green-400 transition-opacity duration-300"
+                  />
+                ) : null}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Date Range */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Start Date
           </label>
           <input
-            type="text"
-            value={searchQuery}
+            type="date"
+            value={startDate}
             onChange={(e) => {
-              setSearchQuery(e.target.value);
+              setStartDate(e.target.value);
               setCurrentPage(1);
             }}
-            placeholder="Search by operation code or description..."
             className="form-input w-full"
           />
         </div>
 
-        {/* Date Range */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Start Date
-            </label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => {
-                setStartDate(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="form-input w-full"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              End Date
-            </label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => {
-                setEndDate(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="form-input w-full"
-            />
-          </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            End Date
+          </label>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => {
+              setEndDate(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="form-input w-full"
+          />
+        </div>
 
         <div className="flex items-center gap-6">
           <label className="flex items-center cursor-pointer">
@@ -792,7 +874,7 @@ export default function OperationsManagement({
               setWarrantyFilter(e.target.value);
               setCurrentPage(1);
             }}
-            className="form-select w-full"
+            className="form-select w-full min-h-[42px]"
           >
             <option value="all">All</option>
             <option value="true">Yes</option>
@@ -831,7 +913,7 @@ export default function OperationsManagement({
               setLaborPartsFilter(e.target.value);
               setCurrentPage(1);
             }}
-            className="form-select w-full min-w-[180px]"
+            className="form-select w-full min-w-[180px] min-h-[42px]"
           >
             <option value="">All</option>
             <option value="labor">Has Labor</option>
@@ -1082,13 +1164,25 @@ export default function OperationsManagement({
                       </td>
                       {canWrite && (
                         <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button
-                            onClick={() => handleEditOperation(operation)}
-                            className="text-gray-600 hover:text-violet-600 dark:text-gray-400 dark:hover:text-violet-400"
-                            title="Edit operation"
-                          >
-                            <Edit2 size={16} />
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => {
+                                setAIEvaluationOperationId(operation.id);
+                                setIsAIModalOpen(true);
+                              }}
+                              className="text-gray-600 hover:text-violet-600 dark:text-gray-400 dark:hover:text-violet-400"
+                              title="Run Warranty AI"
+                            >
+                              <Sparkles size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleEditOperation(operation)}
+                              className="text-gray-600 hover:text-violet-600 dark:text-gray-400 dark:hover:text-violet-400"
+                              title="Edit operation"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                          </div>
                         </td>
                       )}
                     </tr>
@@ -1327,6 +1421,23 @@ export default function OperationsManagement({
           services={services}
           onClose={handleModalClose}
           isBulk={true}
+        />
+      )}
+
+      {/* AI Evaluation Modal */}
+      {isAIModalOpen && (
+        <AIEvaluationModal
+          isOpen={isAIModalOpen}
+          onClose={() => {
+            setIsAIModalOpen(false);
+            setAIEvaluationOperationId("");
+          }}
+          operationId={aiEvaluationOperationId}
+          dealerId={dealerId}
+          onEvaluationComplete={() => {
+            // Refresh operations list after evaluation
+            fetchOperations();
+          }}
         />
       )}
 
