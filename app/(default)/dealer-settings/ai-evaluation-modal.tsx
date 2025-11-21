@@ -35,8 +35,9 @@ export default function AIEvaluationModal({
   const [evaluation, setEvaluation] = useState<AIEvaluation | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingExisting, setLoadingExisting] = useState(false);
-  const [confirming, setConfirming] = useState(false);
+  const [confirming, setConfirming] = useState<boolean | null>(null); // true = confirming, false = denying, null = not processing
   const [error, setError] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
   // Normalize backend response to frontend format
   const normalizeEvaluation = (data: any): AIEvaluation => {
@@ -60,11 +61,15 @@ export default function AIEvaluationModal({
     } else {
       setEvaluation(null);
       setError(null);
+      setInfoMessage(null);
+      setConfirming(null);
     }
   }, [isOpen, operationId]);
 
   const loadExistingEvaluation = async () => {
     setLoadingExisting(true);
+    setInfoMessage(null);
+    setError(null);
     try {
       const token = await getAuthToken();
       const headers: HeadersInit = {
@@ -84,11 +89,18 @@ export default function AIEvaluationModal({
 
       if (response.ok) {
         const data = await response.json();
-        if (data) {
+        // Check if it's a "not found" informational response
+        if (data.notFound) {
+          setInfoMessage(data.message || "No AI evaluation found for this operation. Click the button below to run a new evaluation.");
+          setEvaluation(null);
+        } else if (data) {
           setEvaluation(normalizeEvaluation(data));
+          setInfoMessage(null);
         }
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        setError(errorData.error || "Failed to load evaluation");
       }
-      // If no evaluation exists, that's fine - user can run a new one
     } catch (err: any) {
       // Silently fail - user can still run a new evaluation
       console.error("Failed to load existing evaluation:", err);
@@ -100,6 +112,7 @@ export default function AIEvaluationModal({
   const handleRunEvaluation = async () => {
     setLoading(true);
     setError(null);
+    setInfoMessage(null);
     setEvaluation(null);
 
     try {
@@ -136,7 +149,7 @@ export default function AIEvaluationModal({
   const handleConfirm = async (confirmed: boolean) => {
     if (!evaluation) return;
 
-    setConfirming(true);
+    setConfirming(confirmed);
     setError(null);
 
     try {
@@ -172,23 +185,37 @@ export default function AIEvaluationModal({
     } catch (err: any) {
       setError(err.message || "Failed to confirm evaluation");
     } finally {
-      setConfirming(false);
+      setConfirming(null);
     }
   };
 
   const handleClose = () => {
-    if (!loading && !confirming) {
+    if (!loading && confirming === null) {
       setEvaluation(null);
       setError(null);
+      setInfoMessage(null);
       onClose();
     }
   };
 
   if (!isOpen) return null;
 
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Only close if clicking the backdrop itself, not the modal content
+    if (e.target === e.currentTarget && confirming === null && !loading) {
+      handleClose();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-gray-900/50 dark:bg-gray-900/80 z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div 
+      className="fixed inset-0 bg-gray-900/50 dark:bg-gray-900/80 z-50 flex items-center justify-center p-4"
+      onClick={handleBackdropClick}
+    >
+      <div 
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
@@ -196,7 +223,7 @@ export default function AIEvaluationModal({
           </h2>
           <button
             onClick={handleClose}
-            disabled={loading || confirming}
+            disabled={loading || confirming !== null}
             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <X size={20} />
@@ -208,6 +235,12 @@ export default function AIEvaluationModal({
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded">
               {error}
+            </div>
+          )}
+
+          {infoMessage && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 px-4 py-3 rounded">
+              {infoMessage}
             </div>
           )}
 
@@ -225,11 +258,13 @@ export default function AIEvaluationModal({
 
           {!evaluation && !loading && !loadingExisting && (
             <div className="text-center py-8">
-              <p className="text-gray-600 dark:text-gray-400 mb-6">
-                Click the button below to run an AI evaluation for this
-                operation. The AI will analyze the operation details and
-                determine warranty eligibility.
-              </p>
+              {!infoMessage && (
+                <p className="text-gray-600 dark:text-gray-400 mb-6">
+                  Click the button below to run an AI evaluation for this
+                  operation. The AI will analyze the operation details and
+                  determine warranty eligibility.
+                </p>
+              )}
               <button
                 onClick={handleRunEvaluation}
                 disabled={loading}
@@ -349,17 +384,17 @@ export default function AIEvaluationModal({
                   type="button"
                   onClick={handleClose}
                   className="btn border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300"
-                  disabled={confirming}
+                  disabled={confirming !== null}
                 >
                   Close
                 </button>
                 <button
                   type="button"
                   onClick={() => handleConfirm(false)}
-                  disabled={confirming}
+                  disabled={confirming !== null}
                   className="btn border-red-200 dark:border-red-800 hover:border-red-300 dark:hover:border-red-700 text-red-600 dark:text-red-400 flex items-center gap-2"
                 >
-                  {confirming ? (
+                  {confirming === false ? (
                     <>
                       <Loader2 size={16} className="animate-spin" />
                       Processing...
@@ -374,10 +409,10 @@ export default function AIEvaluationModal({
                 <button
                   type="button"
                   onClick={() => handleConfirm(true)}
-                  disabled={confirming}
+                  disabled={confirming !== null}
                   className="btn bg-violet-500 hover:bg-violet-600 text-white flex items-center gap-2"
                 >
-                  {confirming ? (
+                  {confirming === true ? (
                     <>
                       <Loader2 size={16} className="animate-spin" />
                       Processing...

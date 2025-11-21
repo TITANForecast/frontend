@@ -16,11 +16,14 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  let operationId: string | undefined;
+  let dealerId: string | null = null;
+  
   try {
     const { id } = await params;
-    const operationId = id;
+    operationId = id;
     const { searchParams } = new URL(request.url);
-    const dealerId = searchParams.get("dealerId");
+    dealerId = searchParams.get("dealerId");
 
     if (!operationId) {
       return NextResponse.json(
@@ -57,20 +60,60 @@ export async function POST(
     );
 
     if (!backendResponse.ok) {
-      const errorData = await backendResponse.json().catch(() => ({
-        error: "Failed to evaluate operation",
-      }));
-      return NextResponse.json(errorData, {
+      let errorData;
+      try {
+        errorData = await backendResponse.json();
+      } catch (parseError) {
+        errorData = {
+          error: "Failed to evaluate operation",
+          status: backendResponse.status,
+          statusText: backendResponse.statusText,
+        };
+      }
+      
+      console.error("Backend API error:", {
+        operationId,
+        dealerId,
         status: backendResponse.status,
+        statusText: backendResponse.statusText,
+        errorData,
+        backendUrl: `${BACKEND_API_URL}/api/v1/operations/${operationId}/evaluate-ai`,
       });
+
+      return NextResponse.json(
+        {
+          error: errorData.error || "Failed to evaluate operation",
+          details: errorData.details || errorData.message || errorData,
+          status: backendResponse.status,
+          operationId,
+          dealerId,
+        },
+        { status: backendResponse.status }
+      );
     }
 
     const data = await backendResponse.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("Error evaluating operation:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
+    console.error("Error evaluating operation:", {
+      error: errorMessage,
+      stack: errorStack,
+      operationId,
+      dealerId,
+      backendUrl: operationId ? `${BACKEND_API_URL}/api/v1/operations/${operationId}/evaluate-ai` : "N/A",
+    });
+
     return NextResponse.json(
-      { error: "Failed to evaluate operation" },
+      {
+        error: "Failed to evaluate operation",
+        message: errorMessage,
+        ...(process.env.NODE_ENV === "development" && { stack: errorStack }),
+        operationId: operationId || "unknown",
+        dealerId: dealerId || "unknown",
+      },
       { status: 500 }
     );
   }
