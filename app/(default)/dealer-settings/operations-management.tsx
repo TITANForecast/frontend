@@ -1148,7 +1148,8 @@ export default function OperationsManagement({
                         {getWarrantyBadge(operation.is_warranty_eligible)}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
-                        {operation.ai_tagged_at ? (
+                        {(operation.ai_tagged_at ||
+                          operation.warranty_evaluation_confidence !== null) ? (
                           <div className="text-xs">
                             <div className="text-gray-600 dark:text-gray-300">
                               Service:{" "}
@@ -1161,8 +1162,13 @@ export default function OperationsManagement({
                             </div>
                             <div className="text-gray-600 dark:text-gray-300">
                               Warranty:{" "}
-                              {operation.ai_confidence_warranty !== null &&
-                              operation.ai_confidence_warranty !== undefined
+                              {operation.warranty_evaluation_confidence !== null &&
+                              operation.warranty_evaluation_confidence !== undefined
+                                ? `${(
+                                    Number(operation.warranty_evaluation_confidence) * 100
+                                  ).toFixed(1)}%`
+                                : operation.ai_confidence_warranty !== null &&
+                                  operation.ai_confidence_warranty !== undefined
                                 ? `${(
                                     operation.ai_confidence_warranty * 100
                                   ).toFixed(1)}%`
