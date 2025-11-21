@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, Mail, Lock, CheckCircle } from "lucide-react";
 import { requestPasswordReset, confirmPasswordReset, validatePassword } from "@/lib/cognito/auth-flows";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function ForgotPasswordPage() {
+function ForgotPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [step, setStep] = useState<"request" | "confirm" | "success">("request");
@@ -358,6 +358,18 @@ export default function ForgotPasswordPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-maroon-600"></div>
+      </div>
+    }>
+      <ForgotPasswordContent />
+    </Suspense>
   );
 }
 
