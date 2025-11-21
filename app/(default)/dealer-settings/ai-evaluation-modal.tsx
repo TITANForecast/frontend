@@ -75,7 +75,7 @@ export default function AIEvaluationModal({
       }
 
       const response = await fetch(
-        `/api/operations/${operationId}/ai-evaluation`,
+        `/api/dealer-settings/operations/${operationId}/ai-evaluation?dealerId=${dealerId}`,
         {
           method: "GET",
           headers,
@@ -112,7 +112,7 @@ export default function AIEvaluationModal({
       }
 
       const response = await fetch(
-        `/api/operations/${operationId}/evaluate-ai`,
+        `/api/dealer-settings/operations/${operationId}/evaluate-ai?dealerId=${dealerId}`,
         {
           method: "POST",
           headers,
