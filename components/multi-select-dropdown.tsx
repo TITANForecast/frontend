@@ -77,7 +77,7 @@ export default function MultiSelectDropdown({
 
       <div
         className={`
-          relative w-full px-3 py-2 
+          relative w-full px-3 py-2 min-h-[42px]
           bg-white dark:bg-gray-900/30 
           border rounded-lg shadow-sm cursor-pointer
           text-sm text-gray-800 dark:text-gray-100 leading-5

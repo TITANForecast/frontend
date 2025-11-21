@@ -129,7 +129,11 @@ export async function POST(request: NextRequest) {
         o.operation_code,
         o.operation_description,
         sr.open_date,
-        sr.ro_number
+        sr.ro_number,
+        o.labor_complaint,
+        o.labor_cause,
+        o.labor_correction,
+        o.labor_comments
       FROM operation o
       LEFT JOIN service_record sr ON o.service_record_id = sr.id
       WHERE o.dealer_id = $1

@@ -26,6 +26,10 @@ interface Operation {
   operation_description: string;
   open_date: string | null;
   ro_number: string;
+  labor_complaint: string | null;
+  labor_cause: string | null;
+  labor_correction: string | null;
+  labor_comments: string | null;
 }
 
 interface OpcodeManagementProps {
@@ -482,6 +486,42 @@ export default function OpcodeManagement({ dealerId }: OpcodeManagementProps) {
                                                   operation.open_date
                                                 ).toLocaleDateString()
                                               : "N/A"}
+                                          </div>
+                                          
+                                          {/* Labor Details */}
+                                          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            <div>
+                                              <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                                Complaint:
+                                              </div>
+                                              <div className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                                                {operation.labor_complaint || "N/A"}
+                                              </div>
+                                            </div>
+                                            <div>
+                                              <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                                Cause:
+                                              </div>
+                                              <div className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                                                {operation.labor_cause || "N/A"}
+                                              </div>
+                                            </div>
+                                            <div>
+                                              <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                                Correction:
+                                              </div>
+                                              <div className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                                                {operation.labor_correction || "N/A"}
+                                              </div>
+                                            </div>
+                                            <div>
+                                              <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                                Comments:
+                                              </div>
+                                              <div className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                                                {operation.labor_comments || "N/A"}
+                                              </div>
+                                            </div>
                                           </div>
                                         </div>
                                       </div>
