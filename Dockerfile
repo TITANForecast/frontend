@@ -49,8 +49,8 @@ RUN npm run build
 FROM base AS runner
 WORKDIR /app
 
-# Install curl for health checks
-RUN apk add --no-cache curl
+# Install curl for health checks and prisma dependencies
+RUN apk add --no-cache curl openssl
 
 ENV NODE_ENV production
 # Uncomment the following line in case you want to disable telemetry during runtime.
@@ -77,6 +77,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 # Copy Prisma generated client
 COPY --from=builder --chown=nextjs:nodejs /app/generated ./generated
 
+# Copy Prisma CLI and dependencies from builder (needed for prisma migrate deploy)
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
+
 USER nextjs
 
 EXPOSE 3000
@@ -87,5 +92,5 @@ ENV HOSTNAME "0.0.0.0"
 
 # server.js is created by next build from the standalone output
 # https://nextjs.org/docs/pages/api-reference/next-config-js/output
-# Run Prisma migrations before starting the server
-CMD ["sh", "-c", "npx prisma migrate deploy && exec node server.js"]
+# Run Prisma migrations before starting the server (use local prisma to avoid downloading 7.x)
+CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && exec node server.js"]
