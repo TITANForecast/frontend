@@ -178,7 +178,7 @@ export default function AIEvaluationModal({
       }
 
       if (onEvaluationComplete) {
-        onEvaluationComplete();
+        await onEvaluationComplete();
       }
 
       onClose();

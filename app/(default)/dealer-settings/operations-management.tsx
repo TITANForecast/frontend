@@ -6,7 +6,6 @@ import { UserRole } from "@/lib/types/auth";
 import {
   Edit2,
   Check,
-  X as XIcon,
   ChevronDown,
   ChevronRight,
   ArrowUpDown,
@@ -65,6 +64,12 @@ interface Operation {
   labor_cause: string | null;
   labor_correction: string | null;
   labor_comments: string | null;
+  // Warranty AI Evaluation fields
+  warranty_evaluation_eligible: boolean | null;
+  warranty_evaluation_confidence: number | null;
+  warranty_evaluation_reason: string | null;
+  warranty_evaluation_rule_applied: string | null;
+  warranty_evaluation_user_confirmed: boolean | null;
 }
 
 interface Service {
@@ -89,7 +94,7 @@ interface OperationsManagementProps {
 export default function OperationsManagement({
   dealerId,
 }: OperationsManagementProps) {
-  const { user, hasRole, getAuthToken } = useAuth();
+  const { hasRole, getAuthToken } = useAuth();
   const [operations, setOperations] = useState<Operation[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -117,6 +122,7 @@ export default function OperationsManagement({
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>("");
   const [searchLoading, setSearchLoading] = useState<boolean>(false);
   const [searchComplete, setSearchComplete] = useState<boolean>(false);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
 
   // Selection
   const [selectedOperations, setSelectedOperations] = useState<string[]>([]);
@@ -952,7 +958,17 @@ export default function OperationsManagement({
       )}
 
       {/* Operations Table */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden relative">
+        {refreshing && (
+          <div className="absolute inset-0 bg-white/80 dark:bg-gray-800/80 z-10 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 size={32} className="animate-spin text-violet-600 dark:text-violet-400" />
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Refreshing data...
+              </p>
+            </div>
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="table-auto w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-900/50">
@@ -1361,6 +1377,100 @@ export default function OperationsManagement({
                                 </p>
                               </div>
                             </div>
+
+                            {/* AI Reasoning Summary Section */}
+                            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                                AI Reasoning Summary
+                              </h4>
+                              <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+                                {operation.ai_reasoning_summary || "N/A"}
+                              </p>
+                            </div>
+
+                            {/* Warranty AI Evaluation Section */}
+                            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                                Warranty AI Evaluation
+                              </h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
+                                  <h5 className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                    Eligibility Decision
+                                  </h5>
+                                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                    {operation.warranty_evaluation_eligible ===
+                                    true ? (
+                                      <span className="text-green-600 dark:text-green-400">
+                                        Eligible
+                                      </span>
+                                    ) : operation.warranty_evaluation_eligible ===
+                                      false ? (
+                                      <span className="text-red-600 dark:text-red-400">
+                                        Not Eligible
+                                      </span>
+                                    ) : (
+                                      "N/A"
+                                    )}
+                                  </p>
+                                </div>
+                                <div>
+                                  <h5 className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                    Confidence
+                                  </h5>
+                                  <p className="text-sm text-gray-900 dark:text-gray-100">
+                                    {operation.warranty_evaluation_confidence !==
+                                    null
+                                      ? `${(
+                                          Number(
+                                            operation.warranty_evaluation_confidence
+                                          ) * 100
+                                        ).toFixed(1)}%`
+                                      : "N/A"}
+                                  </p>
+                                </div>
+                                <div>
+                                  <h5 className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                    User Confirmation
+                                  </h5>
+                                  <p className="text-sm text-gray-900 dark:text-gray-100">
+                                    {operation.warranty_evaluation_user_confirmed ===
+                                    true ? (
+                                      <span className="text-green-600 dark:text-green-400">
+                                        Confirmed
+                                      </span>
+                                    ) : operation.warranty_evaluation_user_confirmed ===
+                                      false ? (
+                                      <span className="text-red-600 dark:text-red-400">
+                                        Denied
+                                      </span>
+                                    ) : (
+                                      <span className="text-gray-500 dark:text-gray-400">
+                                        Pending
+                                      </span>
+                                    )}
+                                  </p>
+                                </div>
+                                <div className="md:col-span-2 lg:col-span-3">
+                                  <h5 className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                    AI Reason
+                                  </h5>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+                                    {operation.warranty_evaluation_reason ||
+                                      "N/A"}
+                                  </p>
+                                </div>
+                                <div className="md:col-span-2 lg:col-span-3">
+                                  <h5 className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                    Rule Applied
+                                  </h5>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                                    {operation.warranty_evaluation_rule_applied ||
+                                      "N/A"}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         </td>
                       </tr>
@@ -1434,9 +1544,14 @@ export default function OperationsManagement({
           }}
           operationId={aiEvaluationOperationId}
           dealerId={dealerId}
-          onEvaluationComplete={() => {
+          onEvaluationComplete={async () => {
             // Refresh operations list after evaluation
-            fetchOperations();
+            setRefreshing(true);
+            try {
+              await fetchOperations();
+            } finally {
+              setRefreshing(false);
+            }
           }}
         />
       )}
