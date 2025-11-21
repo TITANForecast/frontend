@@ -98,6 +98,7 @@ export default function OperationsManagement({
   const [operations, setOperations] = useState<Operation[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exportLoading, setExportLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState<{
     page: number;
@@ -478,7 +479,7 @@ export default function OperationsManagement({
 
   const exportToCSV = async () => {
     try {
-      setLoading(true);
+      setExportLoading(true);
       const token = await getAuthToken();
       const fetchHeaders: HeadersInit = {
         "Content-Type": "application/json",
@@ -679,7 +680,7 @@ export default function OperationsManagement({
       console.error("Failed to export CSV:", err);
       setError(err.message || "Failed to export CSV");
     } finally {
-      setLoading(false);
+      setExportLoading(false);
     }
   };
 
@@ -932,11 +933,20 @@ export default function OperationsManagement({
       <div className="flex justify-end">
         <button
           onClick={exportToCSV}
-          disabled={loading}
-          className="btn bg-violet-500 hover:bg-violet-600 text-white flex items-center gap-2"
+          disabled={exportLoading}
+          className="btn bg-violet-500 hover:bg-violet-600 text-white flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <Download size={16} />
-          Export to CSV
+          {exportLoading ? (
+            <>
+              <Loader2 size={16} className="animate-spin" />
+              Exporting...
+            </>
+          ) : (
+            <>
+              <Download size={16} />
+              Export to CSV
+            </>
+          )}
         </button>
       </div>
 
