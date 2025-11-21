@@ -77,10 +77,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 # Copy Prisma generated client
 COPY --from=builder --chown=nextjs:nodejs /app/generated ./generated
 
-# Copy Prisma CLI and dependencies from builder (needed for prisma migrate deploy)
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
+# Install Prisma CLI in runner stage (needed for migrations at runtime)
+# Copy package.json to get the exact version
+COPY --from=deps /app/package.json ./package.json
+RUN npm install prisma@6.17.1 --omit=dev && \
+    npm cache clean --force
 
 USER nextjs
 
@@ -92,5 +93,5 @@ ENV HOSTNAME "0.0.0.0"
 
 # server.js is created by next build from the standalone output
 # https://nextjs.org/docs/pages/api-reference/next-config-js/output
-# Run Prisma migrations before starting the server (use local prisma to avoid downloading 7.x)
-CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && exec node server.js"]
+# Run Prisma migrations before starting the server
+CMD ["sh", "-c", "npx prisma migrate deploy && exec node server.js"]
