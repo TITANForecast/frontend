@@ -173,6 +173,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Query operations with joins to service_record, services, labor and parts
+    // Also join with latest warranty AI evaluation
     const query = `
       SELECT 
         o.*,
@@ -219,7 +220,12 @@ export async function GET(request: NextRequest) {
         COALESCE(SUM(p.parts_unit_cost * p.part_quantity), 0) as total_parts_cost,
         COUNT(DISTINCT CASE WHEN p.part_number IS NOT NULL AND p.part_number != '' THEN p.id END) as parts_count,
         STRING_AGG(DISTINCT NULLIF(p.part_number, ''), ', ') FILTER (WHERE p.part_number IS NOT NULL AND p.part_number != '') as parts_list,
-        o.ai_reasoning_summary
+        o.ai_reasoning_summary,
+        wae.ai_eligible as warranty_evaluation_eligible,
+        wae.ai_confidence as warranty_evaluation_confidence,
+        wae.ai_reason as warranty_evaluation_reason,
+        wae.ai_rule_applied as warranty_evaluation_rule_applied,
+        wae.user_confirmed as warranty_evaluation_user_confirmed
       FROM operation o
       LEFT JOIN service_record sr ON o.service_record_id = sr.id
       LEFT JOIN vehicle v ON sr.vehicle_id = v.id
@@ -232,8 +238,15 @@ export async function GET(request: NextRequest) {
       LEFT JOIN users u ON o.updated_by::text = u.id
       LEFT JOIN labor_line l ON o.id = l.operation_id
       LEFT JOIN parts_line p ON o.id = p.operation_id
+      LEFT JOIN LATERAL (
+        SELECT *
+        FROM warranty_ai_evaluation wae_inner
+        WHERE wae_inner.operation_id = o.id
+        ORDER BY wae_inner.evaluated_at DESC
+        LIMIT 1
+      ) wae ON true
       ${whereClause}
-      GROUP BY o.id, sr.open_date, sr.ro_number, s.id, s.name, sc.id, sc.name, ss.id, ss.name, u.name, v.make, v.year, v.model, v.trim, v.vin, c.full_name, c.salutation, c.first_name, c.middle_name, c.last_name, c.suffix, c.cell_phone, c.home_phone, c.work_phone, c.email_1, c.address_line_1, c.address_line_2, c.city, c.state, c.zip_code
+      GROUP BY o.id, sr.open_date, sr.ro_number, s.id, s.name, sc.id, sc.name, ss.id, ss.name, u.name, v.make, v.year, v.model, v.trim, v.vin, c.full_name, c.salutation, c.first_name, c.middle_name, c.last_name, c.suffix, c.cell_phone, c.home_phone, c.work_phone, c.email_1, c.address_line_1, c.address_line_2, c.city, c.state, c.zip_code, wae.ai_eligible, wae.ai_confidence, wae.ai_reason, wae.ai_rule_applied, wae.user_confirmed
       ${havingClause}
       ${orderByClause}
       LIMIT ${limit} OFFSET ${offset}
