@@ -5,7 +5,7 @@
 set -e
 
 # Configuration
-PROJECT_NAME="titan"
+PROJECT_NAME="titan-frontend"
 AWS_REGION="us-east-1"
 ECR_REPOSITORY="${PROJECT_NAME}-pgadmin"
 IMAGE_TAG=${1:-latest}
