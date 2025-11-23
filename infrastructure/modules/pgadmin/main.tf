@@ -373,6 +373,10 @@ resource "aws_ecs_task_definition" "pgadmin" {
           value = "80"
         },
         {
+          name  = "PGADMIN_SERVER_JSON_FILE"
+          value = "/pgadmin4/servers.json"  # Pre-configured server connections
+        },
+        {
           name  = "PGADMIN_CONFIG_SESSION_EXPIRATION_TIME"
           value = "8"  # 8 hours
         },
