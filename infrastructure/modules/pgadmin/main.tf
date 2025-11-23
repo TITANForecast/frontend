@@ -273,8 +273,8 @@ resource "aws_iam_role_policy" "execution_secrets_policy" {
         Resource = concat(
           var.database_secrets[*].valueFrom,
           [
-            var.pgadmin_email_secret_arn,
-            var.pgadmin_password_secret_arn
+            aws_secretsmanager_secret.pgadmin_email.arn,
+            aws_secretsmanager_secret.pgadmin_password.arn
           ]
         )
       }
@@ -394,11 +394,11 @@ resource "aws_ecs_task_definition" "pgadmin" {
         [
           {
             name      = "PGADMIN_DEFAULT_EMAIL"
-            valueFrom = "${var.pgadmin_email_secret_arn}"
+            valueFrom = aws_secretsmanager_secret.pgadmin_email.arn
           },
           {
             name      = "PGADMIN_DEFAULT_PASSWORD"
-            valueFrom = "${var.pgadmin_password_secret_arn}"
+            valueFrom = aws_secretsmanager_secret.pgadmin_password.arn
           }
         ],
         var.database_secrets

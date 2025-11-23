@@ -65,16 +65,6 @@ variable "cognito_user_pool_domain" {
   type        = string
 }
 
-variable "pgadmin_email_secret_arn" {
-  description = "ARN of the secret containing pgAdmin default email"
-  type        = string
-}
-
-variable "pgadmin_password_secret_arn" {
-  description = "ARN of the secret containing pgAdmin default password"
-  type        = string
-}
-
 variable "database_secrets" {
   description = "List of database secrets to pass to the container"
   type = list(object({

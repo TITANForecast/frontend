@@ -333,9 +333,7 @@ module "pgadmin_staging" {
   cognito_client_id        = var.cognito_server_client_id  # Server client with secret for ALB auth
   cognito_user_pool_domain = "titan-sandbox"  # From infrastructure/cognito_user_pool_domain output
 
-  # pgAdmin Credentials (created by pgAdmin module - using ARN pattern with wildcard suffix)
-  pgadmin_email_secret_arn    = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:titan-pgadmin/staging/email-*"
-  pgadmin_password_secret_arn = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:titan-pgadmin/staging/password-*"
+  # pgAdmin Credentials - removed, module creates and references its own secrets internally
 
   # Database Configuration
   database_security_group_id = data.aws_security_groups.rds.ids[0]
