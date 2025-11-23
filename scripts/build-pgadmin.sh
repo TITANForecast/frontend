@@ -47,9 +47,10 @@ echo -e "${BLUE}🔐 Logging in to ECR...${NC}"
 aws ecr get-login-password --region ${AWS_REGION} | \
   docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
 
-# Build the Docker image
-echo -e "${BLUE}🔨 Building pgAdmin Docker image...${NC}"
+# Build the Docker image for x86_64 (ECS Fargate architecture)
+echo -e "${BLUE}🔨 Building pgAdmin Docker image for linux/amd64...${NC}"
 docker build \
+  --platform linux/amd64 \
   -f Dockerfile.pgadmin \
   -t ${ECR_REPOSITORY}:${IMAGE_TAG} \
   .
