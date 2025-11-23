@@ -28,6 +28,9 @@ export async function createCognitoUser(
   name: string,
   password: string
 ): Promise<{ success: boolean; cognitoSub?: string; error?: string }> {
+  let userCreated = false;
+  let cognitoSub: string | undefined;
+  
   try {
     // Step 1: Create the user with MessageAction.SUPPRESS to prevent email
     const createCommand = new AdminCreateUserCommand({
@@ -42,13 +45,16 @@ export async function createCognitoUser(
     });
 
     const response = await cognitoClient.send(createCommand);
+    userCreated = true; // Mark that user was created
 
     // Extract Cognito Sub from response
-    const cognitoSub = response.User?.Attributes?.find(
+    cognitoSub = response.User?.Attributes?.find(
       (attr) => attr.Name === "sub"
     )?.Value;
 
     if (!cognitoSub) {
+      // User was created but we can't extract sub - try to clean up
+      await deleteCognitoUser(email).catch(() => {}); // Best effort cleanup
       return { success: false, error: "Failed to extract Cognito sub" };
     }
 
@@ -65,6 +71,18 @@ export async function createCognitoUser(
     return { success: true, cognitoSub };
   } catch (error: any) {
     console.error("Error creating Cognito user:", error);
+    
+    // If user was created but password setting failed, clean up the orphaned user
+    if (userCreated) {
+      console.log(`Cleaning up orphaned Cognito user: ${email}`);
+      try {
+        await deleteCognitoUser(email);
+        console.log(`Successfully deleted orphaned user: ${email}`);
+      } catch (deleteError: any) {
+        console.error(`Failed to clean up orphaned user ${email}:`, deleteError.message);
+      }
+    }
+    
     return { success: false, error: error.message };
   }
 }
