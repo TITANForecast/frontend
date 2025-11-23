@@ -246,7 +246,7 @@ resource "aws_iam_role_policy" "execution_secrets_policy" {
 
 # Target Group
 resource "aws_lb_target_group" "pgadmin" {
-  name        = "${var.project_name}-pgadmin-${var.environment}-tg"
+  name        = "pgadmin-${var.environment}-tg"  # Max 32 chars
   port        = 80
   protocol    = "HTTP"
   vpc_id      = var.vpc_id
