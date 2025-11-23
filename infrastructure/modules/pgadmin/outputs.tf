@@ -34,3 +34,14 @@ output "url" {
   description = "URL to access pgAdmin (requires Cognito authentication)"
   value       = "https://${var.domain_name}"
 }
+
+output "pgadmin_email_secret_arn" {
+  description = "ARN of the pgAdmin email secret"
+  value       = aws_secretsmanager_secret.pgadmin_email.arn
+}
+
+output "pgadmin_password_secret_arn" {
+  description = "ARN of the pgAdmin password secret"
+  value       = aws_secretsmanager_secret.pgadmin_password.arn
+  sensitive   = true
+}

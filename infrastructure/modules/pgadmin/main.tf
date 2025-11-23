@@ -124,6 +124,38 @@ resource "aws_security_group_rule" "rds_from_pgadmin" {
   source_security_group_id = aws_security_group.pgadmin.id
 }
 
+# Secrets Manager - pgAdmin Credentials
+resource "aws_secretsmanager_secret" "pgadmin_email" {
+  name        = "titan-pgadmin/${var.environment}/email"
+  description = "pgAdmin default email for ${var.environment} environment"
+
+  tags = {
+    Name        = "titan-pgadmin-email"
+    Environment = var.environment
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "pgadmin_email" {
+  secret_id     = aws_secretsmanager_secret.pgadmin_email.id
+  secret_string = "admin@titanforecast.com"
+}
+
+resource "aws_secretsmanager_secret" "pgadmin_password" {
+  name        = "titan-pgadmin/${var.environment}/password"
+  description = "pgAdmin default password for ${var.environment} environment"
+
+  tags = {
+    Name        = "titan-pgadmin-password"
+    Environment = var.environment
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "pgadmin_password" {
+  secret_id = aws_secretsmanager_secret.pgadmin_password.id
+  # Generate a random password - users should change this after first login
+  secret_string = "TitanPgAdmin2024!ChangeMeNow"
+}
+
 # CloudWatch Log Group
 resource "aws_cloudwatch_log_group" "pgadmin" {
   name              = "/ecs/${var.project_name}-pgadmin-${var.environment}"
@@ -238,7 +270,13 @@ resource "aws_iam_role_policy" "execution_secrets_policy" {
           "secretsmanager:GetSecretValue",
           "secretsmanager:DescribeSecret"
         ]
-        Resource = var.database_secrets[*].valueFrom
+        Resource = concat(
+          var.database_secrets[*].valueFrom,
+          [
+            var.pgadmin_email_secret_arn,
+            var.pgadmin_password_secret_arn
+          ]
+        )
       }
     ]
   })
