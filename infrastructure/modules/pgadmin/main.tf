@@ -322,7 +322,7 @@ resource "aws_lb_listener_rule" "pgadmin" {
       user_pool_arn              = var.cognito_user_pool_arn
       user_pool_client_id        = var.cognito_client_id
       user_pool_domain           = var.cognito_user_pool_domain
-      on_unauthenticated_request = "deny"
+      on_unauthenticated_request = "authenticate"  # Redirect to Cognito login
       scope                      = "openid email profile"
       session_timeout            = 28800  # 8 hours for long operations
     }
