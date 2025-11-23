@@ -92,6 +92,16 @@ data "aws_security_groups" "rds" {
 # Data source for current AWS account
 data "aws_caller_identity" "current" {}
 
+# Data source for Cognito User Pool
+data "aws_cognito_user_pools" "main" {
+  name = "titan-users-v2"
+}
+
+# Data source for Cognito User Pool Domain
+data "aws_cognito_user_pool" "main" {
+  user_pool_id = var.cognito_user_pool_id
+}
+
 # Data sources for database secrets
 data "aws_secretsmanager_secret" "staging_db_connection_string" {
   name = "titan-database/staging/connection-string"
@@ -295,4 +305,69 @@ module "frontend_staging" {
 
   # ALB Configuration
   alb_listener_priority = 160
+}
+
+# pgAdmin Staging Environment Module
+module "pgadmin_staging" {
+  source = "./modules/pgadmin"
+
+  # Environment Configuration
+  environment  = "staging"
+  project_name = var.project_name
+
+  # AWS Configuration
+  aws_region = var.aws_region
+
+  # Domain Configuration
+  domain_name = "db-staging.titanforecast.com"
+
+  # Infrastructure References
+  vpc_id                 = data.aws_vpc.main.id
+  private_subnet_ids     = data.aws_subnets.private.ids
+  ecs_cluster_name       = data.aws_ecs_cluster.main.cluster_name
+  alb_https_listener_arn = data.aws_lb_listener.https.arn
+  alb_security_group_ids = data.aws_security_groups.alb.ids
+
+  # Cognito Configuration
+  cognito_user_pool_arn    = data.aws_cognito_user_pool.main.arn
+  cognito_client_id        = var.cognito_client_id
+  cognito_user_pool_domain = "${var.project_name}-staging"  # e.g., titan-staging.auth.us-east-1.amazoncognito.com
+
+  # pgAdmin Credentials (from Secrets Manager)
+  pgadmin_email_secret_arn    = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:titan-pgadmin/staging/email"
+  pgadmin_password_secret_arn = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:titan-pgadmin/staging/password"
+
+  # Database Configuration
+  database_security_group_id = data.aws_security_groups.rds.ids[0]
+  database_secrets = [
+    {
+      name      = "DATABASE_HOST"
+      valueFrom = data.aws_secretsmanager_secret.staging_db_host.arn
+    },
+    {
+      name      = "DATABASE_PORT"
+      valueFrom = data.aws_secretsmanager_secret.staging_db_port.arn
+    },
+    {
+      name      = "DATABASE_NAME"
+      valueFrom = data.aws_secretsmanager_secret.staging_db_name.arn
+    },
+    {
+      name      = "DATABASE_USER"
+      valueFrom = data.aws_secretsmanager_secret.staging_db_username.arn
+    },
+    {
+      name      = "DATABASE_PASSWORD"
+      valueFrom = data.aws_secretsmanager_secret.staging_db_password.arn
+    }
+  ]
+
+  # Resource Configuration
+  cpu           = 512   # 0.5 vCPU (pgAdmin needs more than Prisma Studio)
+  memory        = 1024  # 1 GB (recommended for pgAdmin)
+  desired_count = 1     # Set to 0 to disable
+  image_tag     = "latest"
+
+  # ALB Configuration
+  alb_listener_priority = 85  # Higher priority than frontend (runs first)
 }

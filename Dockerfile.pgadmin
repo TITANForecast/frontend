@@ -1,0 +1,23 @@
+# Dockerfile for pgAdmin
+# Provides a secure, containerized pgAdmin instance for database management
+# Used in ECS with Cognito authentication via ALB
+
+FROM dpage/pgadmin4:latest
+
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1
+
+# Expose port 80 (pgAdmin default)
+EXPOSE 80
+
+# pgAdmin runs as non-root user by default (good security practice)
+# Configuration is provided via environment variables from ECS task definition:
+# - PGADMIN_DEFAULT_EMAIL
+# - PGADMIN_DEFAULT_PASSWORD
+# - PGADMIN_LISTEN_PORT
+# - PGADMIN_CONFIG_* settings
+#
+# Database connections will be configured manually in the pgAdmin UI
+# or can be pre-configured via servers.json file
+
