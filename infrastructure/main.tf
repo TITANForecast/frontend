@@ -330,7 +330,7 @@ module "pgadmin_staging" {
 
   # Cognito Configuration
   cognito_user_pool_arn    = data.aws_cognito_user_pool.main.arn
-  cognito_client_id        = var.cognito_client_id
+  cognito_client_id        = var.cognito_server_client_id  # Server client with secret for ALB auth
   cognito_user_pool_domain = "${var.project_name}-staging"  # e.g., titan-staging.auth.us-east-1.amazoncognito.com
 
   # pgAdmin Credentials (from Secrets Manager)
