@@ -25,6 +25,8 @@ export async function GET(request: NextRequest) {
     const laborPartsFilter = searchParams.get("laborPartsFilter"); // 'labor', 'parts', 'laborOrParts'
     const laborFields = searchParams.get("laborFields"); // Comma-separated: complaint, cause, correction, comment
     const search = searchParams.get("search"); // Text search for operation code/description
+    const serviceRecordId = searchParams.get("serviceRecordId"); // Filter by service_record_id
+    const roNumber = searchParams.get("roNumber"); // Filter by ro_number
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = (page - 1) * limit;
@@ -133,6 +135,18 @@ export async function GET(request: NextRequest) {
       whereConditions.push(
         `(o.operation_code ILIKE '%${escapedSearch}%' OR o.operation_description ILIKE '%${escapedSearch}%' OR o.labor_complaint ILIKE '%${escapedSearch}%' OR o.labor_cause ILIKE '%${escapedSearch}%' OR o.labor_correction ILIKE '%${escapedSearch}%' OR o.labor_comments ILIKE '%${escapedSearch}%')`
       );
+    }
+
+    if (serviceRecordId) {
+      // Escape single quotes to prevent SQL injection
+      const escapedServiceRecordId = serviceRecordId.replace(/'/g, "''");
+      whereConditions.push(`o.service_record_id = '${escapedServiceRecordId}'`);
+    }
+
+    if (roNumber) {
+      // Escape single quotes to prevent SQL injection
+      const escapedRONumber = roNumber.replace(/'/g, "''");
+      whereConditions.push(`sr.ro_number = '${escapedRONumber}'`);
     }
 
     const whereClause =

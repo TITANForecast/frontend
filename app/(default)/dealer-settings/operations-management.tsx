@@ -18,6 +18,7 @@ import {
 import OperationEditModal from "./operation-edit-modal";
 import PartDetailsModal from "./part-details-modal";
 import AIEvaluationModal from "./ai-evaluation-modal";
+import RODetailsModal from "./ro-details-modal";
 import MultiSelectDropdown from "@/components/multi-select-dropdown";
 
 interface Operation {
@@ -147,6 +148,14 @@ export default function OperationsManagement({
   // AI evaluation modal state
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [aiEvaluationOperationId, setAIEvaluationOperationId] =
+    useState<string>("");
+
+  // RO details modal state
+  const [isROModalOpen, setIsROModalOpen] = useState(false);
+  const [selectedServiceRecordId, setSelectedServiceRecordId] =
+    useState<string>("");
+  const [selectedRONumber, setSelectedRONumber] = useState<string | null>(null);
+  const [highlightedOperationId, setHighlightedOperationId] =
     useState<string>("");
 
   const canWrite = hasRole([UserRole.SUPER_ADMIN, UserRole.MULTI_DEALER]);
@@ -1230,11 +1239,21 @@ export default function OperationsManagement({
                                 <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                                   Service Record ID / RO Number
                                 </h4>
-                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                <button
+                                  onClick={() => {
+                                    setSelectedServiceRecordId(
+                                      operation.service_record_id
+                                    );
+                                    setSelectedRONumber(operation.ro_number);
+                                    setHighlightedOperationId(operation.id);
+                                    setIsROModalOpen(true);
+                                  }}
+                                  className="text-sm text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 hover:underline font-medium transition-colors"
+                                >
                                   {operation.ro_number ||
                                     operation.service_record_id ||
                                     "N/A"}
-                                </p>
+                                </button>
                               </div>
                               <div>
                                 <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
@@ -1580,6 +1599,23 @@ export default function OperationsManagement({
           operationId={selectedOperationId}
           partNumber={selectedPartNumber}
           dealerId={dealerId}
+        />
+      )}
+
+      {/* RO Details Modal */}
+      {isROModalOpen && selectedServiceRecordId && (
+        <RODetailsModal
+          isOpen={isROModalOpen}
+          onClose={() => {
+            setIsROModalOpen(false);
+            setSelectedServiceRecordId("");
+            setSelectedRONumber(null);
+            setHighlightedOperationId("");
+          }}
+          serviceRecordId={selectedServiceRecordId}
+          roNumber={selectedRONumber}
+          dealerId={dealerId}
+          highlightedOperationId={highlightedOperationId}
         />
       )}
     </div>
