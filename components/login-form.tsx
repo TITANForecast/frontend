@@ -29,7 +29,18 @@ export default function LoginForm() {
       await login(email, password);
       // The AuthProvider will handle the redirect to dashboard
     } catch (error: any) {
-      setError(error.message || "Invalid credentials. Please try again.");
+      const errorMessage = error.message || "Invalid credentials. Please try again.";
+      
+      // Check if error is due to unverified email
+      if (errorMessage.includes("verify your email") || errorMessage.includes("CONFIRM_SIGN_UP")) {
+        setError("Please verify your email address before signing in.");
+        // Redirect to verification page after a brief delay
+        setTimeout(() => {
+          router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+        }, 2000);
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -116,6 +127,14 @@ export default function LoginForm() {
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
+            <div className="text-right mt-2">
+              <Link
+                href="/forgot-password"
+                className="text-sm text-gray-400 hover:text-maroon-400 transition-colors"
+              >
+                Forgot Password?
+              </Link>
+            </div>
           </div>
 
           {/* Error Message */}
@@ -130,7 +149,7 @@ export default function LoginForm() {
                   Create Account
                 </Link>
                 <Link 
-                  href="/reset-password" 
+                  href="/forgot-password" 
                   className="text-maroon-200 hover:text-maroon-100 underline"
                 >
                   Forgot Password?

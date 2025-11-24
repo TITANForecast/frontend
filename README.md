@@ -18,7 +18,7 @@ For complete details about the Cognito service configuration, deployment, and ma
 - **[Infrastructure Repository](https://github.com/TITANForecast/infrastructure)**
 - **[Cognito Implementation](https://github.com/TITANForecast/infrastructure/issues/21)**
 - **[SES Email Setup](https://github.com/TITANForecast/infrastructure/issues/25)**
-- **[Email Templates](https://github.com/TITANForecast/infrastructure/issues/26)**
+- **[Email Templates](email-templates/README.md)** - Branded email templates with magic links
 
 ## 🚀 Getting Started
 
@@ -79,21 +79,26 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 - **`/`** - Main login form
 - **`/signin`** - Sign in page
 - **`/signup`** - User registration
-- **`/reset-password`** - Password reset
+- **`/verify-email`** - Email verification with magic links
+- **`/forgot-password`** - Password reset with magic links
 - **`/dashboard`** - Protected dashboard (requires authentication)
 
 ### **Authentication Flow:**
 1. **Sign Up**: Users create accounts with email verification
-2. **Sign In**: Email/password authentication with JWT tokens
-3. **Password Reset**: Email-based password recovery
-4. **Session Management**: Automatic token refresh and persistence
+2. **Email Verification**: Branded emails with magic links and 6-digit codes
+3. **Sign In**: Email/password authentication with JWT tokens
+4. **Password Reset**: Email-based recovery with magic links
+5. **Session Management**: Automatic token refresh and persistence
 
 ### **Security Features:**
 - JWT token-based authentication
+- Magic link email verification and password reset
 - Automatic session management
-- Password strength requirements
-- Email verification
+- Password strength requirements (8+ chars, uppercase, lowercase, number, special char)
+- Email verification required
 - Secure token storage
+
+**📖 For complete details on password reset and email verification flows, see [Password Reset & Email Verification Documentation](docs/PASSWORD_RESET_AND_EMAIL_VERIFICATION.md)**
 
 ## 🏗️ Architecture
 
@@ -112,6 +117,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ## 📚 Documentation
 
+- **[Password Reset & Email Verification](docs/PASSWORD_RESET_AND_EMAIL_VERIFICATION.md)** - Complete authentication flows guide
 - **[Cognito Integration Plan](docs/COGNITO_INTEGRATION_PLAN.md)** - Complete implementation details
 - **[GitHub Secrets Setup](docs/GITHUB_SECRETS_SETUP.md)** - CI/CD configuration
 - **[Workflow Optimization](docs/WORKFLOW_OPTIMIZATION.md)** - GitHub Actions improvements
