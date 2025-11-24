@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth-provider-multitenancy";
-import { X, Check, XCircle, Loader2 } from "lucide-react";
+import { X, Check, XCircle, Loader2, RefreshCw } from "lucide-react";
 
 interface AIEvaluation {
   id: string;
@@ -379,51 +379,71 @@ export default function AIEvaluationModal({
               </div>
 
               {/* Actions */}
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-700">
                 <button
                   type="button"
-                  onClick={handleClose}
-                  className="btn border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300"
-                  disabled={confirming !== null}
+                  onClick={handleRunEvaluation}
+                  disabled={loading || confirming !== null}
+                  className="btn border-violet-200 dark:border-violet-800 hover:border-violet-300 dark:hover:border-violet-700 text-violet-600 dark:text-violet-400 flex items-center gap-2"
                 >
-                  Close
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleConfirm(false)}
-                  disabled={confirming !== null}
-                  className="btn border-red-200 dark:border-red-800 hover:border-red-300 dark:hover:border-red-700 text-red-600 dark:text-red-400 flex items-center gap-2"
-                >
-                  {confirming === false ? (
+                  {loading ? (
                     <>
                       <Loader2 size={16} className="animate-spin" />
-                      Processing...
+                      Rerunning...
                     </>
                   ) : (
                     <>
-                      <XCircle size={16} />
-                      Deny
+                      <RefreshCw size={16} />
+                      Rerun Evaluation
                     </>
                   )}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handleConfirm(true)}
-                  disabled={confirming !== null}
-                  className="btn bg-violet-500 hover:bg-violet-600 text-white flex items-center gap-2"
-                >
-                  {confirming === true ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <Check size={16} />
-                      Confirm
-                    </>
-                  )}
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    className="btn border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300"
+                    disabled={confirming !== null}
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleConfirm(false)}
+                    disabled={confirming !== null}
+                    className="btn border-red-200 dark:border-red-800 hover:border-red-300 dark:hover:border-red-700 text-red-600 dark:text-red-400 flex items-center gap-2"
+                  >
+                    {confirming === false ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <XCircle size={16} />
+                        Deny
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleConfirm(true)}
+                    disabled={confirming !== null}
+                    className="btn bg-violet-500 hover:bg-violet-600 text-white flex items-center gap-2"
+                  >
+                    {confirming === true ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <Check size={16} />
+                        Confirm
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           )}
