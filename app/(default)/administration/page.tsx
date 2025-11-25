@@ -56,7 +56,9 @@ export default function AdministrationPage() {
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserExtended | undefined>();
   const [linkCognitoDialogOpen, setLinkCognitoDialogOpen] = useState(false);
-  const [userToLinkCognito, setUserToLinkCognito] = useState<UserExtended | undefined>();
+  const [userToLinkCognito, setUserToLinkCognito] = useState<
+    UserExtended | undefined
+  >();
   const [warrantyRuleModalOpen, setWarrantyRuleModalOpen] = useState(false);
   const [selectedWarrantyRule, setSelectedWarrantyRule] = useState<
     WarrantyRule | undefined
@@ -421,10 +423,10 @@ export default function AdministrationPage() {
       {/* Tabs */}
       <div className="mb-6">
         <div className="border-b border-gray-200 dark:border-gray-700">
-          <nav className="-mb-px flex space-x-8">
+          <nav className="-mb-px flex space-x-2 sm:space-x-4 md:space-x-8 overflow-x-auto">
             <button
               onClick={() => setActiveTab("dashboard")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 sm:py-3 md:py-4 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap transition-colors ${
                 activeTab === "dashboard"
                   ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
@@ -434,33 +436,33 @@ export default function AdministrationPage() {
             </button>
             <button
               onClick={() => setActiveTab("dealers")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 sm:py-3 md:py-4 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap transition-colors ${
                 activeTab === "dealers"
                   ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
               }`}
             >
               Dealers
-              <span className="ml-2 py-0.5 px-2 rounded-full text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+              <span className="ml-1.5 sm:ml-2 py-0.5 px-1.5 sm:px-2 rounded-full text-[10px] sm:text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
                 {dealers.length}
               </span>
             </button>
             <button
               onClick={() => setActiveTab("users")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 sm:py-3 md:py-4 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap transition-colors ${
                 activeTab === "users"
                   ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
               }`}
             >
               Users
-              <span className="ml-2 py-0.5 px-2 rounded-full text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+              <span className="ml-1.5 sm:ml-2 py-0.5 px-1.5 sm:px-2 rounded-full text-[10px] sm:text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
                 {users.length}
               </span>
             </button>
             <button
               onClick={() => setActiveTab("warranty-rules")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 sm:py-3 md:py-4 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap transition-colors ${
                 activeTab === "warranty-rules"
                   ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
@@ -468,7 +470,7 @@ export default function AdministrationPage() {
             >
               Warranty Rules
               {(warrantyRulesPagination?.total || warrantyRules.length) > 0 && (
-                <span className="ml-2 py-0.5 px-2 rounded-full text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                <span className="ml-1.5 sm:ml-2 py-0.5 px-1.5 sm:px-2 rounded-full text-[10px] sm:text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
                   {warrantyRulesPagination?.total || warrantyRules.length}
                 </span>
               )}

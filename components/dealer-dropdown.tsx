@@ -46,18 +46,23 @@ export default function DealerDropdown() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
+        className="flex items-center justify-center space-x-1.5 sm:space-x-2 px-2 sm:px-3 py-1.5 sm:py-2 min-h-[32px] text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
       >
-        <span>{currentDealer.name}</span>
+        <span className="hidden sm:inline truncate max-w-[120px] lg:max-w-none">
+          {currentDealer.name}
+        </span>
+        <span className="sm:hidden truncate max-w-[80px]">
+          {currentDealer.name.split(" ")[0]}
+        </span>
         <ChevronDownIcon
-          className={`h-4 w-4 transition-transform ${
+          className={`h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 transition-transform ${
             isOpen ? "rotate-180" : ""
           }`}
         />
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 dark:ring-gray-600 z-50">
+        <div className="absolute right-0 mt-1.5 sm:mt-2 w-56 sm:w-64 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 dark:ring-gray-600 z-50 max-h-[80vh] overflow-y-auto">
           <div className="py-1">
             {user.dealers.map((dealer) => (
               <button

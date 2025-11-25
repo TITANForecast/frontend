@@ -149,6 +149,7 @@ export default function OperationsManagement({
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [aiEvaluationOperationId, setAIEvaluationOperationId] =
     useState<string>("");
+  const [isBulkAIModalOpen, setIsBulkAIModalOpen] = useState(false);
 
   // RO details modal state
   const [isROModalOpen, setIsROModalOpen] = useState(false);
@@ -344,6 +345,10 @@ export default function OperationsManagement({
 
   const handleBulkUpdate = () => {
     setShowBulkUpdate(true);
+  };
+
+  const handleBulkWarrantyEvaluation = () => {
+    setIsBulkAIModalOpen(true);
   };
 
   const handleModalClose = (success: boolean) => {
@@ -740,9 +745,9 @@ export default function OperationsManagement({
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {/* Search Bar */}
-        <div className="col-span-2">
+        <div className="sm:col-span-2 lg:col-span-3 xl:col-span-2">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Search Operation
           </label>
@@ -778,37 +783,40 @@ export default function OperationsManagement({
         </div>
 
         {/* Date Range */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Start Date
-          </label>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => {
-              setStartDate(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="form-input w-full"
-          />
+        <div className="sm:col-span-2 lg:col-span-2 xl:col-span-2 flex flex-col sm:flex-row items-stretch sm:items-end gap-2 sm:gap-2">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Start Date
+            </label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="form-input w-full"
+            />
+          </div>
+
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              End Date
+            </label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="form-input w-full"
+            />
+          </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            End Date
-          </label>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => {
-              setEndDate(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="form-input w-full"
-          />
-        </div>
-
-        <div className="flex items-center gap-6">
+        {/* Checkboxes */}
+        <div className="sm:col-span-2 lg:col-span-3 xl:col-span-1 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
           <label className="flex items-center cursor-pointer">
             <input
               type="checkbox"
@@ -817,7 +825,7 @@ export default function OperationsManagement({
                 setEligibleMakesOnly(e.target.checked);
                 setCurrentPage(1);
               }}
-              className="form-checkbox h-4 w-4 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 mr-2"
+              className="form-checkbox h-4 w-4 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 mr-2 shrink-0"
             />
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Eligible Makes Only
@@ -831,7 +839,7 @@ export default function OperationsManagement({
                 setEligibleOpcodesOnly(e.target.checked);
                 setCurrentPage(1);
               }}
-              className="form-checkbox h-4 w-4 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 mr-2"
+              className="form-checkbox h-4 w-4 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 mr-2 shrink-0"
             />
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Eligible Opcodes Only
@@ -840,7 +848,7 @@ export default function OperationsManagement({
         </div>
 
         {/* Service Filter */}
-        <div>
+        <div className="sm:col-span-1">
           <MultiSelectDropdown
             label="Service"
             options={[
@@ -862,7 +870,7 @@ export default function OperationsManagement({
         </div>
 
         {/* Pay Type Filter */}
-        <div>
+        <div className="sm:col-span-1">
           <MultiSelectDropdown
             label="Pay Type"
             options={[
@@ -880,7 +888,7 @@ export default function OperationsManagement({
         </div>
 
         {/* Warranty Eligible Filter */}
-        <div>
+        <div className="sm:col-span-1">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Warranty Eligible
           </label>
@@ -900,7 +908,7 @@ export default function OperationsManagement({
         </div>
 
         {/* Labor Fields Filter */}
-        <div>
+        <div className="sm:col-span-1">
           <MultiSelectDropdown
             label="Labor Fields"
             options={[
@@ -919,7 +927,7 @@ export default function OperationsManagement({
         </div>
 
         {/* Labor/Parts Filter */}
-        <div>
+        <div className="sm:col-span-1">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Labor/Parts Filter
           </label>
@@ -929,7 +937,7 @@ export default function OperationsManagement({
               setLaborPartsFilter(e.target.value);
               setCurrentPage(1);
             }}
-            className="form-select w-full min-w-[180px] min-h-[42px]"
+            className="form-select w-full sm:min-w-[180px] min-h-[42px]"
           >
             <option value="">All</option>
             <option value="labor">Has Labor</option>
@@ -966,12 +974,21 @@ export default function OperationsManagement({
             <span className="text-sm font-medium text-violet-900 dark:text-violet-100">
               {selectedOperations.length} operation(s) selected
             </span>
-            <button
-              onClick={handleBulkUpdate}
-              className="btn bg-violet-500 hover:bg-violet-600 text-white"
-            >
-              Bulk Update
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={handleBulkWarrantyEvaluation}
+                className="btn bg-violet-500 hover:bg-violet-600 text-white flex items-center gap-2"
+              >
+                <Sparkles size={16} />
+                Bulk Warranty Evaluation
+              </button>
+              <button
+                onClick={handleBulkUpdate}
+                className="btn bg-violet-500 hover:bg-violet-600 text-white"
+              >
+                Bulk Update
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -981,7 +998,10 @@ export default function OperationsManagement({
         {refreshing && (
           <div className="absolute inset-0 bg-white/80 dark:bg-gray-800/80 z-10 flex items-center justify-center">
             <div className="flex flex-col items-center gap-3">
-              <Loader2 size={32} className="animate-spin text-violet-600 dark:text-violet-400" />
+              <Loader2
+                size={32}
+                className="animate-spin text-violet-600 dark:text-violet-400"
+              />
               <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Refreshing data...
               </p>
@@ -1167,8 +1187,8 @@ export default function OperationsManagement({
                         {getWarrantyBadge(operation.is_warranty_eligible)}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
-                        {(operation.ai_tagged_at ||
-                          operation.warranty_evaluation_confidence !== null) ? (
+                        {operation.ai_tagged_at ||
+                        operation.warranty_evaluation_confidence !== null ? (
                           <div className="text-xs">
                             <div className="text-gray-600 dark:text-gray-300">
                               Service:{" "}
@@ -1181,10 +1201,14 @@ export default function OperationsManagement({
                             </div>
                             <div className="text-gray-600 dark:text-gray-300">
                               Warranty:{" "}
-                              {operation.warranty_evaluation_confidence !== null &&
-                              operation.warranty_evaluation_confidence !== undefined
+                              {operation.warranty_evaluation_confidence !==
+                                null &&
+                              operation.warranty_evaluation_confidence !==
+                                undefined
                                 ? `${(
-                                    Number(operation.warranty_evaluation_confidence) * 100
+                                    Number(
+                                      operation.warranty_evaluation_confidence
+                                    ) * 100
                                   ).toFixed(1)}%`
                                 : operation.ai_confidence_warranty !== null &&
                                   operation.ai_confidence_warranty !== undefined
@@ -1520,30 +1544,44 @@ export default function OperationsManagement({
 
       {/* Pagination */}
       {pagination && pagination.totalPages > 1 && (
-        <div className="px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700">
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
-            {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
-            {pagination.total} results
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCurrentPage(pagination.page - 1)}
-              disabled={pagination.page === 1}
-              className="btn border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-            <span className="text-sm text-gray-600 dark:text-gray-400 px-2">
-              Page {pagination.page} of {pagination.totalPages}
-            </span>
-            <button
-              onClick={() => setCurrentPage(pagination.page + 1)}
-              disabled={pagination.page === pagination.totalPages}
-              className="btn border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Next
-            </button>
+        <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+          {/* Mobile: Stacked layout */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+            {/* Results info */}
+            <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 text-center sm:text-left">
+              <span className="hidden sm:inline">
+                Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
+                {Math.min(pagination.page * pagination.limit, pagination.total)}{" "}
+                of {pagination.total} results
+              </span>
+              <span className="sm:hidden">
+                {(pagination.page - 1) * pagination.limit + 1}-
+                {Math.min(pagination.page * pagination.limit, pagination.total)}{" "}
+                of {pagination.total}
+              </span>
+            </div>
+
+            {/* Pagination controls */}
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={() => setCurrentPage(pagination.page - 1)}
+                disabled={pagination.page === 1}
+                className="btn border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm"
+              >
+                <span className="hidden sm:inline">Previous</span>
+                <span className="sm:hidden">Prev</span>
+              </button>
+              <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 px-2 whitespace-nowrap">
+                Page {pagination.page} of {pagination.totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(pagination.page + 1)}
+                disabled={pagination.page === pagination.totalPages}
+                className="btn border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm"
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1584,6 +1622,31 @@ export default function OperationsManagement({
             setRefreshing(true);
             try {
               await fetchOperations();
+            } finally {
+              setRefreshing(false);
+            }
+          }}
+        />
+      )}
+
+      {/* Bulk AI Evaluation Modal */}
+      {isBulkAIModalOpen && (
+        <AIEvaluationModal
+          isOpen={isBulkAIModalOpen}
+          onClose={() => {
+            setIsBulkAIModalOpen(false);
+          }}
+          operationIds={selectedOperations}
+          operations={operations.filter((op) =>
+            selectedOperations.includes(op.id)
+          )}
+          dealerId={dealerId}
+          onEvaluationComplete={async () => {
+            // Refresh operations list after evaluation
+            setRefreshing(true);
+            try {
+              await fetchOperations();
+              setSelectedOperations([]);
             } finally {
               setRefreshing(false);
             }

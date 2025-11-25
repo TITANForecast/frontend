@@ -39,46 +39,50 @@ export default function DealerSettings() {
       {/* Tabs */}
       <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl mb-8">
         <div className="border-b border-gray-200 dark:border-gray-700">
-          <nav className="flex -mb-px overflow-x-auto">
+          <nav className="-mb-px flex space-x-2 sm:space-x-4 md:space-x-6 overflow-x-auto">
             <button
               onClick={() => setActiveTab("operations")}
-              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+              className={`py-2 sm:py-3 md:py-4 px-2 sm:px-4 md:px-6 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap ${
                 activeTab === "operations"
                   ? "border-violet-500 text-violet-600 dark:text-violet-400"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
               }`}
             >
-              Operations Management
+              <span className="hidden sm:inline">Operations Management</span>
+              <span className="sm:hidden">Operations</span>
             </button>
             <button
               onClick={() => setActiveTab("services")}
-              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+              className={`py-2 sm:py-3 md:py-4 px-2 sm:px-4 md:px-6 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap ${
                 activeTab === "services"
                   ? "border-violet-500 text-violet-600 dark:text-violet-400"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
               }`}
             >
-              Services Management
+              <span className="hidden sm:inline">Services Management</span>
+              <span className="sm:hidden">Services</span>
             </button>
             <button
               onClick={() => setActiveTab("makes")}
-              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+              className={`py-2 sm:py-3 md:py-4 px-2 sm:px-4 md:px-6 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap ${
                 activeTab === "makes"
                   ? "border-violet-500 text-violet-600 dark:text-violet-400"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
               }`}
             >
-              Make Settings
+              <span className="hidden sm:inline">Make Settings</span>
+              <span className="sm:hidden">Makes</span>
             </button>
             <button
               onClick={() => setActiveTab("opcodes")}
-              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+              className={`py-2 sm:py-3 md:py-4 px-2 sm:px-4 md:px-6 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap ${
                 activeTab === "opcodes"
                   ? "border-violet-500 text-violet-600 dark:text-violet-400"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
               }`}
             >
-              Opcode Management
+              <span className="hidden sm:inline">Opcode Management</span>
+              <span className="sm:hidden">Opcode</span>
             </button>
           </nav>
         </div>

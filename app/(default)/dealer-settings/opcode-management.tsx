@@ -371,9 +371,7 @@ export default function OpcodeManagement({ dealerId }: OpcodeManagementProps) {
                   Usage Count
                   <SortIcon column="usage_count" />
                 </th>
-                <th
-                  className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                >
+                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   <div className="flex items-center justify-center gap-2">
                     <label className="inline-flex items-center cursor-pointer">
                       <input
@@ -487,7 +485,7 @@ export default function OpcodeManagement({ dealerId }: OpcodeManagementProps) {
                                                 ).toLocaleDateString()
                                               : "N/A"}
                                           </div>
-                                          
+
                                           {/* Labor Details */}
                                           <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 grid grid-cols-1 md:grid-cols-2 gap-3">
                                             <div>
@@ -495,7 +493,8 @@ export default function OpcodeManagement({ dealerId }: OpcodeManagementProps) {
                                                 Complaint:
                                               </div>
                                               <div className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                                                {operation.labor_complaint || "N/A"}
+                                                {operation.labor_complaint ||
+                                                  "N/A"}
                                               </div>
                                             </div>
                                             <div>
@@ -511,7 +510,8 @@ export default function OpcodeManagement({ dealerId }: OpcodeManagementProps) {
                                                 Correction:
                                               </div>
                                               <div className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                                                {operation.labor_correction || "N/A"}
+                                                {operation.labor_correction ||
+                                                  "N/A"}
                                               </div>
                                             </div>
                                             <div>
@@ -519,7 +519,8 @@ export default function OpcodeManagement({ dealerId }: OpcodeManagementProps) {
                                                 Comments:
                                               </div>
                                               <div className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                                                {operation.labor_comments || "N/A"}
+                                                {operation.labor_comments ||
+                                                  "N/A"}
                                               </div>
                                             </div>
                                           </div>
@@ -548,30 +549,44 @@ export default function OpcodeManagement({ dealerId }: OpcodeManagementProps) {
 
       {/* Pagination */}
       {pagination && pagination.totalPages > 1 && (
-        <div className="px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700">
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
-            {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
-            {pagination.total} results
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCurrentPage(pagination.page - 1)}
-              disabled={pagination.page === 1}
-              className="btn border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-            <span className="text-sm text-gray-600 dark:text-gray-400 px-2">
-              Page {pagination.page} of {pagination.totalPages}
-            </span>
-            <button
-              onClick={() => setCurrentPage(pagination.page + 1)}
-              disabled={pagination.page === pagination.totalPages}
-              className="btn border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Next
-            </button>
+        <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+          {/* Mobile: Stacked layout */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+            {/* Results info */}
+            <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 text-center sm:text-left">
+              <span className="hidden sm:inline">
+                Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
+                {Math.min(pagination.page * pagination.limit, pagination.total)}{" "}
+                of {pagination.total} results
+              </span>
+              <span className="sm:hidden">
+                {(pagination.page - 1) * pagination.limit + 1}-
+                {Math.min(pagination.page * pagination.limit, pagination.total)}{" "}
+                of {pagination.total}
+              </span>
+            </div>
+
+            {/* Pagination controls */}
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={() => setCurrentPage(pagination.page - 1)}
+                disabled={pagination.page === 1}
+                className="btn border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm"
+              >
+                <span className="hidden sm:inline">Previous</span>
+                <span className="sm:hidden">Prev</span>
+              </button>
+              <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 px-2 whitespace-nowrap">
+                Page {pagination.page} of {pagination.totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(pagination.page + 1)}
+                disabled={pagination.page === pagination.totalPages}
+                className="btn border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm"
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
       )}
