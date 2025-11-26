@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth-provider-multitenancy";
-import { X, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
+import { X, ChevronDown, ChevronRight, Loader2, Download } from "lucide-react";
 
 interface Operation {
   id: string;
@@ -77,6 +77,7 @@ export default function RODetailsModal({
   const [expandedOperations, setExpandedOperations] = useState<Set<string>>(
     new Set()
   );
+  const [generatingPDF, setGeneratingPDF] = useState(false);
 
   useEffect(() => {
     if (isOpen && serviceRecordId) {
@@ -94,12 +95,7 @@ export default function RODetailsModal({
 
   // Scroll to highlighted operation when operations are loaded
   useEffect(() => {
-    if (
-      operations.length > 0 &&
-      highlightedOperationId &&
-      !loading &&
-      isOpen
-    ) {
+    if (operations.length > 0 && highlightedOperationId && !loading && isOpen) {
       // Small delay to ensure DOM is updated
       setTimeout(() => {
         const element = document.getElementById(
@@ -165,6 +161,50 @@ export default function RODetailsModal({
       newExpanded.add(operationId);
     }
     setExpandedOperations(newExpanded);
+  };
+
+  const handleDownloadPDF = async () => {
+    setGeneratingPDF(true);
+    try {
+      const token = await getAuthToken();
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const params = new URLSearchParams({
+        dealerId,
+      });
+
+      const response = await fetch(
+        `/api/dealer-settings/ro/${serviceRecordId}/pdf?${params.toString()}`,
+        {
+          headers,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to generate PDF");
+      }
+
+      // Get the PDF blob
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `RO-${roNumber || serviceRecordId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error: any) {
+      console.error("Error generating PDF:", error);
+      setError(error.message || "Failed to generate PDF");
+    } finally {
+      setGeneratingPDF(false);
+    }
   };
 
   // Helper function to convert Prisma Decimal objects to numbers
@@ -258,19 +298,42 @@ export default function RODetailsModal({
                 {roNumber || serviceRecordId}
               </p>
             </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-            >
-              <X size={24} />
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleDownloadPDF}
+                disabled={generatingPDF || loading || operations.length === 0}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-colors"
+                title="Download RO as PDF"
+              >
+                {generatingPDF ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Download size={16} />
+                    Download PDF
+                  </>
+                )}
+              </button>
+              <button
+                onClick={onClose}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <X size={24} />
+              </button>
+            </div>
           </div>
 
           {/* Content */}
           <div className="p-6 max-h-[calc(100vh-200px)] overflow-y-auto">
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 size={32} className="animate-spin text-violet-600 dark:text-violet-400" />
+                <Loader2
+                  size={32}
+                  className="animate-spin text-violet-600 dark:text-violet-400"
+                />
               </div>
             ) : error ? (
               <div className="text-center py-12 text-red-600 dark:text-red-400">
@@ -429,7 +492,8 @@ export default function RODetailsModal({
                                 </div>
                                 <div className="text-right text-sm text-gray-600 dark:text-gray-400">
                                   <div>
-                                    {operation.pay_type === "C" && "Customer Pay"}
+                                    {operation.pay_type === "C" &&
+                                      "Customer Pay"}
                                     {operation.pay_type === "W" && "Warranty"}
                                     {operation.pay_type === "I" && "Internal"}
                                   </div>
@@ -470,8 +534,9 @@ export default function RODetailsModal({
                                         Labor Hours
                                       </h4>
                                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                                        {parseDecimal(operation.total_labor_hours) >
-                                        0
+                                        {parseDecimal(
+                                          operation.total_labor_hours
+                                        ) > 0
                                           ? parseDecimal(
                                               operation.total_labor_hours
                                             ).toFixed(2)
@@ -559,7 +624,9 @@ export default function RODetailsModal({
                                               ((partsSale - partsCost) /
                                                 partsCost) *
                                               100;
-                                            return `${profitPercent.toFixed(2)}%`;
+                                            return `${profitPercent.toFixed(
+                                              2
+                                            )}%`;
                                           }
                                           return "N/A";
                                         })()}
@@ -723,4 +790,3 @@ export default function RODetailsModal({
     </div>
   );
 }
-
