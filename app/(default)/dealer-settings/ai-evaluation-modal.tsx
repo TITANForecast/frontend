@@ -22,6 +22,7 @@ interface AIEvaluation {
   rule_applied: string;
   created_at?: string;
   evaluated_at?: string; // Backend may return evaluated_at
+  user_confirmed?: boolean | null; // true = confirmed, false = denied, null = pending
 }
 
 interface OperationInfo {
@@ -94,6 +95,8 @@ export default function AIEvaluationModal({
       rule_applied: data.rule_applied || "",
       created_at: data.evaluated_at || data.created_at || "",
       evaluated_at: data.evaluated_at,
+      user_confirmed:
+        data.user_confirmed !== undefined ? data.user_confirmed : null,
     };
   };
 
@@ -373,18 +376,56 @@ export default function AIEvaluationModal({
         throw new Error(data.error || "Failed to confirm evaluation");
       }
 
-      if (onEvaluationComplete) {
-        await onEvaluationComplete();
-      }
+      // In bulk mode, reload only the specific operation's evaluation to get updated confirmation status
+      if (isBulkMode && opId) {
+        try {
+          const token = await getAuthToken();
+          const headers: HeadersInit = {
+            "Content-Type": "application/json",
+          };
+          if (token) {
+            headers["Authorization"] = `Bearer ${token}`;
+          }
 
-      // In bulk mode, don't close - just refresh
-      if (!isBulkMode) {
-        onClose();
-      } else {
-        // Reload evaluations to get updated confirmation status
-        await loadExistingEvaluations();
+          // Reload just this operation's evaluation
+          const evalResponse = await fetch(
+            `/api/dealer-settings/operations/${opId}/ai-evaluation?dealerId=${dealerId}`,
+            {
+              method: "GET",
+              headers,
+            }
+          );
+
+          if (evalResponse.ok) {
+            const evalData = await evalResponse.json();
+            if (evalData && !evalData.notFound) {
+              // Update only this operation's evaluation in the map
+              const updatedEvaluations = new Map(evaluations);
+              updatedEvaluations.set(opId, normalizeEvaluation(evalData));
+              setEvaluations(updatedEvaluations);
+            }
+          }
+        } catch (err) {
+          console.error(
+            `Failed to reload evaluation for operation ${opId}:`,
+            err
+          );
+          // Don't throw - just log the error, confirmation was successful
+        }
+
+        // Refresh the background table without closing the modal
+        if (onEvaluationComplete) {
+          await onEvaluationComplete();
+        }
+
         setConfirming(null);
         setConfirmingOperationId(null);
+      } else {
+        // Single operation mode - refresh and close
+        if (onEvaluationComplete) {
+          await onEvaluationComplete();
+        }
+        onClose();
       }
     } catch (err: any) {
       setError(err.message || "Failed to confirm evaluation");
@@ -544,6 +585,28 @@ export default function AIEvaluationModal({
                     : "not warranty eligible"}
                   .
                 </p>
+                {/* User Confirmation Status */}
+                {evaluation.user_confirmed !== null &&
+                  evaluation.user_confirmed !== undefined && (
+                    <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          User Confirmation:
+                        </span>
+                        {evaluation.user_confirmed ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded text-sm font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400">
+                            <Check size={14} className="mr-1" />
+                            Confirmed
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-1 rounded text-sm font-medium bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-400">
+                            <XCircle size={14} className="mr-1" />
+                            Denied
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
               </div>
 
               {/* Confidence Level */}
@@ -768,7 +831,7 @@ export default function AIEvaluationModal({
                                   </div>
                                 )}
                                 {evalResult && (
-                                  <div className="flex items-center gap-2 mt-1">
+                                  <div className="flex items-center gap-2 mt-1 flex-wrap">
                                     {evalResult.eligible ? (
                                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400">
                                         <Check size={12} className="mr-1" />
@@ -785,6 +848,35 @@ export default function AIEvaluationModal({
                                       {(evalResult.confidence * 100).toFixed(1)}
                                       %
                                     </span>
+                                    {evalResult.user_confirmed !== null &&
+                                      evalResult.user_confirmed !==
+                                        undefined && (
+                                        <span
+                                          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                            evalResult.user_confirmed
+                                              ? "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400"
+                                              : "bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-400"
+                                          }`}
+                                        >
+                                          {evalResult.user_confirmed ? (
+                                            <>
+                                              <Check
+                                                size={12}
+                                                className="mr-1"
+                                              />
+                                              Confirmed
+                                            </>
+                                          ) : (
+                                            <>
+                                              <XCircle
+                                                size={12}
+                                                className="mr-1"
+                                              />
+                                              Denied
+                                            </>
+                                          )}
+                                        </span>
+                                      )}
                                   </div>
                                 )}
                                 {errorMsg && (
@@ -820,6 +912,28 @@ export default function AIEvaluationModal({
                                     : "Not Eligible"}
                                 </h4>
                               </div>
+                              {/* User Confirmation Status */}
+                              {evalResult.user_confirmed !== null &&
+                                evalResult.user_confirmed !== undefined && (
+                                  <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                                        User Confirmation:
+                                      </span>
+                                      {evalResult.user_confirmed ? (
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400">
+                                          <Check size={12} className="mr-1" />
+                                          Confirmed
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-400">
+                                          <XCircle size={12} className="mr-1" />
+                                          Denied
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
                             </div>
 
                             {/* Confidence Level */}

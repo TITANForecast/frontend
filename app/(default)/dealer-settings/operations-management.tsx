@@ -967,9 +967,9 @@ export default function OperationsManagement({
         </button>
       </div>
 
-      {/* Bulk Actions */}
+      {/* Bulk Actions - Sticky */}
       {canWrite && selectedOperations.length > 0 && (
-        <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-lg p-4">
+        <div className="sticky top-16 z-40 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-md">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-violet-900 dark:text-violet-100">
               {selectedOperations.length} operation(s) selected
@@ -1635,6 +1635,8 @@ export default function OperationsManagement({
           isOpen={isBulkAIModalOpen}
           onClose={() => {
             setIsBulkAIModalOpen(false);
+            // Clear selections only when modal is closed
+            setSelectedOperations([]);
           }}
           operationIds={selectedOperations}
           operations={operations.filter((op) =>
@@ -1643,10 +1645,10 @@ export default function OperationsManagement({
           dealerId={dealerId}
           onEvaluationComplete={async () => {
             // Refresh operations list after evaluation
+            // Don't clear selections - keep them so user can continue confirming other operations
             setRefreshing(true);
             try {
               await fetchOperations();
-              setSelectedOperations([]);
             } finally {
               setRefreshing(false);
             }
