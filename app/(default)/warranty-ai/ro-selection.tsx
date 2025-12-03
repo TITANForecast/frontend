@@ -586,7 +586,7 @@ export default function ROSSelection() {
               ) : (
                 <>
                   <Download size={16} />
-                  Export Best Set
+                  Export
                 </>
               )}
             </button>
