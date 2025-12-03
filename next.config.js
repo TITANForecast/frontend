@@ -10,10 +10,10 @@ const nextConfig = {
       process.env.NODE_ENV === "development" ||
       process.env.DOCKER_BUILD !== "true",
   },
-  // Externalize pdfkit to avoid bundling issues with font files
-  serverExternalPackages: ["pdfkit"],
+  // Externalize pdfkit and archiver to avoid bundling issues
+  serverExternalPackages: ["pdfkit", "archiver"],
   experimental: {
-    serverComponentsExternalPackages: ["pdfkit"],
+    serverComponentsExternalPackages: ["pdfkit", "archiver"],
   },
 };
 
