@@ -55,14 +55,14 @@ export async function GET(request: NextRequest) {
     if (minMileage && minMileage.trim() !== "") {
       const mileageValue = parseFloat(minMileage);
       if (!isNaN(mileageValue) && isFinite(mileageValue)) {
-        whereConditions.push(`NULLIF(sr.ro_mileage, '') IS NOT NULL AND CAST(NULLIF(sr.ro_mileage, '') AS NUMERIC) >= ${mileageValue}`);
+        whereConditions.push(`sr.ro_mileage >= ${mileageValue}`);
       }
     }
 
     if (maxMileage && maxMileage.trim() !== "") {
       const mileageValue = parseFloat(maxMileage);
       if (!isNaN(mileageValue) && isFinite(mileageValue)) {
-        whereConditions.push(`NULLIF(sr.ro_mileage, '') IS NOT NULL AND CAST(NULLIF(sr.ro_mileage, '') AS NUMERIC) <= ${mileageValue}`);
+        whereConditions.push(`sr.ro_mileage <= ${mileageValue}`);
       }
     }
 
@@ -77,19 +77,27 @@ export async function GET(request: NextRequest) {
         })
         .filter((y) => y !== null);
       if (yearArray.length > 0) {
-        whereConditions.push(`NULLIF(v.year, '') IS NOT NULL AND v.year IN (${yearArray.join(",")})`);
+        whereConditions.push(
+          `NULLIF(v.year, '') IS NOT NULL AND v.year IN (${yearArray.join(
+            ","
+          )})`
+        );
       }
     } else {
       if (minYear && minYear.trim() !== "") {
         const yearValue = parseInt(minYear, 10);
         if (!isNaN(yearValue) && isFinite(yearValue)) {
-          whereConditions.push(`NULLIF(v.year, '') IS NOT NULL AND CAST(NULLIF(v.year, '') AS INTEGER) >= ${yearValue}`);
+          whereConditions.push(
+            `NULLIF(v.year, '') IS NOT NULL AND CAST(NULLIF(v.year, '') AS INTEGER) >= ${yearValue}`
+          );
         }
       }
       if (maxYear && maxYear.trim() !== "") {
         const yearValue = parseInt(maxYear, 10);
         if (!isNaN(yearValue) && isFinite(yearValue)) {
-          whereConditions.push(`NULLIF(v.year, '') IS NOT NULL AND CAST(NULLIF(v.year, '') AS INTEGER) <= ${yearValue}`);
+          whereConditions.push(
+            `NULLIF(v.year, '') IS NOT NULL AND CAST(NULLIF(v.year, '') AS INTEGER) <= ${yearValue}`
+          );
         }
       }
     }
@@ -127,9 +135,13 @@ export async function GET(request: NextRequest) {
       HAVING 
         -- Must have operations of the selected type
         (
-          '${searchMode === "labor" ? "labor" : "parts"}' = 'labor' AND (COALESCE(SUM(l.labor_sale), 0) > 0 OR COALESCE(SUM(l.labor_bill_hours), 0) > 0)
+          '${
+            searchMode === "labor" ? "labor" : "parts"
+          }' = 'labor' AND (COALESCE(SUM(l.labor_sale), 0) > 0 OR COALESCE(SUM(l.labor_bill_hours), 0) > 0)
           OR
-          '${searchMode === "labor" ? "labor" : "parts"}' = 'parts' AND COALESCE(SUM(p.parts_unit_sale * p.part_quantity), 0) > 0
+          '${
+            searchMode === "labor" ? "labor" : "parts"
+          }' = 'parts' AND COALESCE(SUM(p.parts_unit_sale * p.part_quantity), 0) > 0
         )
         ${
           eligibleOnly
@@ -165,11 +177,15 @@ export async function GET(request: NextRequest) {
       return {
         service_record_id: String(ro.service_record_id),
         ro_number: ro.ro_number,
-        ro_open_date: ro.ro_open_date ? new Date(ro.ro_open_date).toISOString() : null,
+        ro_open_date: ro.ro_open_date
+          ? new Date(ro.ro_open_date).toISOString()
+          : null,
         vehicle_year: ro.vehicle_year ? String(ro.vehicle_year) : null,
         vehicle_make: ro.vehicle_make,
         vehicle_model: ro.vehicle_model,
-        vehicle_mileage: ro.vehicle_mileage ? parseFloat(String(ro.vehicle_mileage)) : null,
+        vehicle_mileage: ro.vehicle_mileage
+          ? parseFloat(String(ro.vehicle_mileage))
+          : null,
         total_labor_sale: totalLaborSale,
         total_labor_hours: totalLaborHours,
         total_parts_sale: totalPartsSale,
@@ -245,4 +261,3 @@ function findBestContiguousWindow(
 
   return bestWindow;
 }
-
