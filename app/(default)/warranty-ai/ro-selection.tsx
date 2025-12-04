@@ -9,10 +9,10 @@ import {
   Download,
   Loader2,
   Sparkles,
-  ToggleLeft,
-  ToggleRight,
+  Edit2,
 } from "lucide-react";
 import AIEvaluationModal from "@/app/(default)/dealer-settings/ai-evaluation-modal";
+import OperationEditModal from "@/app/(default)/dealer-settings/operation-edit-modal";
 
 interface RO {
   service_record_id: string;
@@ -50,6 +50,23 @@ interface Operation {
   warranty_evaluation_reason: string | null;
   warranty_evaluation_rule_applied: string | null;
   warranty_evaluation_user_confirmed: boolean | null;
+  service_id?: string | null;
+  eligibility_notes?: string | null;
+}
+
+interface Service {
+  id: string;
+  name: string;
+  categoryId: string;
+  subcategoryId: string | null;
+  category: {
+    id: string;
+    name: string;
+  };
+  subcategory: {
+    id: string;
+    name: string;
+  } | null;
 }
 
 export default function ROSSelection() {
@@ -89,12 +106,19 @@ export default function ROSSelection() {
   const [aiEvaluationOperationId, setAIEvaluationOperationId] =
     useState<string>("");
 
+  // Edit Operation Modal
+  const [editingOperation, setEditingOperation] = useState<Operation | null>(
+    null
+  );
+  const [services, setServices] = useState<Service[]>([]);
+
   // Export
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     if (currentDealer) {
       fetchROs();
+      fetchServices();
     }
   }, [
     currentDealer,
@@ -108,6 +132,36 @@ export default function ROSSelection() {
     selectedYears,
     searchMode,
   ]);
+
+  const fetchServices = async () => {
+    if (!currentDealer) return;
+
+    try {
+      const token = await getAuthToken();
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(
+        `/api/dealer-settings/services?dealerId=${currentDealer.id}&isActive=true`,
+        {
+          headers,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch services");
+      }
+
+      const data = await response.json();
+      setServices(data);
+    } catch (err) {
+      console.error("Failed to fetch services:", err);
+    }
+  };
 
   const fetchROs = async () => {
     if (!currentDealer) return;
@@ -189,8 +243,12 @@ export default function ROSSelection() {
     }
   };
 
-  const fetchOperationsForRO = async (serviceRecordId: string) => {
-    if (!currentDealer || roOperations.has(serviceRecordId)) return;
+  const fetchOperationsForRO = async (
+    serviceRecordId: string,
+    forceRefresh: boolean = false
+  ) => {
+    if (!currentDealer) return;
+    if (!forceRefresh && roOperations.has(serviceRecordId)) return;
 
     setLoadingOperations((prev) => new Set(prev).add(serviceRecordId));
 
@@ -218,6 +276,8 @@ export default function ROSSelection() {
       );
     } catch (err: any) {
       console.error("Failed to fetch operations:", err);
+      // Set empty array on error to prevent showing stale data
+      setROOperations((prev) => new Map(prev).set(serviceRecordId, []));
     } finally {
       setLoadingOperations((prev) => {
         const next = new Set(prev);
@@ -238,68 +298,23 @@ export default function ROSSelection() {
     setExpandedROs(newExpanded);
   };
 
-  const handleToggleEligibility = async (
-    operationId: string,
-    currentEligible: boolean | null
-  ) => {
-    if (!currentDealer) return;
+  const handleEditOperation = (operation: Operation) => {
+    setEditingOperation(operation);
+  };
 
-    const newEligible = currentEligible === true ? false : true;
-
-    // Optimistically update local state first
-    roOperations.forEach((ops, roId) => {
-      const updatedOps = ops.map((op) =>
-        op.id === operationId
-          ? { ...op, is_warranty_eligible: newEligible }
-          : op
-      );
-      setROOperations((prev) => new Map(prev).set(roId, updatedOps));
-    });
-
-    try {
-      const token = await getAuthToken();
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-      };
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
-      const response = await fetch(
-        `/api/warranty/ro-optimizer/operations/${operationId}/eligibility?dealerId=${currentDealer.id}`,
-        {
-          method: "PATCH",
-          headers,
-          body: JSON.stringify({ isEligible: newEligible }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to update eligibility");
-      }
-
-      // Only recalculate best set if eligibleOnly filter is enabled
-      // Otherwise, the eligibility change doesn't affect which ROs are shown
+  const handleModalClose = (success: boolean) => {
+    setEditingOperation(null);
+    if (success && currentDealer) {
+      // Refresh operations for all expanded ROs with force refresh
+      expandedROs.forEach((roId) => {
+        fetchOperationsForRO(roId, true);
+      });
+      // Recalculate best set if eligibleOnly filter is enabled
       if (eligibleOnly) {
         fetchROs().catch((err) => {
           console.error("Failed to recalculate best set:", err);
-          // Don't show error to user - just log it
         });
       }
-    } catch (err: any) {
-      console.error("Failed to update eligibility:", err);
-
-      // Revert optimistic update on error
-      roOperations.forEach((ops, roId) => {
-        const revertedOps = ops.map((op) =>
-          op.id === operationId
-            ? { ...op, is_warranty_eligible: currentEligible }
-            : op
-        );
-        setROOperations((prev) => new Map(prev).set(roId, revertedOps));
-      });
-
-      alert("Failed to update eligibility. Please try again.");
     }
   };
 
@@ -438,7 +453,7 @@ export default function ROSSelection() {
           {/* Window Size */}
           <div className="sm:col-span-1">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              # of ROs (Window Size N)
+              # of ROs
             </label>
             <input
               type="number"
@@ -655,7 +670,7 @@ export default function ROSSelection() {
                 {ros.map((ro) => (
                   <React.Fragment key={ro.service_record_id}>
                     <tr className="hover:bg-gray-50 dark:hover:bg-gray-900/30">
-                      <td className="px-4 py-4">
+                      <td className="px-4 py-4 cursor-default select-none">
                         <button
                           onClick={() =>
                             handleToggleExpand(ro.service_record_id)
@@ -669,37 +684,37 @@ export default function ROSSelection() {
                           )}
                         </button>
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
+                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100 cursor-default select-none">
                         {ro.ro_number || "N/A"}
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300 cursor-default select-none">
                         {ro.ro_open_date
                           ? new Date(ro.ro_open_date).toLocaleDateString()
                           : "N/A"}
                       </td>
-                      <td className="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">
+                      <td className="px-4 py-4 text-sm text-gray-600 dark:text-gray-300 cursor-default select-none">
                         {ro.vehicle_year && ro.vehicle_make && ro.vehicle_model
                           ? `${ro.vehicle_year} ${ro.vehicle_make} ${ro.vehicle_model}`
                           : "N/A"}
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300 cursor-default select-none">
                         {ro.vehicle_mileage
                           ? ro.vehicle_mileage.toLocaleString()
                           : "N/A"}
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300 cursor-default select-none">
                         ${ro.total_labor_sale.toFixed(2)}
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300 cursor-default select-none">
                         {ro.total_labor_hours.toFixed(2)}
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300 cursor-default select-none">
                         ${ro.ro_level_elr.toFixed(2)}
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300 cursor-default select-none">
                         ${ro.total_parts_sale.toFixed(2)}
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300 cursor-default select-none">
                         {ro.ro_level_parts_markup_percent.toFixed(2)}%
                       </td>
                     </tr>
@@ -718,7 +733,7 @@ export default function ROSSelection() {
                               operations={
                                 roOperations.get(ro.service_record_id) || []
                               }
-                              onToggleEligibility={handleToggleEligibility}
+                              onEditOperation={handleEditOperation}
                               onAIEvaluation={handleAIEvaluation}
                             />
                           )}
@@ -733,6 +748,23 @@ export default function ROSSelection() {
         )}
       </div>
 
+      {/* Operation Edit Modal */}
+      {editingOperation && currentDealer && (
+        <OperationEditModal
+          dealerId={currentDealer.id}
+          operation={{
+            id: editingOperation.id,
+            operation_code: editingOperation.operation_code,
+            operation_description: editingOperation.operation_description,
+            service_id: editingOperation.service_id || null,
+            is_warranty_eligible: editingOperation.is_warranty_eligible,
+            eligibility_notes: editingOperation.eligibility_notes || null,
+          }}
+          services={services}
+          onClose={handleModalClose}
+        />
+      )}
+
       {/* AI Evaluation Modal */}
       <AIEvaluationModal
         isOpen={isAIModalOpen}
@@ -746,6 +778,14 @@ export default function ROSSelection() {
           // When user confirms/denies an evaluation, update the operation's eligibility
           // to match the evaluation result
           if (aiEvaluationOperationId) {
+            // Find which RO contains this operation
+            let roIdForOperation: string | null = null;
+            roOperations.forEach((ops, roId) => {
+              if (ops.some((op) => op.id === aiEvaluationOperationId)) {
+                roIdForOperation = roId;
+              }
+            });
+
             try {
               // Fetch the latest evaluation to get the confirmed status and eligible value
               const token = await getAuthToken();
@@ -793,20 +833,6 @@ export default function ROSSelection() {
                     console.error(
                       "Failed to update operation eligibility after confirmation"
                     );
-                  } else {
-                    // Optimistically update local state
-                    setROOperations((prev) => {
-                      const newMap = new Map(prev);
-                      newMap.forEach((ops, roId) => {
-                        const updatedOps = ops.map((op) =>
-                          op.id === aiEvaluationOperationId
-                            ? { ...op, is_warranty_eligible: shouldBeEligible }
-                            : op
-                        );
-                        newMap.set(roId, updatedOps);
-                      });
-                      return newMap;
-                    });
                   }
                 }
               }
@@ -816,14 +842,20 @@ export default function ROSSelection() {
                 err
               );
             }
-          }
 
-          // Refresh ROs after evaluation
-          fetchROs();
-          // Refresh operations for expanded ROs
-          expandedROs.forEach((roId) => {
-            fetchOperationsForRO(roId);
-          });
+            // Only refresh operations for the specific RO that contains this operation
+            if (roIdForOperation) {
+              fetchOperationsForRO(roIdForOperation, true);
+            }
+
+            // Only recalculate best set if eligibleOnly filter is enabled
+            // (since eligibility changes might affect which ROs are shown)
+            if (eligibleOnly) {
+              fetchROs().catch((err) => {
+                console.error("Failed to recalculate best set:", err);
+              });
+            }
+          }
         }}
       />
     </div>
@@ -832,16 +864,13 @@ export default function ROSSelection() {
 
 interface OperationsTableProps {
   operations: Operation[];
-  onToggleEligibility: (
-    operationId: string,
-    currentEligible: boolean | null
-  ) => void;
+  onEditOperation: (operation: Operation) => void;
   onAIEvaluation: (operationId: string) => void;
 }
 
 function OperationsTable({
   operations,
-  onToggleEligibility,
+  onEditOperation,
   onAIEvaluation,
 }: OperationsTableProps) {
   const getEligibilityBadge = (eligible: boolean | null) => {
@@ -897,7 +926,7 @@ function OperationsTable({
         </thead>
         <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
           {operations.map((op) => {
-            const tdClassName = "px-3 py-2 text-sm";
+            const tdClassName = "px-3 py-2 text-sm cursor-default select-none";
 
             return (
               <tr
@@ -1002,17 +1031,11 @@ function OperationsTable({
                 <td className={tdClassName}>
                   <div className="flex gap-2">
                     <button
-                      onClick={() =>
-                        onToggleEligibility(op.id, op.is_warranty_eligible)
-                      }
+                      onClick={() => onEditOperation(op)}
                       className="text-violet-600 hover:text-violet-900 dark:text-violet-400 dark:hover:text-violet-300"
-                      title="Toggle Eligibility"
+                      title="Edit Operation"
                     >
-                      {op.is_warranty_eligible === true ? (
-                        <ToggleRight size={18} />
-                      ) : (
-                        <ToggleLeft size={18} />
-                      )}
+                      <Edit2 size={18} />
                     </button>
                     <button
                       onClick={() => onAIEvaluation(op.id)}

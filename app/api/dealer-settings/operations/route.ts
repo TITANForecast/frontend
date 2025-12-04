@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
       // Escape single quotes in search term to prevent SQL injection
       const escapedSearch = search.replace(/'/g, "''");
       whereConditions.push(
-        `(o.operation_code ILIKE '%${escapedSearch}%' OR o.operation_description ILIKE '%${escapedSearch}%' OR o.labor_complaint ILIKE '%${escapedSearch}%' OR o.labor_cause ILIKE '%${escapedSearch}%' OR o.labor_correction ILIKE '%${escapedSearch}%' OR o.labor_comments ILIKE '%${escapedSearch}%')`
+        `(o.operation_code ILIKE '%${escapedSearch}%' OR sr.ro_number ILIKE '%${escapedSearch}%' OR o.operation_description ILIKE '%${escapedSearch}%' OR o.labor_complaint ILIKE '%${escapedSearch}%' OR o.labor_cause ILIKE '%${escapedSearch}%' OR o.labor_correction ILIKE '%${escapedSearch}%' OR o.labor_comments ILIKE '%${escapedSearch}%')`
       );
     }
 

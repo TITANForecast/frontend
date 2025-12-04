@@ -761,7 +761,7 @@ export default function OperationsManagement({
                 setSearchComplete(false);
                 setSearchLoading(false);
               }}
-              placeholder="Search operation code, description, or labor fields..."
+              placeholder="Search operation code, RO number, description, or labor fields..."
               className="form-input w-full pr-10"
             />
             {(searchLoading || searchComplete) && (
@@ -1152,6 +1152,11 @@ export default function OperationsManagement({
                         <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                           {operation.operation_code}
                         </div>
+                        {operation.ro_number && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            RO: {operation.ro_number}
+                          </div>
+                        )}
                         <div className="text-xs text-gray-500 dark:text-gray-400">
                           {operation.operation_description}
                         </div>

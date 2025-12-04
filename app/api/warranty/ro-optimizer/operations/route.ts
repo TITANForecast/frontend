@@ -38,6 +38,8 @@ export async function GET(request: NextRequest) {
         o.labor_cause,
         o.labor_correction,
         o.is_warranty_eligible,
+        o.eligibility_notes,
+        o.service_id,
         o.sale_type as pay_type,
         COALESCE(SUM(l.labor_bill_hours), 0) as labor_hours,
         COALESCE(SUM(l.labor_sale), 0) as labor_sale,
@@ -62,7 +64,8 @@ export async function GET(request: NextRequest) {
       WHERE o.service_record_id = '${serviceRecordId}'
         AND o.dealer_id = '${dealerId}'
       GROUP BY o.id, o.operation_code, o.operation_description, o.labor_complaint, 
-               o.labor_cause, o.labor_correction, o.is_warranty_eligible, o.sale_type,
+               o.labor_cause, o.labor_correction, o.is_warranty_eligible, o.eligibility_notes, 
+               o.service_id, o.sale_type,
                wae.ai_eligible, wae.ai_confidence, wae.ai_reason, wae.ai_rule_applied, wae.user_confirmed
       ORDER BY o.operation_code
     `;
@@ -101,5 +104,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
-
