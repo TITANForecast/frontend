@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import AIEvaluationModal from "@/app/(default)/dealer-settings/ai-evaluation-modal";
 import OperationEditModal from "@/app/(default)/dealer-settings/operation-edit-modal";
+import PartDetailsModal from "@/app/(default)/dealer-settings/part-details-modal";
 
 interface RO {
   service_record_id: string;
@@ -52,6 +53,8 @@ interface Operation {
   warranty_evaluation_user_confirmed: boolean | null;
   service_id?: string | null;
   eligibility_notes?: string | null;
+  parts_list?: string | null;
+  parts_count?: number;
 }
 
 interface Service {
@@ -111,6 +114,11 @@ export default function ROSSelection() {
     null
   );
   const [services, setServices] = useState<Service[]>([]);
+
+  // Part Details Modal
+  const [isPartModalOpen, setIsPartModalOpen] = useState(false);
+  const [selectedPartNumber, setSelectedPartNumber] = useState<string>("");
+  const [selectedOperationId, setSelectedOperationId] = useState<string>("");
 
   // Export
   const [exporting, setExporting] = useState(false);
@@ -321,6 +329,18 @@ export default function ROSSelection() {
   const handleAIEvaluation = (operationId: string) => {
     setAIEvaluationOperationId(operationId);
     setIsAIModalOpen(true);
+  };
+
+  const handlePartClick = (partNumber: string, operationId: string) => {
+    setSelectedPartNumber(partNumber);
+    setSelectedOperationId(operationId);
+    setIsPartModalOpen(true);
+  };
+
+  const handlePartModalClose = () => {
+    setIsPartModalOpen(false);
+    setSelectedPartNumber("");
+    setSelectedOperationId("");
   };
 
   const handleExportBestSet = async () => {
@@ -735,6 +755,7 @@ export default function ROSSelection() {
                               }
                               onEditOperation={handleEditOperation}
                               onAIEvaluation={handleAIEvaluation}
+                              onPartClick={handlePartClick}
                             />
                           )}
                         </td>
@@ -762,6 +783,17 @@ export default function ROSSelection() {
           }}
           services={services}
           onClose={handleModalClose}
+        />
+      )}
+
+      {/* Part Details Modal */}
+      {isPartModalOpen && currentDealer && (
+        <PartDetailsModal
+          isOpen={isPartModalOpen}
+          onClose={handlePartModalClose}
+          operationId={selectedOperationId}
+          partNumber={selectedPartNumber}
+          dealerId={currentDealer.id}
         />
       )}
 
@@ -866,12 +898,14 @@ interface OperationsTableProps {
   operations: Operation[];
   onEditOperation: (operation: Operation) => void;
   onAIEvaluation: (operationId: string) => void;
+  onPartClick: (partNumber: string, operationId: string) => void;
 }
 
 function OperationsTable({
   operations,
   onEditOperation,
   onAIEvaluation,
+  onPartClick,
 }: OperationsTableProps) {
   const [expandedOperations, setExpandedOperations] = useState<Set<string>>(
     new Set()
@@ -907,6 +941,36 @@ function OperationsTable({
     );
 
     return <span className={className}>{label}</span>;
+  };
+
+  const renderPartsList = (partsList: string | null, operationId: string) => {
+    if (!partsList || partsList.trim() === "") {
+      return "No parts specified";
+    }
+
+    // Split by comma and trim each part number
+    const partNumbers = partsList
+      .split(",")
+      .map((p) => p.trim())
+      .filter(Boolean);
+
+    if (partNumbers.length === 0) {
+      return "No parts specified";
+    }
+
+    return (
+      <div className="flex flex-wrap gap-2">
+        {partNumbers.map((partNumber, index) => (
+          <button
+            key={index}
+            onClick={() => onPartClick(partNumber, operationId)}
+            className="text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 hover:underline font-medium transition-colors"
+          >
+            {partNumber}
+          </button>
+        ))}
+      </div>
+    );
   };
 
   if (operations.length === 0) {
@@ -1058,31 +1122,48 @@ function OperationsTable({
                 {isExpanded && (
                   <tr className="bg-gray-50 dark:bg-gray-900/20">
                     <td colSpan={11} className="px-4 py-3">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                        <div>
-                          <div className="font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Complaint
+                      <div className="space-y-4">
+                        {/* 3Cs Section */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                          <div>
+                            <div className="font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              Complaint
+                            </div>
+                            <div className="text-gray-600 dark:text-gray-400 whitespace-pre-wrap break-words">
+                              {op.labor_complaint || "N/A"}
+                            </div>
                           </div>
-                          <div className="text-gray-600 dark:text-gray-400 whitespace-pre-wrap break-words">
-                            {op.labor_complaint || "N/A"}
+                          <div>
+                            <div className="font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              Cause
+                            </div>
+                            <div className="text-gray-600 dark:text-gray-400 whitespace-pre-wrap break-words">
+                              {op.labor_cause || "N/A"}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              Correction
+                            </div>
+                            <div className="text-gray-600 dark:text-gray-400 whitespace-pre-wrap break-words">
+                              {op.labor_correction || "N/A"}
+                            </div>
                           </div>
                         </div>
-                        <div>
-                          <div className="font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Cause
+
+                        {/* Parts Section */}
+                        {(op.parts_list ||
+                          (op.parts_count && op.parts_count > 0)) && (
+                          <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                              Parts Used{" "}
+                              {op.parts_count ? `(${op.parts_count})` : ""}
+                            </h4>
+                            <div className="text-sm text-gray-600 dark:text-gray-400">
+                              {renderPartsList(op.parts_list || null, op.id)}
+                            </div>
                           </div>
-                          <div className="text-gray-600 dark:text-gray-400 whitespace-pre-wrap break-words">
-                            {op.labor_cause || "N/A"}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Correction
-                          </div>
-                          <div className="text-gray-600 dark:text-gray-400 whitespace-pre-wrap break-words">
-                            {op.labor_correction || "N/A"}
-                          </div>
-                        </div>
+                        )}
                       </div>
                     </td>
                   </tr>

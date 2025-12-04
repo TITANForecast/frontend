@@ -45,6 +45,8 @@ export async function GET(request: NextRequest) {
         COALESCE(SUM(l.labor_sale), 0) as labor_sale,
         COALESCE(SUM(p.parts_unit_sale * p.part_quantity), 0) as parts_sale,
         COALESCE(SUM(p.parts_unit_cost * p.part_quantity), 0) as parts_cost,
+        COUNT(DISTINCT p.id) as parts_count,
+        STRING_AGG(DISTINCT p.part_number, ',' ORDER BY p.part_number) FILTER (WHERE p.part_number IS NOT NULL AND p.part_number != '') as parts_list,
         wae.ai_eligible as warranty_evaluation_eligible,
         wae.ai_confidence as warranty_evaluation_confidence,
         wae.ai_reason as warranty_evaluation_reason,
