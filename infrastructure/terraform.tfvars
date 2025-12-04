@@ -18,8 +18,8 @@ production_max_capacity  = 10
 staging_domain_name   = "app-staging.titanforecast.com"
 staging_cpu           = 256
 staging_memory        = 512
-staging_desired_count = 1
-staging_min_capacity  = 1
+staging_desired_count = 2  # Increased to 2 for zero-downtime deployments
+staging_min_capacity  = 2  # Increased to match desired count
 staging_max_capacity  = 3
 
 # Common Configuration
