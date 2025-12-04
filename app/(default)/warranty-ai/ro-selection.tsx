@@ -873,6 +873,22 @@ function OperationsTable({
   onEditOperation,
   onAIEvaluation,
 }: OperationsTableProps) {
+  const [expandedOperations, setExpandedOperations] = useState<Set<string>>(
+    new Set()
+  );
+
+  const toggleOperationExpand = (operationId: string) => {
+    setExpandedOperations((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(operationId)) {
+        newSet.delete(operationId);
+      } else {
+        newSet.add(operationId);
+      }
+      return newSet;
+    });
+  };
+
   const getEligibilityBadge = (eligible: boolean | null) => {
     const label =
       eligible === true
@@ -909,11 +925,11 @@ function OperationsTable({
       <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         <thead className="bg-gray-100 dark:bg-gray-800">
           <tr>
+            <th className={thClassName} style={{ width: "40px" }}>
+              <span className="w-6"></span>
+            </th>
             <th className={thClassName}>Operation Code</th>
             <th className={thClassName}>Description</th>
-            <th className={thClassName}>Complaint</th>
-            <th className={thClassName}>Cause</th>
-            <th className={thClassName}>Correction</th>
             <th className={thClassName}>Labor Hours</th>
             <th className={thClassName}>Labor Sale</th>
             <th className={thClassName}>Operation ELR</th>
@@ -927,126 +943,151 @@ function OperationsTable({
         <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
           {operations.map((op) => {
             const tdClassName = "px-3 py-2 text-sm cursor-default select-none";
+            const isExpanded = expandedOperations.has(op.id);
 
             return (
-              <tr
-                key={op.id}
-                className={cn(
-                  "hover:bg-gray-50 dark:hover:bg-gray-900/30",
-                  op.is_warranty_eligible === true &&
-                    "bg-green-50 dark:bg-green-900/10"
+              <React.Fragment key={op.id}>
+                <tr
+                  className={cn(
+                    "hover:bg-gray-50 dark:hover:bg-gray-900/30",
+                    op.is_warranty_eligible === true &&
+                      "bg-green-50 dark:bg-green-900/10"
+                  )}
+                >
+                  <td className={tdClassName}>
+                    <button
+                      onClick={() => toggleOperationExpand(op.id)}
+                      className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                      title={isExpanded ? "Hide details" : "Show details"}
+                    >
+                      {isExpanded ? (
+                        <ChevronDown size={18} />
+                      ) : (
+                        <ChevronRight size={18} />
+                      )}
+                    </button>
+                  </td>
+                  <td
+                    className={cn(
+                      tdClassName,
+                      "text-gray-900 dark:text-gray-100 font-medium"
+                    )}
+                  >
+                    {op.operation_code}
+                  </td>
+                  <td
+                    className={cn(
+                      tdClassName,
+                      "text-gray-600 dark:text-gray-300 max-w-xs"
+                    )}
+                  >
+                    <div className="truncate" title={op.operation_description}>
+                      {op.operation_description}
+                    </div>
+                  </td>
+                  <td
+                    className={cn(
+                      tdClassName,
+                      "text-gray-600 dark:text-gray-300 whitespace-nowrap"
+                    )}
+                  >
+                    {op.labor_hours.toFixed(2)}
+                  </td>
+                  <td
+                    className={cn(
+                      tdClassName,
+                      "text-gray-600 dark:text-gray-300 whitespace-nowrap"
+                    )}
+                  >
+                    ${op.labor_sale.toFixed(2)}
+                  </td>
+                  <td
+                    className={cn(
+                      tdClassName,
+                      "text-gray-600 dark:text-gray-300 whitespace-nowrap"
+                    )}
+                  >
+                    ${op.operation_elr.toFixed(2)}
+                  </td>
+                  <td
+                    className={cn(
+                      tdClassName,
+                      "text-gray-600 dark:text-gray-300 whitespace-nowrap"
+                    )}
+                  >
+                    ${op.parts_sale.toFixed(2)}
+                  </td>
+                  <td
+                    className={cn(
+                      tdClassName,
+                      "text-gray-600 dark:text-gray-300 whitespace-nowrap"
+                    )}
+                  >
+                    {op.parts_cost > 0 ? `$${op.parts_cost.toFixed(2)}` : "N/A"}
+                  </td>
+                  <td
+                    className={cn(
+                      tdClassName,
+                      "text-gray-600 dark:text-gray-300 whitespace-nowrap"
+                    )}
+                  >
+                    {op.parts_markup_percent.toFixed(2)}%
+                  </td>
+                  <td className={tdClassName}>
+                    {getEligibilityBadge(op.is_warranty_eligible)}
+                  </td>
+                  <td className={tdClassName}>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => onEditOperation(op)}
+                        className="text-violet-600 hover:text-violet-900 dark:text-violet-400 dark:hover:text-violet-300"
+                        title="Edit Operation"
+                      >
+                        <Edit2 size={18} />
+                      </button>
+                      <button
+                        onClick={() => onAIEvaluation(op.id)}
+                        className="text-violet-600 hover:text-violet-900 dark:text-violet-400 dark:hover:text-violet-300"
+                        title="Run AI Evaluation"
+                      >
+                        <Sparkles size={18} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                {isExpanded && (
+                  <tr className="bg-gray-50 dark:bg-gray-900/20">
+                    <td colSpan={11} className="px-4 py-3">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <div className="font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Complaint
+                          </div>
+                          <div className="text-gray-600 dark:text-gray-400 whitespace-pre-wrap break-words">
+                            {op.labor_complaint || "N/A"}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Cause
+                          </div>
+                          <div className="text-gray-600 dark:text-gray-400 whitespace-pre-wrap break-words">
+                            {op.labor_cause || "N/A"}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Correction
+                          </div>
+                          <div className="text-gray-600 dark:text-gray-400 whitespace-pre-wrap break-words">
+                            {op.labor_correction || "N/A"}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
                 )}
-              >
-                <td
-                  className={cn(
-                    tdClassName,
-                    "text-gray-900 dark:text-gray-100"
-                  )}
-                >
-                  {op.operation_code}
-                </td>
-                <td
-                  className={cn(
-                    tdClassName,
-                    "text-gray-600 dark:text-gray-300"
-                  )}
-                >
-                  {op.operation_description}
-                </td>
-                <td
-                  className={cn(
-                    tdClassName,
-                    "text-gray-600 dark:text-gray-300 max-w-xs truncate"
-                  )}
-                >
-                  {op.labor_complaint || "N/A"}
-                </td>
-                <td
-                  className={cn(
-                    tdClassName,
-                    "text-gray-600 dark:text-gray-300 max-w-xs truncate"
-                  )}
-                >
-                  {op.labor_cause || "N/A"}
-                </td>
-                <td
-                  className={cn(
-                    tdClassName,
-                    "text-gray-600 dark:text-gray-300 max-w-xs truncate"
-                  )}
-                >
-                  {op.labor_correction || "N/A"}
-                </td>
-                <td
-                  className={cn(
-                    tdClassName,
-                    "text-gray-600 dark:text-gray-300"
-                  )}
-                >
-                  {op.labor_hours.toFixed(2)}
-                </td>
-                <td
-                  className={cn(
-                    tdClassName,
-                    "text-gray-600 dark:text-gray-300"
-                  )}
-                >
-                  ${op.labor_sale.toFixed(2)}
-                </td>
-                <td
-                  className={cn(
-                    tdClassName,
-                    "text-gray-600 dark:text-gray-300"
-                  )}
-                >
-                  ${op.operation_elr.toFixed(2)}
-                </td>
-                <td
-                  className={cn(
-                    tdClassName,
-                    "text-gray-600 dark:text-gray-300"
-                  )}
-                >
-                  ${op.parts_sale.toFixed(2)}
-                </td>
-                <td
-                  className={cn(
-                    tdClassName,
-                    "text-gray-600 dark:text-gray-300"
-                  )}
-                >
-                  {op.parts_cost > 0 ? `$${op.parts_cost.toFixed(2)}` : "N/A"}
-                </td>
-                <td
-                  className={cn(
-                    tdClassName,
-                    "text-gray-600 dark:text-gray-300"
-                  )}
-                >
-                  {op.parts_markup_percent.toFixed(2)}%
-                </td>
-                <td className={tdClassName}>
-                  {getEligibilityBadge(op.is_warranty_eligible)}
-                </td>
-                <td className={tdClassName}>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => onEditOperation(op)}
-                      className="text-violet-600 hover:text-violet-900 dark:text-violet-400 dark:hover:text-violet-300"
-                      title="Edit Operation"
-                    >
-                      <Edit2 size={18} />
-                    </button>
-                    <button
-                      onClick={() => onAIEvaluation(op.id)}
-                      className="text-violet-600 hover:text-violet-900 dark:text-violet-400 dark:hover:text-violet-300"
-                      title="Run AI Evaluation"
-                    >
-                      <Sparkles size={18} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
+              </React.Fragment>
             );
           })}
         </tbody>
