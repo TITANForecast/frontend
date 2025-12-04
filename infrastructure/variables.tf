@@ -121,8 +121,14 @@ variable "cognito_user_pool_id" {
 }
 
 variable "cognito_client_id" {
-  description = "Cognito Client ID for authentication"
+  description = "Cognito Client ID for web/SPA authentication (no secret)"
   type        = string
+}
+
+variable "cognito_server_client_id" {
+  description = "Cognito Server Client ID for ALB/server-side authentication (with secret)"
+  type        = string
+  default     = "4l9hf1kp42kvht4e8q931r5tkc"  # From infrastructure/cognito_server_client_id output
 }
 
 variable "github_repository" {
