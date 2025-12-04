@@ -298,6 +298,9 @@ export async function GET(request: NextRequest) {
 
 /**
  * Find the best contiguous window of N ROs using sliding window algorithm
+ *
+ * IMPORTANT: We calculate the KPI from aggregated totals, not by averaging per-RO KPIs.
+ * This ensures we get the correct weighted average across all eligible operations.
  */
 function findBestContiguousWindow(
   ros: any[],
@@ -314,23 +317,63 @@ function findBestContiguousWindow(
   }
 
   let bestWindow: any[] = [];
-  let bestAverage = -Infinity;
-
-  // Calculate KPI for each RO based on search mode
-  // Use eligible operations KPI instead of RO-level KPI
-  const kpiKey = "eligible_operations_kpi";
+  let bestKPI = -Infinity;
 
   // Slide the window through all possible positions
   for (let i = 0; i <= ros.length - windowSize; i++) {
     const window = ros.slice(i, i + windowSize);
-    const average =
-      window.reduce((sum, ro) => sum + (ro[kpiKey] || 0), 0) / windowSize;
 
-    if (average > bestAverage) {
-      bestAverage = average;
+    // Calculate KPI from aggregated totals across the window
+    // This gives us the correct weighted average, not an average of averages
+    let windowKPI: number;
+
+    if (searchMode === "labor") {
+      // Sum eligible labor sale and hours across all ROs in window
+      const totalEligibleLaborSale = window.reduce(
+        (sum, ro) => sum + (ro.eligible_labor_sale || 0),
+        0
+      );
+      const totalEligibleLaborHours = window.reduce(
+        (sum, ro) => sum + (ro.eligible_labor_hours || 0),
+        0
+      );
+
+      // Calculate ELR from totals
+      windowKPI =
+        totalEligibleLaborHours > 0
+          ? totalEligibleLaborSale / totalEligibleLaborHours
+          : 0;
+    } else {
+      // Sum eligible parts sale and cost across all ROs in window
+      const totalEligiblePartsSale = window.reduce(
+        (sum, ro) => sum + (ro.eligible_parts_sale || 0),
+        0
+      );
+      const totalEligiblePartsCost = window.reduce(
+        (sum, ro) => sum + (ro.eligible_parts_cost || 0),
+        0
+      );
+
+      // Calculate Parts Markup % from totals
+      windowKPI =
+        totalEligiblePartsCost > 0
+          ? ((totalEligiblePartsSale - totalEligiblePartsCost) /
+              totalEligiblePartsCost) *
+            100
+          : 0;
+    }
+
+    if (windowKPI > bestKPI) {
+      bestKPI = windowKPI;
       bestWindow = window;
     }
   }
+
+  console.log(
+    `Optimization complete: Evaluated ${
+      ros.length - windowSize + 1
+    } windows, best KPI: ${bestKPI.toFixed(2)}`
+  );
 
   return bestWindow;
 }
