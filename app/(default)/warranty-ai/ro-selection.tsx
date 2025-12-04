@@ -29,6 +29,12 @@ interface RO {
   total_parts_cost: number;
   ro_level_elr: number;
   ro_level_parts_markup_percent: number;
+  eligible_operations_kpi: number;
+  eligible_operations_count: number;
+  eligible_labor_sale?: number;
+  eligible_labor_hours?: number;
+  eligible_parts_sale?: number;
+  eligible_parts_cost?: number;
 }
 
 interface Operation {
@@ -78,12 +84,30 @@ export default function ROSSelection() {
   const [error, setError] = useState<string | null>(null);
 
   // Filters
-  const [eligibleOnly, setEligibleOnly] = useState(false);
+  // Eligible Only is always true - we only show ROs with eligible operations
+  // because KPI calculation is based on eligible operations only
+  const [eligibleOnly, setEligibleOnly] = useState(true);
+  // Default date range: past 180 days
+  const getDefaultDateRange = () => {
+    const today = new Date();
+    const past180Days = new Date();
+    past180Days.setDate(today.getDate() - 180);
+    return {
+      from: past180Days,
+      to: today,
+    };
+  };
   const [dateRange, setDateRange] = useState<{
     from: Date | undefined;
     to: Date | undefined;
-  }>({ from: undefined, to: undefined });
+  }>(getDefaultDateRange());
   const [windowSize, setWindowSize] = useState<number>(100);
+  // Input values (what user types)
+  const [minMileageInput, setMinMileageInput] = useState<string>("");
+  const [maxMileageInput, setMaxMileageInput] = useState<string>("");
+  const [minYearInput, setMinYearInput] = useState<string>("");
+  const [maxYearInput, setMaxYearInput] = useState<string>("");
+  // Filter values (what triggers API call)
   const [minMileage, setMinMileage] = useState<string>("");
   const [maxMileage, setMaxMileage] = useState<string>("");
   const [minYear, setMinYear] = useState<string>("");
@@ -125,8 +149,30 @@ export default function ROSSelection() {
 
   useEffect(() => {
     if (currentDealer) {
-      fetchROs();
       fetchServices();
+    }
+  }, [currentDealer]);
+
+  // Sync input values when filter values change (e.g., from other sources)
+  useEffect(() => {
+    setMinMileageInput(minMileage);
+  }, [minMileage]);
+
+  useEffect(() => {
+    setMaxMileageInput(maxMileage);
+  }, [maxMileage]);
+
+  useEffect(() => {
+    setMinYearInput(minYear);
+  }, [minYear]);
+
+  useEffect(() => {
+    setMaxYearInput(maxYear);
+  }, [maxYear]);
+
+  useEffect(() => {
+    if (currentDealer) {
+      fetchROs();
     }
   }, [
     currentDealer,
@@ -140,6 +186,30 @@ export default function ROSSelection() {
     selectedYears,
     searchMode,
   ]);
+
+  // Handler to apply filters on Enter key
+  const handleFilterKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    inputType: "minMileage" | "maxMileage" | "minYear" | "maxYear"
+  ) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      switch (inputType) {
+        case "minMileage":
+          setMinMileage(minMileageInput.trim());
+          break;
+        case "maxMileage":
+          setMaxMileage(maxMileageInput.trim());
+          break;
+        case "minYear":
+          setMinYear(minYearInput.trim());
+          break;
+        case "maxYear":
+          setMaxYear(maxYearInput.trim());
+          break;
+      }
+    }
+  };
 
   const fetchServices = async () => {
     if (!currentDealer) return;
@@ -228,17 +298,44 @@ export default function ROSSelection() {
       const result = await response.json();
       setRos(result.data || []);
 
-      // Calculate average KPI
+      // Calculate average KPI from eligible operations only
+      // Calculate the true overall average by aggregating eligible operations totals across all ROs
       if (result.data && result.data.length > 0) {
-        const kpiKey =
-          searchMode === "labor"
-            ? "ro_level_elr"
-            : "ro_level_parts_markup_percent";
-        const sum = result.data.reduce(
-          (acc: number, ro: any) => acc + (ro[kpiKey] || 0),
-          0
-        );
-        setAverageKPI(sum / result.data.length);
+        if (searchMode === "labor") {
+          // For labor: Average ELR = Total eligible labor sale / Total eligible labor hours
+          let totalEligibleLaborSale = 0;
+          let totalEligibleLaborHours = 0;
+
+          result.data.forEach((ro: any) => {
+            totalEligibleLaborSale += ro.eligible_labor_sale || 0;
+            totalEligibleLaborHours += ro.eligible_labor_hours || 0;
+          });
+
+          if (totalEligibleLaborHours > 0) {
+            setAverageKPI(totalEligibleLaborSale / totalEligibleLaborHours);
+          } else {
+            setAverageKPI(null);
+          }
+        } else {
+          // For parts: Average Parts Markup % = ((Total eligible parts sale - Total eligible parts cost) / Total eligible parts cost) * 100
+          let totalEligiblePartsSale = 0;
+          let totalEligiblePartsCost = 0;
+
+          result.data.forEach((ro: any) => {
+            totalEligiblePartsSale += ro.eligible_parts_sale || 0;
+            totalEligiblePartsCost += ro.eligible_parts_cost || 0;
+          });
+
+          if (totalEligiblePartsCost > 0) {
+            const markupPercent =
+              ((totalEligiblePartsSale - totalEligiblePartsCost) /
+                totalEligiblePartsCost) *
+              100;
+            setAverageKPI(markupPercent);
+          } else {
+            setAverageKPI(null);
+          }
+        }
       } else {
         setAverageKPI(null);
       }
@@ -535,10 +632,11 @@ export default function ROSSelection() {
               </label>
               <input
                 type="number"
-                value={minMileage}
-                onChange={(e) => setMinMileage(e.target.value)}
+                value={minMileageInput}
+                onChange={(e) => setMinMileageInput(e.target.value)}
+                onKeyDown={(e) => handleFilterKeyDown(e, "minMileage")}
                 className="form-input w-full min-h-[42px]"
-                placeholder="Optional"
+                placeholder="Optional (Press Enter to filter)"
               />
             </div>
 
@@ -548,10 +646,11 @@ export default function ROSSelection() {
               </label>
               <input
                 type="number"
-                value={maxMileage}
-                onChange={(e) => setMaxMileage(e.target.value)}
+                value={maxMileageInput}
+                onChange={(e) => setMaxMileageInput(e.target.value)}
+                onKeyDown={(e) => handleFilterKeyDown(e, "maxMileage")}
                 className="form-input w-full min-h-[42px]"
-                placeholder="Optional"
+                placeholder="Optional (Press Enter to filter)"
               />
             </div>
           </div>
@@ -566,10 +665,11 @@ export default function ROSSelection() {
                 type="number"
                 min="1900"
                 max="2100"
-                value={minYear}
-                onChange={(e) => setMinYear(e.target.value)}
+                value={minYearInput}
+                onChange={(e) => setMinYearInput(e.target.value)}
+                onKeyDown={(e) => handleFilterKeyDown(e, "minYear")}
                 className="form-input w-full min-h-[42px]"
-                placeholder="Optional"
+                placeholder="Optional (Press Enter to filter)"
               />
             </div>
 
@@ -581,21 +681,21 @@ export default function ROSSelection() {
                 type="number"
                 min="1900"
                 max="2100"
-                value={maxYear}
-                onChange={(e) => setMaxYear(e.target.value)}
+                value={maxYearInput}
+                onChange={(e) => setMaxYearInput(e.target.value)}
+                onKeyDown={(e) => handleFilterKeyDown(e, "maxYear")}
                 className="form-input w-full min-h-[42px]"
-                placeholder="Optional"
+                placeholder="Optional (Press Enter to filter)"
               />
             </div>
           </div>
 
           {/* Checkboxes */}
           <div className="sm:col-span-2 lg:col-span-3 xl:col-span-1 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
-            <label className="flex items-center cursor-pointer">
+            <label className="flex items-center cursor-not-allowed opacity-60">
               <input
                 type="checkbox"
                 checked={eligibleOnly}
-                onChange={(e) => setEligibleOnly(e.target.checked)}
                 className="form-checkbox h-4 w-4 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 mr-2 shrink-0"
               />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -780,6 +880,16 @@ export default function ROSSelection() {
             service_id: editingOperation.service_id || null,
             is_warranty_eligible: editingOperation.is_warranty_eligible,
             eligibility_notes: editingOperation.eligibility_notes || null,
+            warranty_evaluation_eligible:
+              editingOperation.warranty_evaluation_eligible,
+            warranty_evaluation_confidence:
+              editingOperation.warranty_evaluation_confidence,
+            warranty_evaluation_reason:
+              editingOperation.warranty_evaluation_reason,
+            warranty_evaluation_rule_applied:
+              editingOperation.warranty_evaluation_rule_applied,
+            warranty_evaluation_user_confirmed:
+              editingOperation.warranty_evaluation_user_confirmed,
           }}
           services={services}
           onClose={handleModalClose}

@@ -71,39 +71,72 @@ export async function GET(
     const parts = await prisma.$queryRawUnsafe<any[]>(query);
 
     if (!parts || parts.length === 0) {
-      return NextResponse.json(
-        { error: "Part not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Part not found" }, { status: 404 });
     }
 
     // Extract inventory info from first part (since all parts have same part_number)
-    const inventoryInfo = parts[0] ? {
-      dealer_id: parts[0].inventory_dealer_id || null,
-      dealer_name: parts[0].dealer_name || null,
-      part_number: parts[0].inventory_part_number || null,
-      part_description: parts[0].inventory_part_description || null,
-      manufacturer_status: parts[0].manufacturer_status || null,
-      make: parts[0].inventory_make || null,
-    } : null;
+    const inventoryInfo = parts[0]
+      ? {
+          dealer_id: parts[0].inventory_dealer_id || null,
+          dealer_name: parts[0].dealer_name || null,
+          part_number: parts[0].inventory_part_number || null,
+          part_description: parts[0].inventory_part_description || null,
+          manufacturer_status: parts[0].manufacturer_status || null,
+          make: parts[0].inventory_make || null,
+        }
+      : null;
+
+    // Calculate totals and averages
+    const totalQuantity = parts.reduce((sum, p) => {
+      const qty = p.quantity ? parseFloat(p.quantity) : 0;
+      return sum + (isNaN(qty) ? 0 : qty);
+    }, 0);
+
+    const totalCost = parts.reduce((sum, p) => {
+      const cost = p.total_cost ? parseFloat(p.total_cost) : 0;
+      return sum + (isNaN(cost) ? 0 : cost);
+    }, 0);
+
+    const totalSale = parts.reduce((sum, p) => {
+      const sale = p.total_sale ? parseFloat(p.total_sale) : 0;
+      return sum + (isNaN(sale) ? 0 : sale);
+    }, 0);
+
+    // Calculate weighted average unit cost and unit sale
+    let totalUnitCostWeighted = 0;
+    let totalUnitSaleWeighted = 0;
+    let totalWeight = 0;
+
+    parts.forEach((p) => {
+      const qty = p.quantity ? parseFloat(p.quantity) : 0;
+      if (!isNaN(qty) && qty > 0) {
+        const unitCost = p.unit_cost ? parseFloat(p.unit_cost) : 0;
+        const unitSale = p.unit_sale ? parseFloat(p.unit_sale) : 0;
+        if (!isNaN(unitCost)) {
+          totalUnitCostWeighted += unitCost * qty;
+        }
+        if (!isNaN(unitSale)) {
+          totalUnitSaleWeighted += unitSale * qty;
+        }
+        totalWeight += qty;
+      }
+    });
+
+    const averageUnitCost =
+      totalWeight > 0 ? totalUnitCostWeighted / totalWeight : 0;
+    const averageUnitSale =
+      totalWeight > 0 ? totalUnitSaleWeighted / totalWeight : 0;
 
     return jsonResponse({
       partNumber: decodedPartNumber,
       parts: parts,
       inventoryInfo: inventoryInfo,
       summary: {
-        totalQuantity: parts.reduce((sum, p) => {
-          const qty = p.quantity ? parseFloat(p.quantity) : 0;
-          return sum + (isNaN(qty) ? 0 : qty);
-        }, 0),
-        totalCost: parts.reduce((sum, p) => {
-          const cost = p.total_cost ? parseFloat(p.total_cost) : 0;
-          return sum + (isNaN(cost) ? 0 : cost);
-        }, 0),
-        totalSale: parts.reduce((sum, p) => {
-          const sale = p.total_sale ? parseFloat(p.total_sale) : 0;
-          return sum + (isNaN(sale) ? 0 : sale);
-        }, 0),
+        totalQuantity,
+        totalCost,
+        totalSale,
+        averageUnitCost,
+        averageUnitSale,
       },
     });
   } catch (error) {
@@ -114,4 +147,3 @@ export async function GET(
     );
   }
 }
-

@@ -11,6 +11,12 @@ interface Operation {
   eligibility_notes: string | null;
   operation_code: string;
   operation_description: string;
+  // Warranty AI Evaluation fields
+  warranty_evaluation_eligible?: boolean | null;
+  warranty_evaluation_confidence?: number | null;
+  warranty_evaluation_reason?: string | null;
+  warranty_evaluation_rule_applied?: string | null;
+  warranty_evaluation_user_confirmed?: boolean | null;
 }
 
 interface Service {
@@ -241,6 +247,104 @@ export default function OperationEditModal({
               placeholder="Add notes about warranty eligibility..."
             />
           </div>
+
+          {/* AI Evaluation Details */}
+          {!isBulk &&
+            operation &&
+            (operation.warranty_evaluation_eligible !== undefined ||
+              operation.warranty_evaluation_confidence !== undefined ||
+              operation.warranty_evaluation_reason ||
+              operation.warranty_evaluation_rule_applied ||
+              operation.warranty_evaluation_user_confirmed !== undefined) && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                  AI Evaluation Details
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {operation.warranty_evaluation_eligible !== undefined && (
+                    <div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                        AI Eligibility
+                      </div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {operation.warranty_evaluation_eligible === true ? (
+                          <span className="text-green-600 dark:text-green-400">
+                            Eligible
+                          </span>
+                        ) : operation.warranty_evaluation_eligible === false ? (
+                          <span className="text-red-600 dark:text-red-400">
+                            Not Eligible
+                          </span>
+                        ) : (
+                          <span className="text-gray-500 dark:text-gray-400">
+                            Unknown
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {operation.warranty_evaluation_confidence !== undefined &&
+                    operation.warranty_evaluation_confidence !== null && (
+                      <div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                          Confidence
+                        </div>
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {(
+                            operation.warranty_evaluation_confidence * 100
+                          ).toFixed(1)}
+                          %
+                        </div>
+                      </div>
+                    )}
+                  {operation.warranty_evaluation_user_confirmed !== undefined &&
+                    operation.warranty_evaluation_user_confirmed !== null && (
+                      <div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                          User Confirmation
+                        </div>
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {operation.warranty_evaluation_user_confirmed ===
+                          true ? (
+                            <span className="text-green-600 dark:text-green-400">
+                              Confirmed
+                            </span>
+                          ) : operation.warranty_evaluation_user_confirmed ===
+                            false ? (
+                            <span className="text-red-600 dark:text-red-400">
+                              Denied
+                            </span>
+                          ) : (
+                            <span className="text-gray-500 dark:text-gray-400">
+                              Pending
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  {operation.warranty_evaluation_rule_applied && (
+                    <div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                        Rule Applied
+                      </div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {operation.warranty_evaluation_rule_applied}
+                      </div>
+                    </div>
+                  )}
+                  {operation.warranty_evaluation_reason && (
+                    <div className="md:col-span-2">
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                        AI Reason
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap break-words">
+                        {operation.warranty_evaluation_reason}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">

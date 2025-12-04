@@ -109,9 +109,10 @@ export async function GET(request: NextRequest) {
 
     // Query to get ROs with aggregated operation data
     // For each RO, we need:
-    // - Total labor sale, labor hours (for ELR calculation)
-    // - Total parts sale, parts cost (for Parts Markup % calculation)
-    // - Whether it has eligible operations of the selected type
+    // - Total labor sale, labor hours (for RO-level ELR calculation)
+    // - Total parts sale, parts cost (for RO-level Parts Markup % calculation)
+    // - Eligible operations KPIs: average ELR or average Parts Markup % of eligible operations only
+    // - Count of eligible operations
     const roQuery = `
       SELECT 
         sr.id as service_record_id,
@@ -124,7 +125,36 @@ export async function GET(request: NextRequest) {
         COALESCE(SUM(l.labor_sale), 0) as total_labor_sale,
         COALESCE(SUM(l.labor_bill_hours), 0) as total_labor_hours,
         COALESCE(SUM(p.parts_unit_sale * p.part_quantity), 0) as total_parts_sale,
-        COALESCE(SUM(p.parts_unit_cost * p.part_quantity), 0) as total_parts_cost
+        COALESCE(SUM(p.parts_unit_cost * p.part_quantity), 0) as total_parts_cost,
+        -- Eligible operations totals and KPIs (only eligible operations)
+        ${
+          searchMode === "labor"
+            ? `
+        -- For labor mode: totals and average ELR of eligible operations
+        SUM(CASE WHEN o.is_warranty_eligible = true THEN l.labor_sale ELSE 0 END) as eligible_labor_sale,
+        SUM(CASE WHEN o.is_warranty_eligible = true THEN l.labor_bill_hours ELSE 0 END) as eligible_labor_hours,
+        CASE 
+          WHEN SUM(CASE WHEN o.is_warranty_eligible = true THEN l.labor_bill_hours ELSE 0 END) > 0
+          THEN SUM(CASE WHEN o.is_warranty_eligible = true THEN l.labor_sale ELSE 0 END) / 
+               SUM(CASE WHEN o.is_warranty_eligible = true THEN l.labor_bill_hours ELSE 0 END)
+          ELSE 0
+        END as eligible_avg_elr,
+        COUNT(DISTINCT CASE WHEN o.is_warranty_eligible = true AND (COALESCE(l.labor_sale, 0) > 0 OR COALESCE(l.labor_bill_hours, 0) > 0) THEN o.id END) as eligible_operations_count
+            `
+            : `
+        -- For parts mode: totals and average Parts Markup % of eligible operations
+        SUM(CASE WHEN o.is_warranty_eligible = true THEN p.parts_unit_sale * p.part_quantity ELSE 0 END) as eligible_parts_sale,
+        SUM(CASE WHEN o.is_warranty_eligible = true THEN p.parts_unit_cost * p.part_quantity ELSE 0 END) as eligible_parts_cost,
+        CASE 
+          WHEN SUM(CASE WHEN o.is_warranty_eligible = true THEN p.parts_unit_cost * p.part_quantity ELSE 0 END) > 0
+          THEN ((SUM(CASE WHEN o.is_warranty_eligible = true THEN p.parts_unit_sale * p.part_quantity ELSE 0 END) - 
+                 SUM(CASE WHEN o.is_warranty_eligible = true THEN p.parts_unit_cost * p.part_quantity ELSE 0 END)) / 
+                SUM(CASE WHEN o.is_warranty_eligible = true THEN p.parts_unit_cost * p.part_quantity ELSE 0 END)) * 100
+          ELSE 0
+        END as eligible_avg_parts_markup,
+        COUNT(DISTINCT CASE WHEN o.is_warranty_eligible = true AND COALESCE(p.parts_unit_sale * p.part_quantity, 0) > 0 THEN o.id END) as eligible_operations_count
+            `
+        }
       FROM service_record sr
       INNER JOIN vehicle v ON sr.vehicle_id = v.id
       INNER JOIN operation o ON o.service_record_id = sr.id
@@ -143,6 +173,14 @@ export async function GET(request: NextRequest) {
             searchMode === "labor" ? "labor" : "parts"
           }' = 'parts' AND COALESCE(SUM(p.parts_unit_sale * p.part_quantity), 0) > 0
         )
+        -- Must have at least one eligible operation
+        AND (
+          ${
+            searchMode === "labor"
+              ? `SUM(CASE WHEN o.is_warranty_eligible = true THEN l.labor_bill_hours ELSE 0 END) > 0`
+              : `SUM(CASE WHEN o.is_warranty_eligible = true THEN p.parts_unit_cost * p.part_quantity ELSE 0 END) > 0`
+          }
+        )
         ${
           eligibleOnly
             ? searchMode === "labor"
@@ -158,20 +196,47 @@ export async function GET(request: NextRequest) {
 
     const ros = await prisma.$queryRawUnsafe<any[]>(roQuery);
 
-    // Calculate RO-level KPIs
+    // Calculate RO-level KPIs and eligible operations KPIs
     const rosWithKPIs = ros.map((ro: any) => {
       const totalLaborSale = parseFloat(String(ro.total_labor_sale || 0));
       const totalLaborHours = parseFloat(String(ro.total_labor_hours || 0));
       const totalPartsSale = parseFloat(String(ro.total_parts_sale || 0));
       const totalPartsCost = parseFloat(String(ro.total_parts_cost || 0));
 
-      // Calculate ELR (Effective Labor Rate)
+      // Calculate RO-level ELR (for display purposes)
       const elr = totalLaborHours > 0 ? totalLaborSale / totalLaborHours : 0;
 
-      // Calculate Parts Markup %
+      // Calculate RO-level Parts Markup % (for display purposes)
       const partsMarkupPercent =
         totalPartsCost > 0
           ? ((totalPartsSale - totalPartsCost) / totalPartsCost) * 100
+          : 0;
+
+      // Get eligible operations KPI and totals (this is what we use for best set selection)
+      const eligibleOperationsCount = parseInt(
+        String(ro.eligible_operations_count || 0)
+      );
+      const eligibleKPI =
+        searchMode === "labor"
+          ? parseFloat(String(ro.eligible_avg_elr || 0))
+          : parseFloat(String(ro.eligible_avg_parts_markup || 0));
+
+      // Get eligible operations totals for accurate overall average calculation
+      const eligibleLaborSale =
+        searchMode === "labor"
+          ? parseFloat(String(ro.eligible_labor_sale || 0))
+          : 0;
+      const eligibleLaborHours =
+        searchMode === "labor"
+          ? parseFloat(String(ro.eligible_labor_hours || 0))
+          : 0;
+      const eligiblePartsSale =
+        searchMode === "parts"
+          ? parseFloat(String(ro.eligible_parts_sale || 0))
+          : 0;
+      const eligiblePartsCost =
+        searchMode === "parts"
+          ? parseFloat(String(ro.eligible_parts_cost || 0))
           : 0;
 
       return {
@@ -192,6 +257,14 @@ export async function GET(request: NextRequest) {
         total_parts_cost: totalPartsCost,
         ro_level_elr: elr,
         ro_level_parts_markup_percent: partsMarkupPercent,
+        // Eligible operations KPI (used for best set selection)
+        eligible_operations_kpi: eligibleKPI,
+        eligible_operations_count: eligibleOperationsCount,
+        // Eligible operations totals (for accurate overall average calculation)
+        eligible_labor_sale: eligibleLaborSale,
+        eligible_labor_hours: eligibleLaborHours,
+        eligible_parts_sale: eligiblePartsSale,
+        eligible_parts_cost: eligiblePartsCost,
       };
     });
 
@@ -244,8 +317,8 @@ function findBestContiguousWindow(
   let bestAverage = -Infinity;
 
   // Calculate KPI for each RO based on search mode
-  const kpiKey =
-    searchMode === "labor" ? "ro_level_elr" : "ro_level_parts_markup_percent";
+  // Use eligible operations KPI instead of RO-level KPI
+  const kpiKey = "eligible_operations_kpi";
 
   // Slide the window through all possible positions
   for (let i = 0; i <= ros.length - windowSize; i++) {
