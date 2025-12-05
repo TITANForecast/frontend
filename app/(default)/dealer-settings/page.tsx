@@ -5,10 +5,11 @@ import { useAuth } from "@/components/auth-provider-multitenancy";
 import ServicesManagement from "./services-management";
 import MakeSettings from "./make-settings";
 import OpcodeManagement from "./opcode-management";
+import GeneralSettings from "./general-settings";
 
 export default function DealerSettings() {
   const [activeTab, setActiveTab] = useState<
-    "services" | "makes" | "opcodes"
+    "services" | "makes" | "opcodes" | "general"
   >("services");
   const { currentDealer } = useAuth();
 
@@ -73,24 +74,15 @@ export default function DealerSettings() {
               <span className="sm:hidden">Opcode</span>
             </button>
             <button
-              onClick={() => setActiveTab("makes")}
-              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === "makes"
+              onClick={() => setActiveTab("general")}
+              className={`py-2 sm:py-3 md:py-4 px-2 sm:px-4 md:px-6 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap ${
+                activeTab === "general"
                   ? "border-violet-500 text-violet-600 dark:text-violet-400"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
               }`}
             >
-              Make Settings
-            </button>
-            <button
-              onClick={() => setActiveTab("opcodes")}
-              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === "opcodes"
-                  ? "border-violet-500 text-violet-600 dark:text-violet-400"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
-              }`}
-            >
-              Opcode Management
+              <span className="hidden sm:inline">General Settings</span>
+              <span className="sm:hidden">General</span>
             </button>
           </nav>
         </div>
@@ -105,6 +97,9 @@ export default function DealerSettings() {
           )}
           {activeTab === "opcodes" && (
             <OpcodeManagement dealerId={currentDealer.id} />
+          )}
+          {activeTab === "general" && (
+            <GeneralSettings dealerId={currentDealer.id} />
           )}
         </div>
       </div>

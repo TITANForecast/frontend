@@ -42,6 +42,7 @@ model Dealer {
   
   // Relations
   apiConfig           DealerApiConfig?
+  generalSettings     DealerGeneralSettings?
   users               UserDealer[]
   defaultUsers        User[]               @relation("DefaultDealer")
   importLogs          ImportLog[]
@@ -70,6 +71,20 @@ model DealerApiConfig {
   dealer             Dealer    @relation(fields: [dealerId], references: [id], onDelete: Cascade)
 
   @@map("dealer_api_configs")
+}
+
+model DealerGeneralSettings {
+  id                    String    @id @default(cuid())
+  dealerId              String    @unique @map("dealer_id")
+  currentWarrantyLaborRate  Decimal?  @map("current_warranty_labor_rate") @db.Decimal(10, 2)
+  currentWarrantyPartsMarkup  Decimal?  @map("current_warranty_parts_markup") @db.Decimal(10, 2)
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  dealer                Dealer    @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+
+  @@map("dealer_general_settings")
 }
 
 model User {

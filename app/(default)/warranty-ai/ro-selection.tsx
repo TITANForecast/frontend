@@ -128,6 +128,14 @@ export default function ROSSelection() {
   // KPI Summary
   const [averageKPI, setAverageKPI] = useState<number | null>(null);
 
+  // Current warranty values from general settings
+  const [currentWarrantyLaborRate, setCurrentWarrantyLaborRate] = useState<
+    number | null
+  >(null);
+  const [currentWarrantyPartsMarkup, setCurrentWarrantyPartsMarkup] = useState<
+    number | null
+  >(null);
+
   // AI Evaluation Modal
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [aiEvaluationOperationId, setAIEvaluationOperationId] =
@@ -150,8 +158,36 @@ export default function ROSSelection() {
   useEffect(() => {
     if (currentDealer) {
       fetchServices();
+      fetchGeneralSettings();
     }
   }, [currentDealer]);
+
+  const fetchGeneralSettings = async () => {
+    if (!currentDealer) return;
+
+    try {
+      const token = await getAuthToken();
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(
+        `/api/dealer-settings/general?dealerId=${currentDealer.id}`,
+        { headers }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setCurrentWarrantyLaborRate(data.currentWarrantyLaborRate);
+        setCurrentWarrantyPartsMarkup(data.currentWarrantyPartsMarkup);
+      }
+    } catch (err) {
+      console.error("Failed to fetch general settings:", err);
+    }
+  };
 
   // Sync input values when filter values change (e.g., from other sources)
   useEffect(() => {
@@ -502,7 +538,7 @@ export default function ROSSelection() {
       {/* KPI Summary Panel */}
       {ros.length > 0 && averageKPI !== null && (
         <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 Displayed RO Count
@@ -515,10 +551,54 @@ export default function ROSSelection() {
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 Average {searchMode === "labor" ? "ELR" : "Parts Markup %"}
               </div>
+              {(() => {
+                const currentValue =
+                  searchMode === "labor"
+                    ? currentWarrantyLaborRate
+                    : currentWarrantyPartsMarkup;
+                const calculatedValue = averageKPI;
+
+                // Determine color based on comparison
+                let textColor = "text-gray-900 dark:text-gray-100"; // Default
+
+                if (currentValue !== null && calculatedValue !== null) {
+                  if (calculatedValue > currentValue) {
+                    textColor = "text-green-600 dark:text-green-400"; // Above static value
+                  } else if (calculatedValue < currentValue) {
+                    textColor = "text-red-600 dark:text-red-400"; // Below static value
+                  }
+                }
+
+                return (
+                  <div className={`text-2xl font-bold ${textColor}`}>
+                    {searchMode === "labor"
+                      ? `$${calculatedValue.toFixed(2)}`
+                      : `${calculatedValue.toFixed(2)}%`}
+                  </div>
+                );
+              })()}
+            </div>
+            <div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                Current Warranty{" "}
+                {searchMode === "labor" ? "Labor Rate" : "Parts Markup"}
+              </div>
               <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {searchMode === "labor"
-                  ? `$${averageKPI.toFixed(2)}`
-                  : `${averageKPI.toFixed(2)}%`}
+                {searchMode === "labor" ? (
+                  currentWarrantyLaborRate !== null ? (
+                    `$${currentWarrantyLaborRate.toFixed(2)}`
+                  ) : (
+                    <span className="text-gray-400 dark:text-gray-500">
+                      Not Set
+                    </span>
+                  )
+                ) : currentWarrantyPartsMarkup !== null ? (
+                  `${currentWarrantyPartsMarkup.toFixed(2)}%`
+                ) : (
+                  <span className="text-gray-400 dark:text-gray-500">
+                    Not Set
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -696,6 +776,8 @@ export default function ROSSelection() {
               <input
                 type="checkbox"
                 checked={eligibleOnly}
+                readOnly
+                disabled
                 className="form-checkbox h-4 w-4 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 mr-2 shrink-0"
               />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">

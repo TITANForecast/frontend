@@ -19,10 +19,18 @@ import {
 import { useAuth } from "@/components/auth-provider-multitenancy";
 
 export default function Dashboard() {
-  const { currentDealer } = useAuth();
+  const { currentDealer, getAuthToken } = useAuth();
   const [dashboardData, setDashboardData] =
     useState<ProcessedDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [warrantyData, setWarrantyData] = useState<{
+    currentLaborRate: number | null;
+    trackingPotentialELR: number | null;
+    currentPartsMarkup: number | null;
+    trackingPotentialPartsMarkup: number | null;
+    totalEligibleROsLabor: number | null;
+    totalEligibleROsParts: number | null;
+  } | null>(null);
 
   // Date range state - default to past 30 days
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
@@ -73,6 +81,36 @@ export default function Dashboard() {
             `Dashboard data processed: ${result.data.totalRecords} records from ${result.source}`
           );
         }
+
+        // Fetch warranty opportunity data
+        const token = await getAuthToken();
+        const headers: HeadersInit = {
+          "Content-Type": "application/json",
+        };
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+
+        const warrantyResponse = await fetch(
+          `/api/dashboard/warranty-opportunity?dealerId=${currentDealer.id}`,
+          { headers }
+        );
+
+        if (warrantyResponse.ok) {
+          const warrantyResult = await warrantyResponse.json();
+          setWarrantyData(warrantyResult);
+        } else {
+          console.error("Failed to fetch warranty opportunity data");
+          // Set default values if fetch fails
+          setWarrantyData({
+            currentLaborRate: null,
+            trackingPotentialELR: null,
+            currentPartsMarkup: null,
+            trackingPotentialPartsMarkup: null,
+            totalEligibleROsLabor: null,
+            totalEligibleROsParts: null,
+          });
+        }
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       } finally {
@@ -121,7 +159,24 @@ export default function Dashboard() {
           {/* RO Count */}
           <DashboardCardRoCount data={dashboardData?.roCount} />
           {/* Warranty Opportunity */}
-          <DashboardCardWarrantyOpportunity data={dashboardData?.warranty} />
+          <DashboardCardWarrantyOpportunity
+            data={
+              warrantyData
+                ? {
+                    currentLaborRate: warrantyData.currentLaborRate ?? 0,
+                    trackingPotentialHours:
+                      warrantyData.trackingPotentialELR ?? 0,
+                    currentPartsGP: warrantyData.currentPartsMarkup ?? 0,
+                    trackingPotentialPartsGP:
+                      warrantyData.trackingPotentialPartsMarkup ?? 0,
+                    totalEligibleROsLabor:
+                      warrantyData.totalEligibleROsLabor ?? null,
+                    totalEligibleROsParts:
+                      warrantyData.totalEligibleROsParts ?? null,
+                  }
+                : dashboardData?.warranty
+            }
+          />
         </div>
       </div>
 
