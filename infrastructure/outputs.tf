@@ -75,3 +75,19 @@ output "application_url" {
   description = "Production application URL"
   value       = "https://${var.production_domain_name}"
 }
+
+# pgAdmin Outputs
+output "pgadmin_staging_url" {
+  description = "URL to access pgAdmin staging (requires Cognito authentication)"
+  value       = module.pgadmin_staging.url
+}
+
+output "pgadmin_staging_ecr_repository_url" {
+  description = "URL of the pgAdmin ECR repository"
+  value       = module.pgadmin_staging.ecr_repository_url
+}
+
+output "pgadmin_staging_service_name" {
+  description = "Name of the pgAdmin ECS service"
+  value       = module.pgadmin_staging.service_name
+}
