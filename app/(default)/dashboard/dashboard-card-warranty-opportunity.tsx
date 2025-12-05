@@ -73,11 +73,13 @@ export default function DashboardCardWarrantyOpportunity({ data }: Props) {
                 <div
                   className={`text-xs font-medium ${textColor} uppercase mb-1`}
                 >
-                  Tracking Potential{" "}
-                  <span className="normal-case text-[10px]">(Top 100)</span>
+                  Tracking Potential
                 </div>
-                <div className={`text-2xl font-bold ${valueColor}`}>
-                  {potential.toFixed(2)}
+                <div
+                  className={`flex items-center text-2xl font-bold ${valueColor} gap-1`}
+                >
+                  {potential.toFixed(2)}{" "}
+                  <span className="text-xs font-normal">(Top 100)</span>
                 </div>
                 <div className={`text-xs ${dateColor} mt-1`}>
                   ELIGIBLE{" "}
@@ -146,11 +148,13 @@ export default function DashboardCardWarrantyOpportunity({ data }: Props) {
                 <div
                   className={`text-xs font-medium ${textColor} uppercase mb-1`}
                 >
-                  Tracking Potential{" "}
-                  <span className="normal-case text-[10px]">(Top 100)</span>
+                  Tracking Potential
                 </div>
-                <div className={`text-2xl font-bold ${valueColor}`}>
-                  {potential.toFixed(2)}%
+                <div
+                  className={`flex items-center text-2xl font-bold ${valueColor} gap-1`}
+                >
+                  {potential.toFixed(2)}%{" "}
+                  <span className="text-xs font-normal">(Top 100)</span>
                 </div>
                 <div className={`text-xs ${dateColor} mt-1`}>
                   ELIGIBLE TO FILE
