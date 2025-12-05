@@ -135,6 +135,21 @@ export default function ROSSelection() {
   const [currentWarrantyPartsMarkup, setCurrentWarrantyPartsMarkup] = useState<
     number | null
   >(null);
+  const [lastLaborRateSubmission, setLastLaborRateSubmission] = useState<
+    string | null
+  >(null);
+  const [lastPartsProfitSubmission, setLastPartsProfitSubmission] = useState<
+    string | null
+  >(null);
+  const [warrantyRequestCooldownPeriod, setWarrantyRequestCooldownPeriod] =
+    useState<number>(180);
+
+  // Warranty revenue metrics (only for labor mode)
+  const [warrantyRevenueMetrics, setWarrantyRevenueMetrics] = useState<{
+    pastYearWarrantyLaborRevenue: number;
+    potentialWarrantyLaborRevenue: number;
+    additionalRevenuePotential: number;
+  } | null>(null);
 
   // AI Evaluation Modal
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
@@ -183,6 +198,11 @@ export default function ROSSelection() {
         const data = await response.json();
         setCurrentWarrantyLaborRate(data.currentWarrantyLaborRate);
         setCurrentWarrantyPartsMarkup(data.currentWarrantyPartsMarkup);
+        setLastLaborRateSubmission(data.lastLaborRateSubmission);
+        setLastPartsProfitSubmission(data.lastPartsProfitSubmission);
+        setWarrantyRequestCooldownPeriod(
+          data.warrantyRequestCooldownPeriod ?? 180
+        );
       }
     } catch (err) {
       console.error("Failed to fetch general settings:", err);
@@ -333,6 +353,20 @@ export default function ROSSelection() {
 
       const result = await response.json();
       setRos(result.data || []);
+
+      // Store warranty revenue metrics if available (only for labor mode)
+      if (result.warrantyRevenueMetrics && searchMode === "labor") {
+        setWarrantyRevenueMetrics({
+          pastYearWarrantyLaborRevenue:
+            result.warrantyRevenueMetrics.pastYearWarrantyLaborRevenue || 0,
+          potentialWarrantyLaborRevenue:
+            result.warrantyRevenueMetrics.potentialWarrantyLaborRevenue || 0,
+          additionalRevenuePotential:
+            result.warrantyRevenueMetrics.additionalRevenuePotential || 0,
+        });
+      } else {
+        setWarrantyRevenueMetrics(null);
+      }
 
       // Calculate average KPI from eligible operations only
       // Calculate the true overall average by aggregating eligible operations totals across all ROs
@@ -538,7 +572,7 @@ export default function ROSSelection() {
       {/* KPI Summary Panel */}
       {ros.length > 0 && averageKPI !== null && (
         <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div>
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 Displayed RO Count
@@ -601,7 +635,105 @@ export default function ROSSelection() {
                 )}
               </div>
             </div>
+            <div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                Eligible Date
+              </div>
+              {(() => {
+                const lastSubmission =
+                  searchMode === "labor"
+                    ? lastLaborRateSubmission
+                    : lastPartsProfitSubmission;
+
+                let eligibleDate: Date;
+                if (lastSubmission) {
+                  const lastSub = new Date(lastSubmission);
+                  lastSub.setHours(0, 0, 0, 0);
+                  eligibleDate = new Date(lastSub);
+                  eligibleDate.setDate(
+                    eligibleDate.getDate() + warrantyRequestCooldownPeriod
+                  );
+                } else {
+                  // If no submission date, use today + cooldown as default
+                  eligibleDate = new Date();
+                  eligibleDate.setDate(
+                    eligibleDate.getDate() + warrantyRequestCooldownPeriod
+                  );
+                }
+
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                eligibleDate.setHours(0, 0, 0, 0);
+
+                const isEligible = eligibleDate <= today;
+                const textColor = isEligible
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-red-600 dark:text-red-400";
+
+                return (
+                  <div className={`text-2xl font-bold ${textColor}`}>
+                    {isEligible
+                      ? "Eligible"
+                      : eligibleDate.toLocaleDateString("en-US", {
+                          month: "2-digit",
+                          day: "2-digit",
+                          year: "numeric",
+                        })}
+                  </div>
+                );
+              })()}
+            </div>
           </div>
+
+          {/* Warranty Revenue Metrics (only for labor mode) */}
+          {searchMode === "labor" && warrantyRevenueMetrics && (
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mt-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                Warranty Revenue Analysis
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    Past Year Warranty Labor Revenue
+                  </div>
+                  <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                    $
+                    {warrantyRevenueMetrics.pastYearWarrantyLaborRevenue.toFixed(
+                      2
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    Potential Warranty Labor Revenue
+                  </div>
+                  <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                    $
+                    {warrantyRevenueMetrics.potentialWarrantyLaborRevenue.toFixed(
+                      2
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    Additional Revenue Potential
+                  </div>
+                  <div
+                    className={`text-2xl font-bold ${
+                      warrantyRevenueMetrics.additionalRevenuePotential >= 0
+                        ? "text-green-600 dark:text-green-400"
+                        : "text-red-600 dark:text-red-400"
+                    }`}
+                  >
+                    $
+                    {warrantyRevenueMetrics.additionalRevenuePotential.toFixed(
+                      2
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

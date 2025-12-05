@@ -275,10 +275,95 @@ export async function GET(request: NextRequest) {
       searchMode
     );
 
+    // Calculate warranty revenue metrics (only for labor mode)
+    let warrantyRevenueMetrics = null;
+    if (searchMode === "labor") {
+      // Calculate past 12 months warranty labor revenue and hours
+      const twelveMonthsAgo = new Date();
+      twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+      const twelveMonthsAgoStr = twelveMonthsAgo.toISOString().split("T")[0];
+
+      const escapedDealerId = dealerId.replace(/'/g, "''");
+      const warrantyRevenueQuery = `
+        SELECT 
+          COALESCE(SUM(l.labor_sale), 0) as past_year_warranty_labor_revenue,
+          COALESCE(SUM(l.labor_bill_hours), 0) as past_year_warranty_hours
+        FROM service_record sr
+        INNER JOIN operation o ON o.service_record_id = sr.id
+        LEFT JOIN labor_line l ON o.id = l.operation_id
+        WHERE sr.dealer_id = '${escapedDealerId}'
+          AND sr.open_date >= '${twelveMonthsAgoStr}'
+          AND o.sale_type = 'W'
+          AND COALESCE(l.labor_sale, 0) > 0
+      `;
+
+      const warrantyRevenueResult = await prisma.$queryRawUnsafe<any[]>(
+        warrantyRevenueQuery
+      );
+
+      const pastYearWarrantyLaborRevenue = warrantyRevenueResult[0]
+        ?.past_year_warranty_labor_revenue
+        ? parseFloat(
+            String(warrantyRevenueResult[0].past_year_warranty_labor_revenue)
+          )
+        : 0;
+      const pastYearWarrantyHours = warrantyRevenueResult[0]
+        ?.past_year_warranty_hours
+        ? parseFloat(String(warrantyRevenueResult[0].past_year_warranty_hours))
+        : 0;
+
+      // Get current warranty labor rate from dealer settings
+      const generalSettings = await prisma.dealerGeneralSettings.findUnique({
+        where: { dealerId },
+      });
+      const currentWarrantyLaborRate = generalSettings?.currentWarrantyLaborRate
+        ? parseFloat(String(generalSettings.currentWarrantyLaborRate))
+        : null;
+
+      // Calculate average ELR from best set
+      let newAverageELR = 0;
+      if (bestSet.length > 0) {
+        const totalEligibleLaborSale = bestSet.reduce(
+          (sum, ro) => sum + (ro.eligible_labor_sale || 0),
+          0
+        );
+        const totalEligibleLaborHours = bestSet.reduce(
+          (sum, ro) => sum + (ro.eligible_labor_hours || 0),
+          0
+        );
+        if (totalEligibleLaborHours > 0) {
+          newAverageELR = totalEligibleLaborSale / totalEligibleLaborHours;
+        }
+      }
+
+      // Calculate potential warranty labor revenue
+      // Formula: (New Average ELR rate - current) * Number of paid warranty hours for past 12 months
+      let potentialWarrantyLaborRevenue = 0;
+      if (currentWarrantyLaborRate !== null && newAverageELR > 0) {
+        const rateDifference = newAverageELR - currentWarrantyLaborRate;
+        potentialWarrantyLaborRevenue = rateDifference * pastYearWarrantyHours;
+      }
+
+      // Calculate additional revenue potential
+      // Formula: Potential Warranty Labor Revenue - Past Year Warranty Labor Revenue
+      const additionalRevenuePotential =
+        potentialWarrantyLaborRevenue - pastYearWarrantyLaborRevenue;
+
+      warrantyRevenueMetrics = {
+        pastYearWarrantyLaborRevenue,
+        potentialWarrantyLaborRevenue,
+        additionalRevenuePotential,
+        pastYearWarrantyHours,
+        currentWarrantyLaborRate,
+        newAverageELR,
+      };
+    }
+
     return jsonResponse({
       data: bestSet,
       totalCandidates: rosWithKPIs.length,
       windowSize: windowSize,
+      warrantyRevenueMetrics,
     });
   } catch (error) {
     console.error("Error in RO optimizer:", error);

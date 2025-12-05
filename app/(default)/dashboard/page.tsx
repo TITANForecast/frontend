@@ -30,6 +30,8 @@ export default function Dashboard() {
     trackingPotentialPartsMarkup: number | null;
     totalEligibleROsLabor: number | null;
     totalEligibleROsParts: number | null;
+    eligibleLaborDate: string | null;
+    eligiblePartsDate: string | null;
   } | null>(null);
 
   // Date range state - default to past 30 days
@@ -109,6 +111,8 @@ export default function Dashboard() {
             trackingPotentialPartsMarkup: null,
             totalEligibleROsLabor: null,
             totalEligibleROsParts: null,
+            eligibleLaborDate: null,
+            eligiblePartsDate: null,
           });
         }
       } catch (error) {
@@ -173,6 +177,8 @@ export default function Dashboard() {
                       warrantyData.totalEligibleROsLabor ?? null,
                     totalEligibleROsParts:
                       warrantyData.totalEligibleROsParts ?? null,
+                    eligibleLaborDate: warrantyData.eligibleLaborDate ?? null,
+                    eligiblePartsDate: warrantyData.eligiblePartsDate ?? null,
                   }
                 : dashboardData?.warranty
             }

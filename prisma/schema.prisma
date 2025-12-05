@@ -78,6 +78,9 @@ model DealerGeneralSettings {
   dealerId              String    @unique @map("dealer_id")
   currentWarrantyLaborRate  Decimal?  @map("current_warranty_labor_rate") @db.Decimal(10, 2)
   currentWarrantyPartsMarkup  Decimal?  @map("current_warranty_parts_markup") @db.Decimal(10, 2)
+  lastLaborRateSubmission  DateTime?  @map("last_labor_rate_submission")
+  lastPartsProfitSubmission  DateTime?  @map("last_parts_profit_submission")
+  warrantyRequestCooldownPeriod  Int?  @map("warranty_request_cooldown_period") @default(180)
   createdAt             DateTime  @default(now()) @map("created_at")
   updatedAt             DateTime  @updatedAt @map("updated_at")
   

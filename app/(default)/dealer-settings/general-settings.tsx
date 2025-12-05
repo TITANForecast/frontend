@@ -10,6 +10,9 @@ interface GeneralSettings {
   dealerId: string;
   currentWarrantyLaborRate: number | null;
   currentWarrantyPartsMarkup: number | null;
+  lastLaborRateSubmission: string | null;
+  lastPartsProfitSubmission: string | null;
+  warrantyRequestCooldownPeriod: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -29,6 +32,9 @@ export default function GeneralSettings({ dealerId }: GeneralSettingsProps) {
   // Form state
   const [laborRate, setLaborRate] = useState<string>("");
   const [partsMarkup, setPartsMarkup] = useState<string>("");
+  const [lastLaborSubmission, setLastLaborSubmission] = useState<string>("");
+  const [lastPartsSubmission, setLastPartsSubmission] = useState<string>("");
+  const [cooldownPeriod, setCooldownPeriod] = useState<string>("180");
 
   const canWrite = hasRole([UserRole.SUPER_ADMIN, UserRole.MULTI_DEALER]);
 
@@ -71,6 +77,21 @@ export default function GeneralSettings({ dealerId }: GeneralSettingsProps) {
           ? String(data.currentWarrantyPartsMarkup)
           : ""
       );
+      setLastLaborSubmission(
+        data.lastLaborRateSubmission
+          ? new Date(data.lastLaborRateSubmission).toISOString().split("T")[0]
+          : ""
+      );
+      setLastPartsSubmission(
+        data.lastPartsProfitSubmission
+          ? new Date(data.lastPartsProfitSubmission).toISOString().split("T")[0]
+          : ""
+      );
+      setCooldownPeriod(
+        data.warrantyRequestCooldownPeriod !== null
+          ? String(data.warrantyRequestCooldownPeriod)
+          : "180"
+      );
     } catch (err: any) {
       setError(err.message || "Failed to load general settings");
     } finally {
@@ -100,6 +121,9 @@ export default function GeneralSettings({ dealerId }: GeneralSettingsProps) {
       const payload: {
         currentWarrantyLaborRate?: number | null;
         currentWarrantyPartsMarkup?: number | null;
+        lastLaborRateSubmission?: string | null;
+        lastPartsProfitSubmission?: string | null;
+        warrantyRequestCooldownPeriod?: number | null;
       } = {};
 
       // Parse and validate labor rate
@@ -127,6 +151,27 @@ export default function GeneralSettings({ dealerId }: GeneralSettingsProps) {
       } else {
         payload.currentWarrantyPartsMarkup = null;
       }
+
+      // Parse and validate cooldown period
+      if (cooldownPeriod.trim() !== "") {
+        const parsed = parseInt(cooldownPeriod, 10);
+        if (isNaN(parsed) || parsed < 0) {
+          throw new Error(
+            "Warranty Request Cooldown Period must be a non-negative integer"
+          );
+        }
+        payload.warrantyRequestCooldownPeriod = parsed;
+      } else {
+        payload.warrantyRequestCooldownPeriod = 180; // Default
+      }
+
+      // Parse dates
+      payload.lastLaborRateSubmission = lastLaborSubmission.trim()
+        ? lastLaborSubmission.trim()
+        : null;
+      payload.lastPartsProfitSubmission = lastPartsSubmission.trim()
+        ? lastPartsSubmission.trim()
+        : null;
 
       const response = await fetch(
         `/api/dealer-settings/general?dealerId=${dealerId}`,
@@ -240,6 +285,74 @@ export default function GeneralSettings({ dealerId }: GeneralSettingsProps) {
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
             The current warranty parts markup percentage used for comparison in
             the dashboard.
+          </p>
+        </div>
+
+        {/* Last Labor Rate Submission */}
+        <div>
+          <label
+            htmlFor="lastLaborSubmission"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+          >
+            Last Labor Rate Submission (Date)
+          </label>
+          <input
+            type="date"
+            id="lastLaborSubmission"
+            value={lastLaborSubmission}
+            onChange={(e) => setLastLaborSubmission(e.target.value)}
+            disabled={!canWrite || saving}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+          />
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            The date when the last labor rate increase request was submitted.
+          </p>
+        </div>
+
+        {/* Last Parts Profit Submission */}
+        <div>
+          <label
+            htmlFor="lastPartsSubmission"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+          >
+            Last Parts Profit Submission (Date)
+          </label>
+          <input
+            type="date"
+            id="lastPartsSubmission"
+            value={lastPartsSubmission}
+            onChange={(e) => setLastPartsSubmission(e.target.value)}
+            disabled={!canWrite || saving}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+          />
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            The date when the last parts profit increase request was submitted.
+          </p>
+        </div>
+
+        {/* Warranty Request Cooldown Period */}
+        <div>
+          <label
+            htmlFor="cooldownPeriod"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+          >
+            Warranty Request Cooldown Period (Days)
+          </label>
+          <input
+            type="number"
+            id="cooldownPeriod"
+            value={cooldownPeriod}
+            onChange={(e) => setCooldownPeriod(e.target.value)}
+            disabled={!canWrite || saving}
+            min="0"
+            step="1"
+            placeholder="Enter cooldown period in days (e.g., 180)"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+          />
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Number of days that must pass after a submission before another
+            warranty rate increase request can be submitted. Used for both labor
+            and parts.
           </p>
         </div>
 

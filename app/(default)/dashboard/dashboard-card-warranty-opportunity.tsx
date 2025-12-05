@@ -9,6 +9,8 @@ interface WarrantyData {
   trackingPotentialPartsGP?: number | null;
   totalEligibleROsLabor?: number | null;
   totalEligibleROsParts?: number | null;
+  eligibleLaborDate?: string | null;
+  eligiblePartsDate?: string | null;
 }
 
 interface Props {
@@ -82,15 +84,37 @@ export default function DashboardCardWarrantyOpportunity({ data }: Props) {
                   <span className="text-xs font-normal">(Top 100)</span>
                 </div>
                 <div className={`text-xs ${dateColor} mt-1`}>
-                  ELIGIBLE{" "}
                   {(() => {
-                    const date = new Date();
-                    date.setDate(date.getDate() + 180);
-                    return date.toLocaleDateString("en-US", {
-                      month: "2-digit",
-                      day: "2-digit",
-                      year: "numeric",
-                    });
+                    const eligibleDate = data?.eligibleLaborDate
+                      ? new Date(data.eligibleLaborDate)
+                      : null;
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+
+                    if (eligibleDate) {
+                      eligibleDate.setHours(0, 0, 0, 0);
+                      if (eligibleDate <= today) {
+                        return "ELIGIBLE TO FILE";
+                      } else {
+                        return `ELIGIBLE ${eligibleDate.toLocaleDateString(
+                          "en-US",
+                          {
+                            month: "2-digit",
+                            day: "2-digit",
+                            year: "numeric",
+                          }
+                        )}`;
+                      }
+                    } else {
+                      // Fallback to 180 days if no date available
+                      const date = new Date();
+                      date.setDate(date.getDate() + 180);
+                      return `ELIGIBLE ${date.toLocaleDateString("en-US", {
+                        month: "2-digit",
+                        day: "2-digit",
+                        year: "numeric",
+                      })}`;
+                    }
                   })()}
                 </div>
                 {data?.totalEligibleROsLabor !== null &&
@@ -157,7 +181,31 @@ export default function DashboardCardWarrantyOpportunity({ data }: Props) {
                   <span className="text-xs font-normal">(Top 100)</span>
                 </div>
                 <div className={`text-xs ${dateColor} mt-1`}>
-                  ELIGIBLE TO FILE
+                  {(() => {
+                    const eligibleDate = data?.eligiblePartsDate
+                      ? new Date(data.eligiblePartsDate)
+                      : null;
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+
+                    if (eligibleDate) {
+                      eligibleDate.setHours(0, 0, 0, 0);
+                      if (eligibleDate <= today) {
+                        return "ELIGIBLE TO FILE";
+                      } else {
+                        return `ELIGIBLE ${eligibleDate.toLocaleDateString(
+                          "en-US",
+                          {
+                            month: "2-digit",
+                            day: "2-digit",
+                            year: "numeric",
+                          }
+                        )}`;
+                      }
+                    } else {
+                      return "ELIGIBLE TO FILE";
+                    }
+                  })()}
                 </div>
                 {data?.totalEligibleROsParts !== null &&
                   data?.totalEligibleROsParts !== undefined && (

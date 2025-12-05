@@ -128,6 +128,9 @@ export default function OperationsManagement({
 
   // Selection
   const [selectedOperations, setSelectedOperations] = useState<string[]>([]);
+  const [allOperationsSelected, setAllOperationsSelected] =
+    useState<boolean>(false);
+  const [fetchingAllIds, setFetchingAllIds] = useState<boolean>(false);
   const [editingOperation, setEditingOperation] = useState<Operation | null>(
     null
   );
@@ -170,11 +173,14 @@ export default function OperationsManagement({
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  // Fetch operations when filters change (reset selections)
   useEffect(() => {
     fetchOperations();
+    // Reset selection state when filters change (but not when page changes)
+    setSelectedOperations([]);
+    setAllOperationsSelected(false);
   }, [
     dealerId,
-    currentPage,
     serviceFilter,
     warrantyFilter,
     startDate,
@@ -188,6 +194,11 @@ export default function OperationsManagement({
     sortColumn,
     sortDirection,
   ]);
+
+  // Fetch operations when page changes (preserve selections)
+  useEffect(() => {
+    fetchOperations();
+  }, [currentPage]);
 
   useEffect(() => {
     fetchServices();
@@ -321,11 +332,102 @@ export default function OperationsManagement({
     }
   };
 
-  const handleSelectAll = (checked: boolean) => {
+  const fetchAllOperationIds = async (): Promise<string[]> => {
+    try {
+      const token = await getAuthToken();
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const params = new URLSearchParams({
+        dealerId,
+        page: "1",
+        limit: "10000", // Large limit to get all IDs
+        sortColumn,
+        sortDirection,
+      });
+
+      if (serviceFilter.length > 0) {
+        params.append("serviceIds", serviceFilter.join(","));
+      }
+
+      if (warrantyFilter !== "all") {
+        params.append("warrantyEligible", warrantyFilter);
+      }
+
+      if (startDate) {
+        params.append("startDate", startDate);
+      }
+
+      if (endDate) {
+        params.append("endDate", endDate);
+      }
+
+      if (payTypeFilter.length > 0) {
+        params.append("payTypes", payTypeFilter.join(","));
+      }
+
+      if (eligibleMakesOnly) {
+        params.append("eligibleMakesOnly", "true");
+      }
+
+      if (eligibleOpcodesOnly) {
+        params.append("eligibleOpcodesOnly", "true");
+      }
+
+      if (laborPartsFilter) {
+        params.append("laborPartsFilter", laborPartsFilter);
+      }
+
+      if (laborFieldsFilter.length > 0) {
+        params.append("laborFields", laborFieldsFilter.join(","));
+      }
+
+      if (debouncedSearchQuery.trim()) {
+        params.append("search", debouncedSearchQuery.trim());
+      }
+
+      const response = await fetch(
+        `/api/dealer-settings/operations?${params.toString()}`,
+        {
+          headers,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch all operation IDs");
+      }
+
+      const result = await response.json();
+      return result.data.map((op: Operation) => op.id);
+    } catch (err: any) {
+      console.error("Failed to fetch all operation IDs:", err);
+      throw err;
+    }
+  };
+
+  const handleSelectAll = async (checked: boolean) => {
     if (checked) {
-      setSelectedOperations(operations.map((op) => op.id));
+      // Fetch all operation IDs across all pages
+      setFetchingAllIds(true);
+      try {
+        const allIds = await fetchAllOperationIds();
+        setSelectedOperations(allIds);
+        setAllOperationsSelected(true);
+      } catch (err: any) {
+        setError(err.message || "Failed to select all operations");
+        // Fallback to selecting current page only
+        setSelectedOperations(operations.map((op) => op.id));
+        setAllOperationsSelected(false);
+      } finally {
+        setFetchingAllIds(false);
+      }
     } else {
       setSelectedOperations([]);
+      setAllOperationsSelected(false);
     }
   };
 
@@ -336,6 +438,8 @@ export default function OperationsManagement({
       setSelectedOperations(
         selectedOperations.filter((id) => id !== operationId)
       );
+      // If we deselect an item, we're no longer selecting all
+      setAllOperationsSelected(false);
     }
   };
 
@@ -357,6 +461,7 @@ export default function OperationsManagement({
     if (success) {
       fetchOperations();
       setSelectedOperations([]);
+      setAllOperationsSelected(false);
     }
   };
 
@@ -972,7 +1077,11 @@ export default function OperationsManagement({
         <div className="sticky top-16 z-40 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-md">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-violet-900 dark:text-violet-100">
-              {selectedOperations.length} operation(s) selected
+              {allOperationsSelected
+                ? `All ${
+                    pagination?.total || selectedOperations.length
+                  } operation(s) selected`
+                : `${selectedOperations.length} operation(s) selected`}
             </span>
             <div className="flex gap-2">
               <button
@@ -1017,15 +1126,25 @@ export default function OperationsManagement({
                 </th>
                 {canWrite && (
                   <th className="px-4 py-3 text-left">
-                    <input
-                      type="checkbox"
-                      checked={
-                        selectedOperations.length === operations.length &&
-                        operations.length > 0
-                      }
-                      onChange={(e) => handleSelectAll(e.target.checked)}
-                      className="form-checkbox"
-                    />
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={
+                          allOperationsSelected ||
+                          (selectedOperations.length === operations.length &&
+                            operations.length > 0)
+                        }
+                        onChange={(e) => handleSelectAll(e.target.checked)}
+                        disabled={fetchingAllIds}
+                        className="form-checkbox"
+                      />
+                      {fetchingAllIds && (
+                        <Loader2
+                          size={14}
+                          className="animate-spin text-gray-400"
+                        />
+                      )}
+                    </div>
                   </th>
                 )}
                 <th
@@ -1642,6 +1761,7 @@ export default function OperationsManagement({
             setIsBulkAIModalOpen(false);
             // Clear selections only when modal is closed
             setSelectedOperations([]);
+            setAllOperationsSelected(false);
           }}
           operationIds={selectedOperations}
           operations={operations.filter((op) =>

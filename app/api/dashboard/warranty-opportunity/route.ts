@@ -47,6 +47,40 @@ export async function GET(request: NextRequest) {
         ? parseFloat(String(generalSettings.currentWarrantyPartsMarkup))
         : null;
 
+    // Calculate eligibility dates
+    const cooldownPeriod =
+      generalSettings?.warrantyRequestCooldownPeriod ?? 180;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Calculate labor eligibility date
+    let eligibleLaborDate: Date | null = null;
+    if (generalSettings?.lastLaborRateSubmission) {
+      const lastSubmission = new Date(generalSettings.lastLaborRateSubmission);
+      lastSubmission.setHours(0, 0, 0, 0);
+      eligibleLaborDate = new Date(lastSubmission);
+      eligibleLaborDate.setDate(eligibleLaborDate.getDate() + cooldownPeriod);
+    } else {
+      // If no submission date, use today + cooldown as default
+      eligibleLaborDate = new Date(today);
+      eligibleLaborDate.setDate(eligibleLaborDate.getDate() + cooldownPeriod);
+    }
+
+    // Calculate parts eligibility date
+    let eligiblePartsDate: Date | null = null;
+    if (generalSettings?.lastPartsProfitSubmission) {
+      const lastSubmission = new Date(
+        generalSettings.lastPartsProfitSubmission
+      );
+      lastSubmission.setHours(0, 0, 0, 0);
+      eligiblePartsDate = new Date(lastSubmission);
+      eligiblePartsDate.setDate(eligiblePartsDate.getDate() + cooldownPeriod);
+    } else {
+      // If no submission date, use today + cooldown as default
+      eligiblePartsDate = new Date(today);
+      eligiblePartsDate.setDate(eligiblePartsDate.getDate() + cooldownPeriod);
+    }
+
     // Calculate date range: past 180 days (fixed for dashboard)
     const endDate = new Date();
     const startDate = subDays(endDate, 180);
@@ -252,6 +286,8 @@ export async function GET(request: NextRequest) {
       trackingPotentialPartsMarkup,
       totalEligibleROsLabor: laborROs.length,
       totalEligibleROsParts: partsROs.length,
+      eligibleLaborDate: eligibleLaborDate?.toISOString() ?? null,
+      eligiblePartsDate: eligiblePartsDate?.toISOString() ?? null,
     });
   } catch (error) {
     console.error("Error calculating warranty opportunity:", error);

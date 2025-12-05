@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
           dealerId,
           currentWarrantyLaborRate: null,
           currentWarrantyPartsMarkup: null,
+          warrantyRequestCooldownPeriod: 180,
         },
       });
     }
@@ -52,6 +53,14 @@ export async function GET(request: NextRequest) {
       currentWarrantyPartsMarkup: settings.currentWarrantyPartsMarkup
         ? parseFloat(String(settings.currentWarrantyPartsMarkup))
         : null,
+      lastLaborRateSubmission: settings.lastLaborRateSubmission
+        ? settings.lastLaborRateSubmission.toISOString()
+        : null,
+      lastPartsProfitSubmission: settings.lastPartsProfitSubmission
+        ? settings.lastPartsProfitSubmission.toISOString()
+        : null,
+      warrantyRequestCooldownPeriod:
+        settings.warrantyRequestCooldownPeriod ?? 180,
       createdAt: settings.createdAt.toISOString(),
       updatedAt: settings.updatedAt.toISOString(),
     });
@@ -91,7 +100,13 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { currentWarrantyLaborRate, currentWarrantyPartsMarkup } = body;
+    const {
+      currentWarrantyLaborRate,
+      currentWarrantyPartsMarkup,
+      lastLaborRateSubmission,
+      lastPartsProfitSubmission,
+      warrantyRequestCooldownPeriod,
+    } = body;
 
     // Validate inputs
     if (
@@ -120,6 +135,45 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // Validate cooldown period
+    if (
+      warrantyRequestCooldownPeriod !== null &&
+      warrantyRequestCooldownPeriod !== undefined &&
+      (typeof warrantyRequestCooldownPeriod !== "number" ||
+        isNaN(warrantyRequestCooldownPeriod) ||
+        warrantyRequestCooldownPeriod < 0)
+    ) {
+      return NextResponse.json(
+        {
+          error: "warrantyRequestCooldownPeriod must be a non-negative number",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate dates
+    let parsedLastLaborRateSubmission: Date | null = null;
+    if (lastLaborRateSubmission) {
+      parsedLastLaborRateSubmission = new Date(lastLaborRateSubmission);
+      if (isNaN(parsedLastLaborRateSubmission.getTime())) {
+        return NextResponse.json(
+          { error: "lastLaborRateSubmission must be a valid date" },
+          { status: 400 }
+        );
+      }
+    }
+
+    let parsedLastPartsProfitSubmission: Date | null = null;
+    if (lastPartsProfitSubmission) {
+      parsedLastPartsProfitSubmission = new Date(lastPartsProfitSubmission);
+      if (isNaN(parsedLastPartsProfitSubmission.getTime())) {
+        return NextResponse.json(
+          { error: "lastPartsProfitSubmission must be a valid date" },
+          { status: 400 }
+        );
+      }
+    }
+
     // Upsert settings
     const settings = await prisma.dealerGeneralSettings.upsert({
       where: { dealerId },
@@ -134,6 +188,13 @@ export async function PUT(request: NextRequest) {
           currentWarrantyPartsMarkup !== undefined
             ? currentWarrantyPartsMarkup
             : null,
+        lastLaborRateSubmission: parsedLastLaborRateSubmission,
+        lastPartsProfitSubmission: parsedLastPartsProfitSubmission,
+        warrantyRequestCooldownPeriod:
+          warrantyRequestCooldownPeriod !== null &&
+          warrantyRequestCooldownPeriod !== undefined
+            ? warrantyRequestCooldownPeriod
+            : 180,
       },
       create: {
         dealerId,
@@ -147,6 +208,13 @@ export async function PUT(request: NextRequest) {
           currentWarrantyPartsMarkup !== undefined
             ? currentWarrantyPartsMarkup
             : null,
+        lastLaborRateSubmission: parsedLastLaborRateSubmission,
+        lastPartsProfitSubmission: parsedLastPartsProfitSubmission,
+        warrantyRequestCooldownPeriod:
+          warrantyRequestCooldownPeriod !== null &&
+          warrantyRequestCooldownPeriod !== undefined
+            ? warrantyRequestCooldownPeriod
+            : 180,
       },
     });
 
@@ -159,6 +227,14 @@ export async function PUT(request: NextRequest) {
       currentWarrantyPartsMarkup: settings.currentWarrantyPartsMarkup
         ? parseFloat(String(settings.currentWarrantyPartsMarkup))
         : null,
+      lastLaborRateSubmission: settings.lastLaborRateSubmission
+        ? settings.lastLaborRateSubmission.toISOString()
+        : null,
+      lastPartsProfitSubmission: settings.lastPartsProfitSubmission
+        ? settings.lastPartsProfitSubmission.toISOString()
+        : null,
+      warrantyRequestCooldownPeriod:
+        settings.warrantyRequestCooldownPeriod ?? 180,
       createdAt: settings.createdAt.toISOString(),
       updatedAt: settings.updatedAt.toISOString(),
     });
