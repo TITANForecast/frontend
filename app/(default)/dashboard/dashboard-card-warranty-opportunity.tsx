@@ -29,7 +29,7 @@ export default function DashboardCardWarrantyOpportunity({ data }: Props) {
         {/* KPI Cards Grid */}
         <div className="grid grid-cols-2 gap-4">
           {/* Current Warranty Labor */}
-          <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg border border-yellow-200 dark:border-yellow-800">
             <div className="text-xs font-medium text-yellow-700 dark:text-yellow-300 uppercase mb-1">
               Current Warranty Labor
             </div>
@@ -68,12 +68,13 @@ export default function DashboardCardWarrantyOpportunity({ data }: Props) {
 
             return (
               <div
-                className={`${bgColor} p-4 rounded-lg border ${borderColor}`}
+                className={`${bgColor} p-3 rounded-lg border ${borderColor}`}
               >
                 <div
                   className={`text-xs font-medium ${textColor} uppercase mb-1`}
                 >
-                  Tracking Potential
+                  Tracking Potential{" "}
+                  <span className="normal-case text-[10px]">(Top 100)</span>
                 </div>
                 <div className={`text-2xl font-bold ${valueColor}`}>
                   {potential.toFixed(2)}
@@ -101,7 +102,7 @@ export default function DashboardCardWarrantyOpportunity({ data }: Props) {
           })()}
 
           {/* Current Warranty Parts */}
-          <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg border border-yellow-200 dark:border-yellow-800">
             <div className="text-xs font-medium text-yellow-700 dark:text-yellow-300 uppercase mb-1">
               Current Warranty Parts
             </div>
@@ -140,12 +141,13 @@ export default function DashboardCardWarrantyOpportunity({ data }: Props) {
 
             return (
               <div
-                className={`${bgColor} p-4 rounded-lg border ${borderColor}`}
+                className={`${bgColor} p-3 rounded-lg border ${borderColor}`}
               >
                 <div
                   className={`text-xs font-medium ${textColor} uppercase mb-1`}
                 >
-                  Tracking Potential
+                  Tracking Potential{" "}
+                  <span className="normal-case text-[10px]">(Top 100)</span>
                 </div>
                 <div className={`text-2xl font-bold ${valueColor}`}>
                   {potential.toFixed(2)}%
