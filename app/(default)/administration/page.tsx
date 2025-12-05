@@ -620,6 +620,72 @@ export default function AdministrationPage() {
         </div>
       )}
 
+      {/* Warranty Rules Tab */}
+      {!loading && activeTab === "warranty-rules" && (
+        <div>
+          <div className="mb-4 flex justify-between items-center">
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">
+              Warranty Rules Management
+            </h2>
+            <button
+              onClick={handleCreateWarrantyRule}
+              className="btn bg-indigo-500 hover:bg-indigo-600 text-white"
+            >
+              <svg
+                className="fill-current shrink-0 mr-2"
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+              >
+                <path d="M15 7H9V1c0-.6-.4-1-1-1S7 .4 7 1v6H1c-.6 0-1 .4-1 1s.4 1 1 1h6v6c0 .6.4 1 1 1s1-.4 1-1V9h6c.6 0 1-.4 1-1s-.4-1-1-1z" />
+              </svg>
+              <span>Create Rule</span>
+            </button>
+          </div>
+          <WarrantyRulesFilters
+            makes={availableMakes}
+            states={availableStates}
+            categories={availableCategories}
+            selectedMakes={selectedMakes}
+            selectedStates={selectedStates}
+            selectedCategories={selectedCategories}
+            selectedStatuses={selectedStatuses}
+            searchQuery={searchQuery}
+            onMakesChange={(makes) => {
+              setSelectedMakes(makes);
+              handleFilterChange();
+            }}
+            onStatesChange={(states) => {
+              setSelectedStates(states);
+              handleFilterChange();
+            }}
+            onCategoriesChange={(categories) => {
+              setSelectedCategories(categories);
+              handleFilterChange();
+            }}
+            onStatusesChange={(statuses) => {
+              setSelectedStatuses(statuses);
+              handleFilterChange();
+            }}
+            onSearchChange={(query) => {
+              setSearchQuery(query);
+              handleFilterChange();
+            }}
+            onSearchSuggestions={fetchSearchSuggestions}
+          />
+          <WarrantyRulesTable
+            rules={warrantyRules}
+            onEdit={handleEditWarrantyRule}
+            onDelete={handleDeleteWarrantyRule}
+            pagination={warrantyRulesPagination || undefined}
+            onPageChange={handleWarrantyRulePageChange}
+            sortColumn={warrantyRulesSortColumn}
+            sortDirection={warrantyRulesSortDirection}
+            onSort={handleWarrantyRuleSort}
+          />
+        </div>
+      )}
+
       {/* Modals */}
       <DealerFormModal
         isOpen={dealerModalOpen}
