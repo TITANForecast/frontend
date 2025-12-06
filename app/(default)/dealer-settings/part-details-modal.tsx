@@ -35,6 +35,8 @@ interface PartDetailsResponse {
     totalQuantity: number;
     totalCost: number;
     totalSale: number;
+    averageUnitCost: number;
+    averageUnitSale: number;
   };
 }
 
@@ -204,13 +206,29 @@ export default function PartDetailsModal({
                   <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
                     Summary
                   </h3>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                     <div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">
                         Total Quantity
                       </div>
                       <div className="text-lg font-medium text-gray-900 dark:text-gray-100">
                         {formatNumber(data.summary.totalQuantity)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        Unit Cost
+                      </div>
+                      <div className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                        {formatCurrency(data.summary.averageUnitCost)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        Unit Sale
+                      </div>
+                      <div className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                        {formatCurrency(data.summary.averageUnitSale)}
                       </div>
                     </div>
                     <div>
@@ -272,4 +290,3 @@ export default function PartDetailsModal({
     </div>
   );
 }
-

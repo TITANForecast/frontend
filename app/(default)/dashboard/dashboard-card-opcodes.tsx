@@ -35,10 +35,10 @@ export default function DashboardCardOpcodes({ data }: Props) {
     return () => observer.disconnect();
   }, []);
 
-  // Use real data if available, otherwise use mock data
+  // Use real data if available, otherwise use empty data
   const chartData = data || {
-    labels: ["MA10", "FS02", "DIAG", "99P", "BG44K"],
-    values: [35, 25, 20, 15, 5],
+    labels: [],
+    values: [],
   };
 
   // Prepare pie chart data

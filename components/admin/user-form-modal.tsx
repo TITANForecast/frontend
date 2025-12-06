@@ -5,6 +5,7 @@ import ModalBlank from '@/components/modal-blank';
 import { UserExtended, UserInput, DealerExtended } from '@/lib/types/admin';
 import { UserRole } from '@/lib/types/auth';
 import { authenticatedFetch } from '@/lib/utils/api';
+import { CognitoConflictDialog } from './cognito-conflict-dialog';
 
 interface UserFormModalProps {
   isOpen: boolean;
@@ -25,6 +26,12 @@ export default function UserFormModal({
 }: UserFormModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  
+  // Cognito conflict state
+  const [showConflictDialog, setShowConflictDialog] = useState(false);
+  const [existingCognitoUser, setExistingCognitoUser] = useState<any>(null);
+  const [conflictResolution, setConflictResolution] = useState<'link' | 'new' | null>(null);
 
   const [userForm, setUserForm] = useState<UserInput>({
     email: '',
@@ -41,7 +48,6 @@ export default function UserFormModal({
       setUserForm({
         email: user.email,
         name: user.name,
-        password: '', // Don't populate password for existing users
         role: user.role,
         defaultDealerId: user.defaultDealerId,
         isActive: user.isActive,
@@ -59,11 +65,17 @@ export default function UserFormModal({
         dealerIds: dealers.length > 0 ? [dealers[0].id] : [],
       });
     }
-  }, [user, dealers]);
+    setError('');
+    setSuccessMessage('');
+    setShowConflictDialog(false);
+    setExistingCognitoUser(null);
+    setConflictResolution(null);
+  }, [user, dealers, isOpen]);
 
   const handleSaveUser = async () => {
     setLoading(true);
     setError('');
+    setSuccessMessage('');
 
     try {
       // Validation
@@ -71,8 +83,26 @@ export default function UserFormModal({
         throw new Error('Please fill in all required fields');
       }
 
+      // Require password for new users
       if (!user && !userForm.password) {
         throw new Error('Password is required for new users');
+      }
+
+      // Validate password strength if provided
+      if (userForm.password) {
+        if (userForm.password.length < 8) {
+          throw new Error('Password must be at least 8 characters long');
+        }
+        
+        // Check Cognito password policy requirements
+        const hasUpperCase = /[A-Z]/.test(userForm.password);
+        const hasLowerCase = /[a-z]/.test(userForm.password);
+        const hasNumber = /[0-9]/.test(userForm.password);
+        const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(userForm.password);
+        
+        if (!hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecial) {
+          throw new Error('Password must contain uppercase, lowercase, number, and special character');
+        }
       }
 
       // Ensure default dealer is in dealer list
@@ -83,12 +113,45 @@ export default function UserFormModal({
         });
       }
 
+      // For new users, check if they exist in Cognito first
+      if (!user && !conflictResolution) {
+        const checkResponse = await authenticatedFetch(
+          '/api/admin/users/check-cognito',
+          getAuthToken,
+          {
+            method: 'POST',
+            body: JSON.stringify({ email: userForm.email }),
+          }
+        );
+
+        if (checkResponse.ok) {
+          const checkData = await checkResponse.json();
+          
+          if (checkData.exists) {
+            // User exists - show conflict dialog
+            setExistingCognitoUser(checkData.user);
+            setShowConflictDialog(true);
+            setLoading(false);
+            return; // Wait for user decision
+          }
+        }
+      }
+
+      // Prepare request body
+      const requestBody: any = { ...userForm };
+      
+      if (conflictResolution === 'link') {
+        requestBody.linkExisting = true;
+      } else if (conflictResolution === 'new') {
+        requestBody.skipCognitoCreation = true;
+      }
+
       const response = await authenticatedFetch(
         user ? `/api/admin/users/${user.id}` : '/api/admin/users',
         getAuthToken,
         {
           method: user ? 'PATCH' : 'POST',
-          body: JSON.stringify(userForm),
+          body: JSON.stringify(requestBody),
         }
       );
 
@@ -97,13 +160,46 @@ export default function UserFormModal({
         throw new Error(errorData.error || 'Failed to save user');
       }
 
+      const savedUser = await response.json();
+      
+      // Show success message
+      if (savedUser.message) {
+        setSuccessMessage(savedUser.message);
+      } else {
+        setSuccessMessage(user ? 'User updated successfully' : 'User created successfully');
+      }
+
+      // Close dialog after short delay to show success message
+      setTimeout(() => {
       onSave();
       setIsOpen(false);
+      }, 2000);
+      
     } catch (err: any) {
       setError(err.message || 'An error occurred');
-    } finally {
       setLoading(false);
     }
+  };
+
+  const handleLinkExisting = () => {
+    setShowConflictDialog(false);
+    setConflictResolution('link');
+    // Trigger save with link flag
+    setTimeout(() => handleSaveUser(), 100);
+  };
+
+  const handleCreateNew = () => {
+    setShowConflictDialog(false);
+    setConflictResolution('new');
+    // Trigger save with skip flag
+    setTimeout(() => handleSaveUser(), 100);
+  };
+
+  const handleCancelConflict = () => {
+    setShowConflictDialog(false);
+    setExistingCognitoUser(null);
+    setConflictResolution(null);
+    setLoading(false);
   };
 
   const handleDealerToggle = (dealerId: string) => {
@@ -127,6 +223,7 @@ export default function UserFormModal({
   };
 
   return (
+    <>
     <ModalBlank isOpen={isOpen} setIsOpen={setIsOpen}>
       <div className="p-6">
         {/* Header */}
@@ -135,6 +232,13 @@ export default function UserFormModal({
             {user ? 'Edit User' : 'Create New User'}
           </h2>
         </div>
+
+          {/* Success message */}
+          {successMessage && (
+            <div className="mb-4 p-3 bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded">
+              {successMessage}
+            </div>
+          )}
 
         {/* Error message */}
         {error && (
@@ -168,26 +272,30 @@ export default function UserFormModal({
               value={userForm.email}
               onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
               required
+              disabled={!!user} // Don't allow email changes
             />
           </div>
 
-          {!user && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Password *
-              </label>
-              <input
-                type="password"
-                className="form-input w-full"
-                value={userForm.password}
-                onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
-                required
-              />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                User will receive an email to set their password in production
-              </p>
-            </div>
-          )}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Password {!user && '*'}
+            </label>
+            <input
+              type="password"
+              className="form-input w-full"
+              value={userForm.password || ''}
+              onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+              required={!user}
+              minLength={8}
+              placeholder={user ? "Leave blank to keep current password" : "Enter password (min 8 characters)"}
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              {user 
+                ? "Leave blank to keep current password, or enter a new password to update it."
+                : "Set a password for this user. Share these credentials with them securely."
+              }
+            </p>
+          </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -300,6 +408,21 @@ export default function UserFormModal({
         </div>
       </div>
     </ModalBlank>
+
+    {/* Cognito Conflict Dialog */}
+    {showConflictDialog && existingCognitoUser && (
+      <CognitoConflictDialog
+        open={showConflictDialog}
+        onOpenChange={setShowConflictDialog}
+        existingUser={existingCognitoUser}
+        email={userForm.email}
+        onLinkExisting={handleLinkExisting}
+        onCreateNew={handleCreateNew}
+        onCancel={handleCancelConflict}
+        isLoading={loading}
+      />
+    )}
+  </>
   );
 }
 

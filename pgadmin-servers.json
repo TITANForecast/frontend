@@ -1,0 +1,16 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Titan Staging Database",
+      "Group": "Titan Environments",
+      "Host": "titan-staging.ccpseya6qetq.us-east-1.rds.amazonaws.com",
+      "Port": 5432,
+      "MaintenanceDB": "titan_staging",
+      "Username": "titan_app_user",
+      "SSLMode": "prefer",
+      "Comment": "Titan Staging PostgreSQL Database"
+    }
+  }
+}
+
+

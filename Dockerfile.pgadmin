@@ -1,0 +1,32 @@
+# Dockerfile for pgAdmin
+# Provides a secure, containerized pgAdmin instance for database management
+# Used in ECS with Cognito authentication via ALB
+
+FROM dpage/pgadmin4:latest
+
+# Copy pre-configured server connections
+# This will auto-load the Titan databases on startup
+COPY pgadmin-servers.json /pgadmin4/servers.json
+
+# Set proper ownership (pgAdmin runs as pgadmin user, UID 5050)
+USER root
+RUN chown pgadmin:root /pgadmin4/servers.json && \
+    chmod 644 /pgadmin4/servers.json
+USER pgadmin
+
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1
+
+# Expose port 80 (pgAdmin default)
+EXPOSE 80
+
+# pgAdmin runs as non-root user (pgadmin:5050) by default (good security practice)
+# Configuration is provided via environment variables from ECS task definition:
+# - PGADMIN_DEFAULT_EMAIL
+# - PGADMIN_DEFAULT_PASSWORD
+# - PGADMIN_SERVER_JSON_FILE (set to /pgadmin4/servers.json)
+#
+# Database connections are pre-configured via servers.json
+# Password will be prompted on first connection and stored in pgAdmin's encrypted storage
+

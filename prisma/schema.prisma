@@ -83,6 +83,7 @@ model User {
   lastLoginAt      DateTime?    // Track last login time
   invitedAt        DateTime?    // Track when user was invited
   invitedBy        String?      // Admin who invited the user
+  cognitoStatus    String?      // Cognito user status: CONFIRMED, FORCE_CHANGE_PASSWORD, etc.
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
   

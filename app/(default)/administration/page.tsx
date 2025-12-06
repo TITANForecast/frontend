@@ -8,6 +8,7 @@ import DealerListTable from "@/components/admin/dealer-list-table";
 import DealerFormModal from "@/components/admin/dealer-form-modal";
 import UserListTable from "@/components/admin/user-list-table";
 import UserFormModal from "@/components/admin/user-form-modal";
+import LinkCognitoDialog from "@/components/admin/link-cognito-dialog";
 import WarrantyRulesTable from "@/components/admin/warranty-rules-table";
 import WarrantyRuleFormModal from "@/components/admin/warranty-rule-form-modal";
 import WarrantyRulesFilters from "@/components/admin/warranty-rules-filters";
@@ -54,6 +55,10 @@ export default function AdministrationPage() {
   >();
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserExtended | undefined>();
+  const [linkCognitoDialogOpen, setLinkCognitoDialogOpen] = useState(false);
+  const [userToLinkCognito, setUserToLinkCognito] = useState<
+    UserExtended | undefined
+  >();
   const [warrantyRuleModalOpen, setWarrantyRuleModalOpen] = useState(false);
   const [selectedWarrantyRule, setSelectedWarrantyRule] = useState<
     WarrantyRule | undefined
@@ -283,6 +288,41 @@ export default function AdministrationPage() {
     }
   };
 
+  const handleLinkCognito = (user: UserExtended) => {
+    setUserToLinkCognito(user);
+    setLinkCognitoDialogOpen(true);
+  };
+
+  const handleConfirmLinkCognito = async (password: string) => {
+    if (!userToLinkCognito) return;
+
+    try {
+      const response = await authenticatedFetch(
+        `/api/admin/users/${userToLinkCognito.id}/link-cognito`,
+        getAuthToken,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ password }),
+        }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+        alert(result.message || "Successfully linked user to Cognito");
+        fetchData(); // Refresh user list
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to link user to Cognito");
+      }
+    } catch (error: any) {
+      console.error("Error linking user to Cognito:", error);
+      throw error; // Re-throw to be handled by the dialog
+    }
+  };
+
   const handleCreateWarrantyRule = () => {
     setSelectedWarrantyRule(undefined);
     setWarrantyRuleModalOpen(true);
@@ -383,10 +423,10 @@ export default function AdministrationPage() {
       {/* Tabs */}
       <div className="mb-6">
         <div className="border-b border-gray-200 dark:border-gray-700">
-          <nav className="-mb-px flex space-x-8">
+          <nav className="-mb-px flex space-x-2 sm:space-x-4 md:space-x-8 overflow-x-auto">
             <button
               onClick={() => setActiveTab("dashboard")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 sm:py-3 md:py-4 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap transition-colors ${
                 activeTab === "dashboard"
                   ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
@@ -396,33 +436,33 @@ export default function AdministrationPage() {
             </button>
             <button
               onClick={() => setActiveTab("dealers")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 sm:py-3 md:py-4 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap transition-colors ${
                 activeTab === "dealers"
                   ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
               }`}
             >
               Dealers
-              <span className="ml-2 py-0.5 px-2 rounded-full text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+              <span className="ml-1.5 sm:ml-2 py-0.5 px-1.5 sm:px-2 rounded-full text-[10px] sm:text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
                 {dealers.length}
               </span>
             </button>
             <button
               onClick={() => setActiveTab("users")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 sm:py-3 md:py-4 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap transition-colors ${
                 activeTab === "users"
                   ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
               }`}
             >
               Users
-              <span className="ml-2 py-0.5 px-2 rounded-full text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+              <span className="ml-1.5 sm:ml-2 py-0.5 px-1.5 sm:px-2 rounded-full text-[10px] sm:text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
                 {users.length}
               </span>
             </button>
             <button
               onClick={() => setActiveTab("warranty-rules")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 sm:py-3 md:py-4 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap transition-colors ${
                 activeTab === "warranty-rules"
                   ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
@@ -430,7 +470,7 @@ export default function AdministrationPage() {
             >
               Warranty Rules
               {(warrantyRulesPagination?.total || warrantyRules.length) > 0 && (
-                <span className="ml-2 py-0.5 px-2 rounded-full text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                <span className="ml-1.5 sm:ml-2 py-0.5 px-1.5 sm:px-2 rounded-full text-[10px] sm:text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
                   {warrantyRulesPagination?.total || warrantyRules.length}
                 </span>
               )}
@@ -509,6 +549,73 @@ export default function AdministrationPage() {
             users={users}
             onEdit={handleEditUser}
             onDelete={handleDeleteUser}
+            onLinkCognito={handleLinkCognito}
+          />
+        </div>
+      )}
+
+      {/* Warranty Rules Tab */}
+      {!loading && activeTab === "warranty-rules" && (
+        <div>
+          <div className="mb-4 flex justify-between items-center">
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">
+              Warranty Rules Management
+            </h2>
+            <button
+              onClick={handleCreateWarrantyRule}
+              className="btn bg-indigo-500 hover:bg-indigo-600 text-white"
+            >
+              <svg
+                className="fill-current shrink-0 mr-2"
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+              >
+                <path d="M15 7H9V1c0-.6-.4-1-1-1S7 .4 7 1v6H1c-.6 0-1 .4-1 1s.4 1 1 1h6v6c0 .6.4 1 1 1s1-.4 1-1V9h6c.6 0 1-.4 1-1s-.4-1-1-1z" />
+              </svg>
+              <span>Create Rule</span>
+            </button>
+          </div>
+          <WarrantyRulesFilters
+            makes={availableMakes}
+            states={availableStates}
+            categories={availableCategories}
+            selectedMakes={selectedMakes}
+            selectedStates={selectedStates}
+            selectedCategories={selectedCategories}
+            selectedStatuses={selectedStatuses}
+            searchQuery={searchQuery}
+            onMakesChange={(makes) => {
+              setSelectedMakes(makes);
+              handleFilterChange();
+            }}
+            onStatesChange={(states) => {
+              setSelectedStates(states);
+              handleFilterChange();
+            }}
+            onCategoriesChange={(categories) => {
+              setSelectedCategories(categories);
+              handleFilterChange();
+            }}
+            onStatusesChange={(statuses) => {
+              setSelectedStatuses(statuses);
+              handleFilterChange();
+            }}
+            onSearchChange={(query) => {
+              setSearchQuery(query);
+              handleFilterChange();
+            }}
+            onSearchSuggestions={fetchSearchSuggestions}
+          />
+          <WarrantyRulesTable
+            rules={warrantyRules}
+            onEdit={handleEditWarrantyRule}
+            onDelete={handleDeleteWarrantyRule}
+            pagination={warrantyRulesPagination || undefined}
+            onPageChange={handleWarrantyRulePageChange}
+            sortColumn={warrantyRulesSortColumn}
+            sortDirection={warrantyRulesSortDirection}
+            onSort={handleWarrantyRuleSort}
           />
         </div>
       )}
@@ -596,6 +703,18 @@ export default function AdministrationPage() {
         onSave={fetchData}
         getAuthToken={getAuthToken}
       />
+
+      {userToLinkCognito && (
+        <LinkCognitoDialog
+          user={userToLinkCognito}
+          isOpen={linkCognitoDialogOpen}
+          onClose={() => {
+            setLinkCognitoDialogOpen(false);
+            setUserToLinkCognito(undefined);
+          }}
+          onConfirm={handleConfirmLinkCognito}
+        />
+      )}
 
       <WarrantyRuleFormModal
         isOpen={warrantyRuleModalOpen}

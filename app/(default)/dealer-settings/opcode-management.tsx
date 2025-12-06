@@ -26,6 +26,10 @@ interface Operation {
   operation_description: string;
   open_date: string | null;
   ro_number: string;
+  labor_complaint: string | null;
+  labor_cause: string | null;
+  labor_correction: string | null;
+  labor_comments: string | null;
 }
 
 interface OpcodeManagementProps {
@@ -170,6 +174,33 @@ export default function OpcodeManagement({ dealerId }: OpcodeManagementProps) {
     );
     setChangedOpcodes(new Set(changedOpcodes).add(code));
   };
+
+  const handleSelectAllOnPage = () => {
+    // Check if all current page opcodes are already selected
+    const allSelected = opcodes.every(
+      (opcode) => opcode.is_warranty_eligible === true
+    );
+
+    // Toggle all opcodes on current page
+    const updatedOpcodes = opcodes.map((opcode) => ({
+      ...opcode,
+      is_warranty_eligible: !allSelected,
+    }));
+
+    setOpcodes(updatedOpcodes);
+
+    // Mark all as changed
+    const newChangedOpcodes = new Set(changedOpcodes);
+    opcodes.forEach((opcode) => {
+      newChangedOpcodes.add(opcode.code);
+    });
+    setChangedOpcodes(newChangedOpcodes);
+  };
+
+  // Check if all opcodes on current page are selected
+  const allPageOpcodesSelected =
+    opcodes.length > 0 &&
+    opcodes.every((opcode) => opcode.is_warranty_eligible === true);
 
   const handleSaveChanges = async () => {
     setSaving(true);
@@ -340,12 +371,26 @@ export default function OpcodeManagement({ dealerId }: OpcodeManagementProps) {
                   Usage Count
                   <SortIcon column="usage_count" />
                 </th>
-                <th
-                  className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200"
-                  onClick={() => handleSort("is_warranty_eligible")}
-                >
-                  Warranty Eligible
-                  <SortIcon column="is_warranty_eligible" />
+                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <div className="flex items-center justify-center gap-2">
+                    <label className="inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={allPageOpcodesSelected}
+                        onChange={handleSelectAllOnPage}
+                        disabled={!canWrite || opcodes.length === 0}
+                        className="form-checkbox h-5 w-5 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </label>
+                    <span
+                      className="cursor-pointer hover:text-gray-700 dark:hover:text-gray-200"
+                      onClick={() => handleSort("is_warranty_eligible")}
+                    >
+                      Warranty Eligible
+                      <SortIcon column="is_warranty_eligible" />
+                    </span>
+                  </div>
                 </th>
               </tr>
             </thead>
@@ -440,6 +485,45 @@ export default function OpcodeManagement({ dealerId }: OpcodeManagementProps) {
                                                 ).toLocaleDateString()
                                               : "N/A"}
                                           </div>
+
+                                          {/* Labor Details */}
+                                          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            <div>
+                                              <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                                Complaint:
+                                              </div>
+                                              <div className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                                                {operation.labor_complaint ||
+                                                  "N/A"}
+                                              </div>
+                                            </div>
+                                            <div>
+                                              <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                                Cause:
+                                              </div>
+                                              <div className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                                                {operation.labor_cause || "N/A"}
+                                              </div>
+                                            </div>
+                                            <div>
+                                              <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                                Correction:
+                                              </div>
+                                              <div className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                                                {operation.labor_correction ||
+                                                  "N/A"}
+                                              </div>
+                                            </div>
+                                            <div>
+                                              <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                                Comments:
+                                              </div>
+                                              <div className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                                                {operation.labor_comments ||
+                                                  "N/A"}
+                                              </div>
+                                            </div>
+                                          </div>
                                         </div>
                                       </div>
                                     </div>
@@ -465,30 +549,44 @@ export default function OpcodeManagement({ dealerId }: OpcodeManagementProps) {
 
       {/* Pagination */}
       {pagination && pagination.totalPages > 1 && (
-        <div className="px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700">
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
-            {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
-            {pagination.total} results
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCurrentPage(pagination.page - 1)}
-              disabled={pagination.page === 1}
-              className="btn border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-            <span className="text-sm text-gray-600 dark:text-gray-400 px-2">
-              Page {pagination.page} of {pagination.totalPages}
-            </span>
-            <button
-              onClick={() => setCurrentPage(pagination.page + 1)}
-              disabled={pagination.page === pagination.totalPages}
-              className="btn border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Next
-            </button>
+        <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+          {/* Mobile: Stacked layout */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+            {/* Results info */}
+            <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 text-center sm:text-left">
+              <span className="hidden sm:inline">
+                Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
+                {Math.min(pagination.page * pagination.limit, pagination.total)}{" "}
+                of {pagination.total} results
+              </span>
+              <span className="sm:hidden">
+                {(pagination.page - 1) * pagination.limit + 1}-
+                {Math.min(pagination.page * pagination.limit, pagination.total)}{" "}
+                of {pagination.total}
+              </span>
+            </div>
+
+            {/* Pagination controls */}
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={() => setCurrentPage(pagination.page - 1)}
+                disabled={pagination.page === 1}
+                className="btn border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm"
+              >
+                <span className="hidden sm:inline">Previous</span>
+                <span className="sm:hidden">Prev</span>
+              </button>
+              <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 px-2 whitespace-nowrap">
+                Page {pagination.page} of {pagination.totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(pagination.page + 1)}
+                disabled={pagination.page === pagination.totalPages}
+                className="btn border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm"
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
       )}

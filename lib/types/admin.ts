@@ -86,6 +86,8 @@ export interface UserExtended {
   role: UserRole;
   defaultDealerId: string;
   isActive: boolean;
+  cognitoSub: string | null;
+  cognitoStatus: string | null;
   dealers: DealerExtended[];
   createdAt: Date;
   updatedAt: Date;

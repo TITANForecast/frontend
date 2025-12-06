@@ -201,6 +201,7 @@ const NAVIGATION_ITEMS: NavItem[] = [
   {
     id: "warranty-ai",
     title: "Warranty AI",
+    href: "/warranty-ai",
     segment: "warranty-ai",
     icon: <Shield size={16} />,
   },

@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 env:
-  NODE_VERSION: '20'
+  NODE_VERSION: '20'  # Must match package.json engines.node and Dockerfile
   # Cognito Authentication
   NEXT_PUBLIC_AWS_REGION: us-east-1
   NEXT_PUBLIC_COGNITO_USER_POOL_ID: ${{ secrets.NEXT_PUBLIC_COGNITO_USER_POOL_ID }}

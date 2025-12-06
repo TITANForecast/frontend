@@ -3,14 +3,16 @@
 import { useState } from 'react';
 import { UserExtended } from '@/lib/types/admin';
 import { UserRole } from '@/lib/types/auth';
+import { ShieldCheck, ShieldOff, AlertCircle } from 'lucide-react';
 
 interface UserListTableProps {
   users: UserExtended[];
   onEdit: (user: UserExtended) => void;
   onDelete: (userId: string) => void;
+  onLinkCognito: (user: UserExtended) => void;
 }
 
-export default function UserListTable({ users, onEdit, onDelete }: UserListTableProps) {
+export default function UserListTable({ users, onEdit, onDelete, onLinkCognito }: UserListTableProps) {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const handleDeleteClick = (userId: string) => {
@@ -40,6 +42,41 @@ export default function UserListTable({ users, onEdit, onDelete }: UserListTable
     return (
       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${badges[role]}`}>
         {labels[role]}
+      </span>
+    );
+  };
+
+  const getCognitoStatusBadge = (cognitoSub: string | null, cognitoStatus: string | null) => {
+    if (!cognitoSub) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
+          <ShieldOff className="h-3 w-3" />
+          No Cognito
+        </span>
+      );
+    }
+
+    if (cognitoStatus === 'CONFIRMED') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400">
+          <ShieldCheck className="h-3 w-3" />
+          Active
+        </span>
+      );
+    }
+
+    if (cognitoStatus === 'FORCE_CHANGE_PASSWORD') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400">
+          <AlertCircle className="h-3 w-3" />
+          Invited
+        </span>
+      );
+    }
+
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
+          {cognitoStatus || 'Unknown'}
       </span>
     );
   };
@@ -123,13 +160,29 @@ export default function UserListTable({ users, onEdit, onDelete }: UserListTable
                     )}
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex items-center justify-end gap-3">
                     <button
+                      type="button"
                       onClick={() => onEdit(user)}
-                      className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 mr-4"
+                        className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
                     >
                       Edit
                     </button>
+                    {!user.cognitoSub && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onLinkCognito(user);
+                        }}
+                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                      >
+                        Link Cognito
+                      </button>
+                    )}
                     <button
+                      type="button"
                       onClick={() => handleDeleteClick(user.id)}
                       className={`${
                         deleteConfirm === user.id
@@ -139,6 +192,7 @@ export default function UserListTable({ users, onEdit, onDelete }: UserListTable
                     >
                       {deleteConfirm === user.id ? 'Confirm?' : 'Delete'}
                     </button>
+                    </div>
                   </td>
                 </tr>
               ))

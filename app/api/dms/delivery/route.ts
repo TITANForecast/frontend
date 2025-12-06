@@ -99,35 +99,26 @@ async function fetchFromDatabase(
         fs.total_parts_cost,
         fs.total_parts_sale,
         
-        -- Customer data
-        c.customer_number,
-        c.first_name,
-        c.last_name,
-        c.full_name,
-        c.address_line_1,
-        c.address_line_2,
-        c.city,
-        c.state,
-        c.zip_code,
-        c.home_phone,
-        c.cell_phone,
-        c.work_phone,
-        c.email_1,
-        
-        -- Vehicle data
-        v.vin,
-        v.year,
-        v.make,
-        v.model,
-        v.trim,
-        v.exterior_color,
-        v.license_plate_number
+        -- Total labor hours per RO (using JOIN instead of subquery for better performance)
+        COALESCE(SUM(l.labor_bill_hours), 0) as total_labor_hours
         
       FROM service_record sr
       LEFT JOIN financial_summary fs ON sr.id = fs.service_record_id
-      LEFT JOIN customer c ON sr.customer_id = c.id
-      LEFT JOIN vehicle v ON sr.vehicle_id = v.id
+      LEFT JOIN operation o ON o.service_record_id = sr.id
+      LEFT JOIN labor_line l ON o.id = l.operation_id
       ${whereClause}
+      GROUP BY 
+        sr.id, sr.ro_number, sr.dealer_id, sr.file_type, sr.open_date, sr.close_date,
+        sr.appointment_date, sr.appointment_flag, sr.service_advisor_number,
+        sr.service_advisor_name, sr.ro_department, sr.ro_store, sr.accounting_make,
+        sr.ro_status, sr.ro_mileage, sr.mileage_out, sr.total_cost, sr.total_sale,
+        fs.customer_total_cost, fs.customer_total_sale, fs.customer_labor_cost,
+        fs.customer_labor_sale, fs.customer_parts_cost, fs.customer_parts_sale,
+        fs.warranty_total_cost, fs.warranty_total_sale, fs.warranty_labor_cost,
+        fs.warranty_labor_sale, fs.warranty_parts_cost, fs.warranty_parts_sale,
+        fs.internal_total_cost, fs.internal_total_sale, fs.internal_labor_cost,
+        fs.internal_labor_sale, fs.internal_parts_cost, fs.internal_parts_sale,
+        fs.total_labor_cost, fs.total_labor_sale, fs.total_parts_cost, fs.total_parts_sale
       ORDER BY sr.open_date DESC, sr.id DESC
       LIMIT 5000;
     `;
@@ -214,6 +205,7 @@ async function fetchFromDatabase(
       "Internal Sublet Sale": "0.00",
       "Internal Tire Cost": "0.00",
       "Internal Tire Sale": "0.00",
+      "Total Labor Hours": formatNumber(record.total_labor_hours),
       "Customer Number": record.customer_number || "",
       "Customer First Name": record.first_name || "",
       "Customer Last Name": record.last_name || "",
@@ -252,86 +244,68 @@ async function fetchFromDatabase(
   }
 }
 
-async function fetchServiceMetrics(dealerId: string) {
+async function fetchTopOpcodes(
+  dealerId: string,
+  startDate?: Date,
+  endDate?: Date,
+  limit: number = 5
+) {
   try {
-    // Fetch the most recent service metrics for the dealer
-    const metrics = await prisma.$queryRaw`
-      SELECT 
-        effective_labor_rate,
-        labor_gp_percent,
-        hours_per_ro,
-        labor_per_ro,
-        customer_pay_revenue,
-        customer_pay_gp,
-        warranty_revenue,
-        warranty_gp,
-        internal_revenue,
-        internal_gp,
-        parts_gp_percent,
-        total_repair_orders
-      FROM service_metrics 
-      WHERE dealer_id = ${dealerId}
-      AND period_type = 'monthly'
-      ORDER BY metric_date DESC 
-      LIMIT 1;
-    `;
+    const conditions: string[] = [];
+    const params: any[] = [];
+    let paramIndex = 1;
 
-    if (!metrics || (metrics as any[]).length === 0) {
-      console.log(`⚠️  No service metrics found for dealer ${dealerId}`);
-      return null;
+    conditions.push(`o.dealer_id = $${paramIndex}`);
+    params.push(dealerId);
+    paramIndex++;
+
+    if (startDate) {
+      conditions.push(`sr.open_date >= $${paramIndex}`);
+      params.push(startDate);
+      paramIndex++;
     }
 
-    const m = (metrics as any[])[0];
+    if (endDate) {
+      const endDateInclusive = new Date(endDate);
+      endDateInclusive.setDate(endDateInclusive.getDate() + 1);
+      conditions.push(`sr.open_date < $${paramIndex}`);
+      params.push(endDateInclusive);
+      paramIndex++;
+    }
 
-    // Format to match KPIResults structure expected by the dashboard
+    conditions.push(`o.operation_code IS NOT NULL`);
+    conditions.push(`o.operation_code != ''`);
+    
+    const whereClause =
+      conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+    const query = `
+      SELECT 
+        o.operation_code as code,
+        COUNT(*) as usage_count
+      FROM operation o
+      LEFT JOIN service_record sr ON o.service_record_id = sr.id
+      ${whereClause}
+      GROUP BY o.operation_code
+      ORDER BY usage_count DESC
+      LIMIT ${limit}
+    `;
+
+    const opcodes = await prisma.$queryRawUnsafe<any[]>(
+      query,
+      ...params
+    );
+
     return {
-      kpis: {
-        effective_labor_rate: {
-          value: parseFloat(m.effective_labor_rate || "0"),
-          unit: "$/hr",
-        },
-        labor_gp_percent: {
-          value: parseFloat(m.labor_gp_percent || "0"),
-          unit: "%",
-        },
-        hrs_per_ro: {
-          value: parseFloat(m.hours_per_ro || "0"),
-          unit: "hrs",
-        },
-        labor_per_ro: {
-          value: parseFloat(m.labor_per_ro || "0"),
-          unit: "$",
-        },
-        customer_pay: {
-          total_sale: parseFloat(m.customer_pay_revenue || "0"),
-          labor_sale: 0, // Not separately tracked in service_metrics
-          parts_sale: 0,
-          gross_profit: parseFloat(m.customer_pay_gp || "0"),
-        },
-        warranty: {
-          total_sale: parseFloat(m.warranty_revenue || "0"),
-          labor_sale: 0,
-          parts_sale: 0,
-          gross_profit: parseFloat(m.warranty_gp || "0"),
-        },
-        internal: {
-          total_sale: parseFloat(m.internal_revenue || "0"),
-          labor_sale: 0,
-          parts_sale: 0,
-          gross_profit: parseFloat(m.internal_gp || "0"),
-        },
-        parts_gp_percent: {
-          value: parseFloat(m.parts_gp_percent || "0"),
-          unit: "%",
-        },
-      },
-      metadata: {
-        total_repair_orders: parseInt(m.total_repair_orders || "0"),
-      },
+      labels: opcodes.map((op: any) => op.code || ""),
+      values: opcodes.map((op: any) => Number(op.usage_count || 0)),
     };
   } catch (error) {
-    console.error("Error fetching service metrics:", error);
-    return null;
+    console.error("Error fetching top opcodes:", error);
+    return {
+      labels: [],
+      values: [],
+    };
   }
 }
 
@@ -360,31 +334,20 @@ export async function GET(request: NextRequest) {
       }${endDate ? ` to ${endDate.toISOString()}` : ""}`
     );
 
-    // Fetch service records
-    const dmsData = await fetchFromDatabase(dealerId, startDate, endDate);
-
-    // Only fetch pre-calculated KPIs if no date range is specified
-    // When date range is provided, KPIs should be calculated from filtered data
-    let kpiData = null;
-    if (!startDate && !endDate) {
-      kpiData = await fetchServiceMetrics(dealerId);
-    }
+    // Fetch service records and opcodes in parallel for better performance
+    const [dmsData, opcodesData] = await Promise.all([
+      fetchFromDatabase(dealerId, startDate, endDate),
+      fetchTopOpcodes(dealerId, startDate, endDate, 5),
+    ]);
 
     console.log(
       `✅ Retrieved ${dmsData.totalRecords} records for dealer ${dealerId}`
     );
-    if (kpiData) {
-      console.log(`✅ Retrieved pre-calculated KPIs for dealer ${dealerId}`);
-    } else if (startDate || endDate) {
-      console.log(
-        `📅 Date range provided - KPIs will be calculated from filtered data`
-      );
-    }
 
     return NextResponse.json({
       source: `database-dealer-${dealerId}`,
       data: dmsData,
-      kpis: kpiData,
+      opcodes: opcodesData,
     });
   } catch (error) {
     console.error("Error fetching DMS data:", error);

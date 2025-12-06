@@ -246,6 +246,10 @@ resource "aws_ecs_service" "frontend" {
   desired_count          = var.desired_count
   launch_type            = "FARGATE"
   enable_execute_command = true
+  
+  # Blue/green deployment configuration for zero downtime
+  deployment_minimum_healthy_percent = 100
+  deployment_maximum_percent         = 200
 
   network_configuration {
     subnets          = var.private_subnet_ids

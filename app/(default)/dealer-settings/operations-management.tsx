@@ -6,15 +6,19 @@ import { UserRole } from "@/lib/types/auth";
 import {
   Edit2,
   Check,
-  X as XIcon,
   ChevronDown,
   ChevronRight,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Download,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 import OperationEditModal from "./operation-edit-modal";
 import PartDetailsModal from "./part-details-modal";
+import AIEvaluationModal from "./ai-evaluation-modal";
+import RODetailsModal from "./ro-details-modal";
 import MultiSelectDropdown from "@/components/multi-select-dropdown";
 
 interface Operation {
@@ -31,6 +35,7 @@ interface Operation {
   eligibility_notes: string | null;
   ai_confidence_warranty: number | null;
   ai_confidence_service: number | null;
+  ai_reasoning_summary: string | null;
   ai_tagged_at: string | null;
   ai_reviewed: boolean | null;
   updated_at: string | null;
@@ -41,6 +46,14 @@ interface Operation {
   // Extended fields
   pay_type: string | null;
   vehicle_make: string | null;
+  vehicle_year: string | null;
+  vehicle_model: string | null;
+  vehicle_trim: string | null;
+  vehicle_vin: string | null;
+  customer_name: string | null;
+  customer_phone: string | null;
+  customer_email: string | null;
+  customer_address: string | null;
   total_labor_hours: number;
   total_labor_sale: number;
   total_labor_cost: number;
@@ -51,6 +64,13 @@ interface Operation {
   labor_complaint: string | null;
   labor_cause: string | null;
   labor_correction: string | null;
+  labor_comments: string | null;
+  // Warranty AI Evaluation fields
+  warranty_evaluation_eligible: boolean | null;
+  warranty_evaluation_confidence: number | null;
+  warranty_evaluation_reason: string | null;
+  warranty_evaluation_rule_applied: string | null;
+  warranty_evaluation_user_confirmed: boolean | null;
 }
 
 interface Service {
@@ -75,10 +95,11 @@ interface OperationsManagementProps {
 export default function OperationsManagement({
   dealerId,
 }: OperationsManagementProps) {
-  const { user, hasRole, getAuthToken } = useAuth();
+  const { hasRole, getAuthToken } = useAuth();
   const [operations, setOperations] = useState<Operation[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exportLoading, setExportLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState<{
     page: number;
@@ -97,8 +118,13 @@ export default function OperationsManagement({
   const [eligibleMakesOnly, setEligibleMakesOnly] = useState<boolean>(false);
   const [eligibleOpcodesOnly, setEligibleOpcodesOnly] =
     useState<boolean>(false);
-  const [hasLaborOrPartsOnly, setHasLaborOrPartsOnly] =
-    useState<boolean>(false);
+  const [laborPartsFilter, setLaborPartsFilter] = useState<string>(""); // "" (none), "labor", "parts", "laborOrParts"
+  const [laborFieldsFilter, setLaborFieldsFilter] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>("");
+  const [searchLoading, setSearchLoading] = useState<boolean>(false);
+  const [searchComplete, setSearchComplete] = useState<boolean>(false);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
 
   // Selection
   const [selectedOperations, setSelectedOperations] = useState<string[]>([]);
@@ -119,7 +145,30 @@ export default function OperationsManagement({
   const [selectedPartNumber, setSelectedPartNumber] = useState<string>("");
   const [selectedOperationId, setSelectedOperationId] = useState<string>("");
 
+  // AI evaluation modal state
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+  const [aiEvaluationOperationId, setAIEvaluationOperationId] =
+    useState<string>("");
+  const [isBulkAIModalOpen, setIsBulkAIModalOpen] = useState(false);
+
+  // RO details modal state
+  const [isROModalOpen, setIsROModalOpen] = useState(false);
+  const [selectedServiceRecordId, setSelectedServiceRecordId] =
+    useState<string>("");
+  const [selectedRONumber, setSelectedRONumber] = useState<string | null>(null);
+  const [highlightedOperationId, setHighlightedOperationId] =
+    useState<string>("");
+
   const canWrite = hasRole([UserRole.SUPER_ADMIN, UserRole.MULTI_DEALER]);
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     fetchOperations();
@@ -133,7 +182,9 @@ export default function OperationsManagement({
     payTypeFilter,
     eligibleMakesOnly,
     eligibleOpcodesOnly,
-    hasLaborOrPartsOnly,
+    laborPartsFilter,
+    laborFieldsFilter,
+    debouncedSearchQuery,
     sortColumn,
     sortDirection,
   ]);
@@ -171,6 +222,11 @@ export default function OperationsManagement({
   };
 
   const fetchOperations = async () => {
+    // Only show search loading if there's a search query
+    if (debouncedSearchQuery.trim()) {
+      setSearchLoading(true);
+      setSearchComplete(false);
+    }
     setLoading(true);
     setError(null);
     try {
@@ -218,8 +274,16 @@ export default function OperationsManagement({
         params.append("eligibleOpcodesOnly", "true");
       }
 
-      if (hasLaborOrPartsOnly) {
-        params.append("hasLaborOrPartsOnly", "true");
+      if (laborPartsFilter) {
+        params.append("laborPartsFilter", laborPartsFilter);
+      }
+
+      if (laborFieldsFilter.length > 0) {
+        params.append("laborFields", laborFieldsFilter.join(","));
+      }
+
+      if (debouncedSearchQuery.trim()) {
+        params.append("search", debouncedSearchQuery.trim());
       }
 
       const response = await fetch(
@@ -236,8 +300,22 @@ export default function OperationsManagement({
       const result = await response.json();
       setOperations(result.data);
       setPagination(result.pagination || null);
+
+      // Show success indicator for search
+      if (debouncedSearchQuery.trim()) {
+        setSearchLoading(false);
+        setSearchComplete(true);
+        // Fade out checkmark after 1.5 seconds
+        setTimeout(() => {
+          setSearchComplete(false);
+        }, 1500);
+      }
     } catch (err: any) {
       setError(err.message || "Failed to load operations");
+      if (debouncedSearchQuery.trim()) {
+        setSearchLoading(false);
+        setSearchComplete(false);
+      }
     } finally {
       setLoading(false);
     }
@@ -267,6 +345,10 @@ export default function OperationsManagement({
 
   const handleBulkUpdate = () => {
     setShowBulkUpdate(true);
+  };
+
+  const handleBulkWarrantyEvaluation = () => {
+    setIsBulkAIModalOpen(true);
   };
 
   const handleModalClose = (success: boolean) => {
@@ -409,6 +491,227 @@ export default function OperationsManagement({
     setSelectedOperationId("");
   };
 
+  const exportToCSV = async () => {
+    try {
+      setExportLoading(true);
+      const token = await getAuthToken();
+      const fetchHeaders: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        fetchHeaders["Authorization"] = `Bearer ${token}`;
+      }
+
+      // Build params with same filters but no pagination (fetch all)
+      const params = new URLSearchParams({
+        dealerId,
+        page: "1",
+        limit: "10000", // Large limit to get all records
+        sortColumn,
+        sortDirection,
+      });
+
+      if (serviceFilter.length > 0) {
+        params.append("serviceIds", serviceFilter.join(","));
+      }
+
+      if (warrantyFilter !== "all") {
+        params.append("warrantyEligible", warrantyFilter);
+      }
+
+      if (startDate) {
+        params.append("startDate", startDate);
+      }
+
+      if (endDate) {
+        params.append("endDate", endDate);
+      }
+
+      if (payTypeFilter.length > 0) {
+        params.append("payTypes", payTypeFilter.join(","));
+      }
+
+      if (eligibleMakesOnly) {
+        params.append("eligibleMakesOnly", "true");
+      }
+
+      if (eligibleOpcodesOnly) {
+        params.append("eligibleOpcodesOnly", "true");
+      }
+
+      if (laborPartsFilter) {
+        params.append("laborPartsFilter", laborPartsFilter);
+      }
+
+      if (laborFieldsFilter.length > 0) {
+        params.append("laborFields", laborFieldsFilter.join(","));
+      }
+
+      if (searchQuery.trim()) {
+        params.append("search", searchQuery.trim());
+      }
+
+      const response = await fetch(
+        `/api/dealer-settings/operations?${params.toString()}`,
+        {
+          headers: fetchHeaders,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch operations for export");
+      }
+
+      const result = await response.json();
+      const allOperations: Operation[] = result.data || [];
+
+      // Convert to CSV
+      const csvHeaders = [
+        "Service Record Open Date",
+        "RO Number",
+        "Operation Code",
+        "Operation Description",
+        "Pay Type",
+        "Service Name",
+        "Service Category",
+        "Service Subcategory",
+        "Warranty Eligible",
+        "AI Confidence Service (%)",
+        "AI Confidence Warranty (%)",
+        "AI Reasoning Summary",
+        "Customer Name",
+        "Customer Phone",
+        "Customer Email",
+        "Customer Address",
+        "Vehicle Year",
+        "Vehicle Make",
+        "Vehicle Model",
+        "Vehicle Trim",
+        "Vehicle VIN",
+        "Labor Hours",
+        "Labor Sale Total",
+        "Labor Cost",
+        "Parts Sale Total",
+        "Parts Cost",
+        "Parts Count",
+        "Parts List",
+        "ELR (Effective Labor Rate)",
+        "Part Markup %",
+        "Labor Complaint",
+        "Labor Cause",
+        "Labor Correction",
+        "Labor Comments",
+        "Eligibility Notes",
+        "Updated At",
+      ];
+
+      const csvRows = [csvHeaders.join(",")];
+
+      for (const op of allOperations) {
+        const laborHours = parseDecimal(op.total_labor_hours);
+        const laborSale = parseDecimal(op.total_labor_sale);
+        const partsSale = parseDecimal(op.total_parts_sale);
+        const partsCost = parseDecimal(op.total_parts_cost);
+
+        const elr = laborHours > 0 ? laborSale / laborHours : null;
+        const partMarkup =
+          partsCost > 0 ? ((partsSale - partsCost) / partsCost) * 100 : null;
+
+        const row = [
+          op.service_record_open_date
+            ? new Date(op.service_record_open_date).toLocaleDateString()
+            : "",
+          escapeCSV(op.ro_number || op.service_record_id || ""),
+          escapeCSV(op.operation_code || ""),
+          escapeCSV(op.operation_description || ""),
+          op.pay_type === "C"
+            ? "Customer Pay"
+            : op.pay_type === "W"
+            ? "Warranty"
+            : op.pay_type === "I"
+            ? "Internal"
+            : "",
+          escapeCSV(op.service_name || ""),
+          escapeCSV(op.service_category_name || ""),
+          escapeCSV(op.service_subcategory_name || ""),
+          op.is_warranty_eligible === null
+            ? "Unset"
+            : op.is_warranty_eligible
+            ? "Yes"
+            : "No",
+          op.ai_confidence_service !== null &&
+          op.ai_confidence_service !== undefined
+            ? (op.ai_confidence_service * 100).toFixed(1)
+            : "",
+          op.ai_confidence_warranty !== null &&
+          op.ai_confidence_warranty !== undefined
+            ? (op.ai_confidence_warranty * 100).toFixed(1)
+            : "",
+          escapeCSV(op.ai_reasoning_summary || ""),
+          escapeCSV(op.customer_name || ""),
+          escapeCSV(op.customer_phone || ""),
+          escapeCSV(op.customer_email || ""),
+          escapeCSV(op.customer_address || ""),
+          escapeCSV(op.vehicle_year || ""),
+          escapeCSV(op.vehicle_make || ""),
+          escapeCSV(op.vehicle_model || ""),
+          escapeCSV(op.vehicle_trim || ""),
+          escapeCSV(op.vehicle_vin || ""),
+          laborHours > 0 ? laborHours.toFixed(2) : "0.00",
+          laborSale.toFixed(2),
+          parseDecimal(op.total_labor_cost).toFixed(2),
+          partsSale.toFixed(2),
+          partsCost.toFixed(2),
+          op.parts_count || 0,
+          escapeCSV(op.parts_list || ""),
+          elr !== null ? `$${elr.toFixed(2)}` : "N/A",
+          partMarkup !== null ? `${partMarkup.toFixed(2)}%` : "N/A",
+          escapeCSV(op.labor_complaint || ""),
+          escapeCSV(op.labor_cause || ""),
+          escapeCSV(op.labor_correction || ""),
+          escapeCSV(op.labor_comments || ""),
+          escapeCSV(op.eligibility_notes || ""),
+          op.updated_at ? new Date(op.updated_at).toLocaleString() : "",
+        ];
+
+        csvRows.push(row.join(","));
+      }
+
+      const csvContent = csvRows.join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute(
+        "download",
+        `operations_export_${new Date().toISOString().split("T")[0]}.csv`
+      );
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err: any) {
+      console.error("Failed to export CSV:", err);
+      setError(err.message || "Failed to export CSV");
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  const escapeCSV = (value: string): string => {
+    if (value === null || value === undefined) return "";
+    const stringValue = String(value);
+    // If value contains comma, newline, or quote, wrap in quotes and escape quotes
+    if (
+      stringValue.includes(",") ||
+      stringValue.includes("\n") ||
+      stringValue.includes('"')
+    ) {
+      return `"${stringValue.replace(/"/g, '""')}"`;
+    }
+    return stringValue;
+  };
+
   const renderPartsList = (partsList: string | null, operationId: string) => {
     if (!partsList || partsList.trim() === "") {
       return "Parts data available but part numbers not specified";
@@ -442,9 +745,110 @@ export default function OperationsManagement({
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+        {/* Search Bar */}
+        <div className="sm:col-span-2 lg:col-span-3 xl:col-span-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Search Operation
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+                setSearchComplete(false);
+                setSearchLoading(false);
+              }}
+              placeholder="Search operation code, RO number, description, or labor fields..."
+              className="form-input w-full pr-10"
+            />
+            {(searchLoading || searchComplete) && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                {searchLoading ? (
+                  <Loader2
+                    size={18}
+                    className="animate-spin text-gray-400 dark:text-gray-500"
+                  />
+                ) : searchComplete ? (
+                  <Check
+                    size={18}
+                    className="text-green-500 dark:text-green-400 transition-opacity duration-300"
+                  />
+                ) : null}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Date Range */}
+        <div className="sm:col-span-2 lg:col-span-2 xl:col-span-2 flex flex-col sm:flex-row items-stretch sm:items-end gap-2 sm:gap-2">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Start Date
+            </label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="form-input w-full"
+            />
+          </div>
+
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              End Date
+            </label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="form-input w-full"
+            />
+          </div>
+        </div>
+
+        {/* Checkboxes */}
+        <div className="sm:col-span-2 lg:col-span-3 xl:col-span-1 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
+          <label className="flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={eligibleMakesOnly}
+              onChange={(e) => {
+                setEligibleMakesOnly(e.target.checked);
+                setCurrentPage(1);
+              }}
+              className="form-checkbox h-4 w-4 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 mr-2 shrink-0"
+            />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Eligible Makes Only
+            </span>
+          </label>
+          <label className="flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={eligibleOpcodesOnly}
+              onChange={(e) => {
+                setEligibleOpcodesOnly(e.target.checked);
+                setCurrentPage(1);
+              }}
+              className="form-checkbox h-4 w-4 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 mr-2 shrink-0"
+            />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Eligible Opcodes Only
+            </span>
+          </label>
+        </div>
+
         {/* Service Filter */}
-        <div>
+        <div className="sm:col-span-1">
           <MultiSelectDropdown
             label="Service"
             options={[
@@ -466,7 +870,7 @@ export default function OperationsManagement({
         </div>
 
         {/* Pay Type Filter */}
-        <div>
+        <div className="sm:col-span-1">
           <MultiSelectDropdown
             label="Pay Type"
             options={[
@@ -484,7 +888,7 @@ export default function OperationsManagement({
         </div>
 
         {/* Warranty Eligible Filter */}
-        <div>
+        <div className="sm:col-span-1">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Warranty Eligible
           </label>
@@ -494,7 +898,7 @@ export default function OperationsManagement({
               setWarrantyFilter(e.target.value);
               setCurrentPage(1);
             }}
-            className="form-select w-full"
+            className="form-select w-full min-h-[42px]"
           >
             <option value="all">All</option>
             <option value="true">Yes</option>
@@ -503,105 +907,107 @@ export default function OperationsManagement({
           </select>
         </div>
 
-        {/* Date Range */}
+        {/* Labor Fields Filter */}
+        <div className="sm:col-span-1">
+          <MultiSelectDropdown
+            label="Labor Fields"
+            options={[
+              { value: "complaint", label: "Has Labor Complaint" },
+              { value: "cause", label: "Has Labor Cause" },
+              { value: "correction", label: "Has Labor Correction" },
+              { value: "comment", label: "Has Labor Comment" },
+            ]}
+            value={laborFieldsFilter}
+            onChange={(selected) => {
+              setLaborFieldsFilter(selected);
+              setCurrentPage(1);
+            }}
+            placeholder="Select labor fields..."
+          />
+        </div>
 
-        {/* Checkbox Filters */}
-        <div className="flex items-center gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Start Date
-            </label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => {
-                setStartDate(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="form-input w-full"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              End Date
-            </label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => {
-                setEndDate(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="form-input w-full"
-            />
-          </div>
+        {/* Labor/Parts Filter */}
+        <div className="sm:col-span-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Labor/Parts Filter
+          </label>
+          <select
+            value={laborPartsFilter}
+            onChange={(e) => {
+              setLaborPartsFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="form-select w-full sm:min-w-[180px] min-h-[42px]"
+          >
+            <option value="">All</option>
+            <option value="labor">Has Labor</option>
+            <option value="parts">Has Parts</option>
+            <option value="laborOrParts">Has Labor or Parts</option>
+          </select>
         </div>
       </div>
-      <div className="flex items-center justify-end gap-6">
-        <label className="flex items-center cursor-pointer">
-          <input
-            type="checkbox"
-            checked={eligibleMakesOnly}
-            onChange={(e) => {
-              setEligibleMakesOnly(e.target.checked);
-              setCurrentPage(1);
-            }}
-            className="form-checkbox h-4 w-4 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 mr-2"
-          />
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Eligible Makes Only
-          </span>
-        </label>
-        <label className="flex items-center cursor-pointer">
-          <input
-            type="checkbox"
-            checked={eligibleOpcodesOnly}
-            onChange={(e) => {
-              setEligibleOpcodesOnly(e.target.checked);
-              setCurrentPage(1);
-            }}
-            className="form-checkbox h-4 w-4 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 mr-2"
-          />
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Eligible Opcodes Only
-          </span>
-        </label>
-        <label className="flex items-center cursor-pointer">
-          <input
-            type="checkbox"
-            checked={hasLaborOrPartsOnly}
-            onChange={(e) => {
-              setHasLaborOrPartsOnly(e.target.checked);
-              setCurrentPage(1);
-            }}
-            className="form-checkbox h-4 w-4 text-violet-600 dark:text-violet-500 rounded focus:ring-violet-500 mr-2"
-          />
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Has Labor/Parts Only
-          </span>
-        </label>
+
+      <div className="flex justify-end">
+        <button
+          onClick={exportToCSV}
+          disabled={exportLoading}
+          className="btn bg-violet-500 hover:bg-violet-600 text-white flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {exportLoading ? (
+            <>
+              <Loader2 size={16} className="animate-spin" />
+              Exporting...
+            </>
+          ) : (
+            <>
+              <Download size={16} />
+              Export to CSV
+            </>
+          )}
+        </button>
       </div>
 
-      {/* Bulk Actions */}
+      {/* Bulk Actions - Sticky */}
       {canWrite && selectedOperations.length > 0 && (
-        <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-lg p-4">
+        <div className="sticky top-16 z-40 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-md">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-violet-900 dark:text-violet-100">
               {selectedOperations.length} operation(s) selected
             </span>
-            <button
-              onClick={handleBulkUpdate}
-              className="btn bg-violet-500 hover:bg-violet-600 text-white"
-            >
-              Bulk Update
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={handleBulkWarrantyEvaluation}
+                className="btn bg-violet-500 hover:bg-violet-600 text-white flex items-center gap-2"
+              >
+                <Sparkles size={16} />
+                Bulk Warranty Evaluation
+              </button>
+              <button
+                onClick={handleBulkUpdate}
+                className="btn bg-violet-500 hover:bg-violet-600 text-white"
+              >
+                Bulk Update
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* Operations Table */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden relative">
+        {refreshing && (
+          <div className="absolute inset-0 bg-white/80 dark:bg-gray-800/80 z-10 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2
+                size={32}
+                className="animate-spin text-violet-600 dark:text-violet-400"
+              />
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Refreshing data...
+              </p>
+            </div>
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="table-auto w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-900/50">
@@ -746,6 +1152,11 @@ export default function OperationsManagement({
                         <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                           {operation.operation_code}
                         </div>
+                        {operation.ro_number && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            RO: {operation.ro_number}
+                          </div>
+                        )}
                         <div className="text-xs text-gray-500 dark:text-gray-400">
                           {operation.operation_description}
                         </div>
@@ -781,18 +1192,34 @@ export default function OperationsManagement({
                         {getWarrantyBadge(operation.is_warranty_eligible)}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
-                        {operation.ai_tagged_at ? (
+                        {operation.ai_tagged_at ||
+                        operation.warranty_evaluation_confidence !== null ? (
                           <div className="text-xs">
                             <div className="text-gray-600 dark:text-gray-300">
                               Service:{" "}
-                              {operation.ai_confidence_service
-                                ? `${operation.ai_confidence_service}%`
+                              {operation.ai_confidence_service !== null &&
+                              operation.ai_confidence_service !== undefined
+                                ? `${(
+                                    operation.ai_confidence_service * 100
+                                  ).toFixed(1)}%`
                                 : "-"}
                             </div>
                             <div className="text-gray-600 dark:text-gray-300">
                               Warranty:{" "}
-                              {operation.ai_confidence_warranty
-                                ? `${operation.ai_confidence_warranty}%`
+                              {operation.warranty_evaluation_confidence !==
+                                null &&
+                              operation.warranty_evaluation_confidence !==
+                                undefined
+                                ? `${(
+                                    Number(
+                                      operation.warranty_evaluation_confidence
+                                    ) * 100
+                                  ).toFixed(1)}%`
+                                : operation.ai_confidence_warranty !== null &&
+                                  operation.ai_confidence_warranty !== undefined
+                                ? `${(
+                                    operation.ai_confidence_warranty * 100
+                                  ).toFixed(1)}%`
                                 : "-"}
                             </div>
                             {operation.ai_reviewed === false && (
@@ -807,13 +1234,25 @@ export default function OperationsManagement({
                       </td>
                       {canWrite && (
                         <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button
-                            onClick={() => handleEditOperation(operation)}
-                            className="text-gray-600 hover:text-violet-600 dark:text-gray-400 dark:hover:text-violet-400"
-                            title="Edit operation"
-                          >
-                            <Edit2 size={16} />
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => {
+                                setAIEvaluationOperationId(operation.id);
+                                setIsAIModalOpen(true);
+                              }}
+                              className="text-gray-600 hover:text-violet-600 dark:text-gray-400 dark:hover:text-violet-400"
+                              title="Run Warranty AI"
+                            >
+                              <Sparkles size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleEditOperation(operation)}
+                              className="text-gray-600 hover:text-violet-600 dark:text-gray-400 dark:hover:text-violet-400"
+                              title="Edit operation"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                          </div>
                         </td>
                       )}
                     </tr>
@@ -829,11 +1268,21 @@ export default function OperationsManagement({
                                 <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                                   Service Record ID / RO Number
                                 </h4>
-                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                <button
+                                  onClick={() => {
+                                    setSelectedServiceRecordId(
+                                      operation.service_record_id
+                                    );
+                                    setSelectedRONumber(operation.ro_number);
+                                    setHighlightedOperationId(operation.id);
+                                    setIsROModalOpen(true);
+                                  }}
+                                  className="text-sm text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 hover:underline font-medium transition-colors"
+                                >
                                   {operation.ro_number ||
                                     operation.service_record_id ||
                                     "N/A"}
-                                </p>
+                                </button>
                               </div>
                               <div>
                                 <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
@@ -905,8 +1354,12 @@ export default function OperationsManagement({
                                 </h4>
                                 <p className="text-sm text-gray-600 dark:text-gray-400">
                                   {(() => {
-                                    const laborHours = parseDecimal(operation.total_labor_hours);
-                                    const laborSale = parseDecimal(operation.total_labor_sale);
+                                    const laborHours = parseDecimal(
+                                      operation.total_labor_hours
+                                    );
+                                    const laborSale = parseDecimal(
+                                      operation.total_labor_sale
+                                    );
                                     if (laborHours > 0) {
                                       const elr = laborSale / laborHours;
                                       return `$${elr.toFixed(2)}`;
@@ -917,14 +1370,20 @@ export default function OperationsManagement({
                               </div>
                               <div>
                                 <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                                  Part Profit %
+                                  Part Markup %
                                 </h4>
                                 <p className="text-sm text-gray-600 dark:text-gray-400">
                                   {(() => {
-                                    const partsSale = parseDecimal(operation.total_parts_sale);
-                                    const partsCost = parseDecimal(operation.total_parts_cost);
+                                    const partsSale = parseDecimal(
+                                      operation.total_parts_sale
+                                    );
+                                    const partsCost = parseDecimal(
+                                      operation.total_parts_cost
+                                    );
                                     if (partsCost > 0) {
-                                      const profitPercent = ((partsSale - partsCost) / partsCost) * 100;
+                                      const profitPercent =
+                                        ((partsSale - partsCost) / partsCost) *
+                                        100;
                                       return `${profitPercent.toFixed(2)}%`;
                                     }
                                     return "N/A";
@@ -947,36 +1406,135 @@ export default function OperationsManagement({
                             </div>
 
                             {/* Labor Details Section */}
-                            {(operation.labor_complaint ||
-                              operation.labor_cause ||
-                              operation.labor_correction) && (
-                              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                              <div>
+                                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                                  Labor Complaint
+                                </h4>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+                                  {operation.labor_complaint || "N/A"}
+                                </p>
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                                  Labor Cause
+                                </h4>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+                                  {operation.labor_cause || "N/A"}
+                                </p>
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                                  Labor Correction
+                                </h4>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+                                  {operation.labor_correction || "N/A"}
+                                </p>
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                                  Labor Comments
+                                </h4>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+                                  {operation.labor_comments || "N/A"}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* AI Reasoning Summary Section */}
+                            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                                AI Reasoning Summary
+                              </h4>
+                              <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+                                {operation.ai_reasoning_summary || "N/A"}
+                              </p>
+                            </div>
+
+                            {/* Warranty AI Evaluation Section */}
+                            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                                Warranty AI Evaluation
+                              </h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 <div>
-                                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                                    Labor Complaint
-                                  </h4>
-                                  <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
-                                    {operation.labor_complaint || "N/A"}
+                                  <h5 className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                    Eligibility Decision
+                                  </h5>
+                                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                    {operation.warranty_evaluation_eligible ===
+                                    true ? (
+                                      <span className="text-green-600 dark:text-green-400">
+                                        Eligible
+                                      </span>
+                                    ) : operation.warranty_evaluation_eligible ===
+                                      false ? (
+                                      <span className="text-red-600 dark:text-red-400">
+                                        Not Eligible
+                                      </span>
+                                    ) : (
+                                      "N/A"
+                                    )}
                                   </p>
                                 </div>
                                 <div>
-                                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                                    Labor Cause
-                                  </h4>
-                                  <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
-                                    {operation.labor_cause || "N/A"}
+                                  <h5 className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                    Confidence
+                                  </h5>
+                                  <p className="text-sm text-gray-900 dark:text-gray-100">
+                                    {operation.warranty_evaluation_confidence !==
+                                    null
+                                      ? `${(
+                                          Number(
+                                            operation.warranty_evaluation_confidence
+                                          ) * 100
+                                        ).toFixed(1)}%`
+                                      : "N/A"}
                                   </p>
                                 </div>
                                 <div>
-                                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                                    Labor Correction
-                                  </h4>
+                                  <h5 className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                    User Confirmation
+                                  </h5>
+                                  <p className="text-sm text-gray-900 dark:text-gray-100">
+                                    {operation.warranty_evaluation_user_confirmed ===
+                                    true ? (
+                                      <span className="text-green-600 dark:text-green-400">
+                                        Confirmed
+                                      </span>
+                                    ) : operation.warranty_evaluation_user_confirmed ===
+                                      false ? (
+                                      <span className="text-red-600 dark:text-red-400">
+                                        Denied
+                                      </span>
+                                    ) : (
+                                      <span className="text-gray-500 dark:text-gray-400">
+                                        Pending
+                                      </span>
+                                    )}
+                                  </p>
+                                </div>
+                                <div className="md:col-span-2 lg:col-span-3">
+                                  <h5 className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                    AI Reason
+                                  </h5>
                                   <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
-                                    {operation.labor_correction || "N/A"}
+                                    {operation.warranty_evaluation_reason ||
+                                      "N/A"}
+                                  </p>
+                                </div>
+                                <div className="md:col-span-2 lg:col-span-3">
+                                  <h5 className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                                    Rule Applied
+                                  </h5>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                                    {operation.warranty_evaluation_rule_applied ||
+                                      "N/A"}
                                   </p>
                                 </div>
                               </div>
-                            )}
+                            </div>
                           </div>
                         </td>
                       </tr>
@@ -991,30 +1549,44 @@ export default function OperationsManagement({
 
       {/* Pagination */}
       {pagination && pagination.totalPages > 1 && (
-        <div className="px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700">
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
-            {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
-            {pagination.total} results
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCurrentPage(pagination.page - 1)}
-              disabled={pagination.page === 1}
-              className="btn border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-            <span className="text-sm text-gray-600 dark:text-gray-400 px-2">
-              Page {pagination.page} of {pagination.totalPages}
-            </span>
-            <button
-              onClick={() => setCurrentPage(pagination.page + 1)}
-              disabled={pagination.page === pagination.totalPages}
-              className="btn border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Next
-            </button>
+        <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+          {/* Mobile: Stacked layout */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+            {/* Results info */}
+            <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 text-center sm:text-left">
+              <span className="hidden sm:inline">
+                Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
+                {Math.min(pagination.page * pagination.limit, pagination.total)}{" "}
+                of {pagination.total} results
+              </span>
+              <span className="sm:hidden">
+                {(pagination.page - 1) * pagination.limit + 1}-
+                {Math.min(pagination.page * pagination.limit, pagination.total)}{" "}
+                of {pagination.total}
+              </span>
+            </div>
+
+            {/* Pagination controls */}
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={() => setCurrentPage(pagination.page - 1)}
+                disabled={pagination.page === 1}
+                className="btn border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm"
+              >
+                <span className="hidden sm:inline">Previous</span>
+                <span className="sm:hidden">Prev</span>
+              </button>
+              <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 px-2 whitespace-nowrap">
+                Page {pagination.page} of {pagination.totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(pagination.page + 1)}
+                disabled={pagination.page === pagination.totalPages}
+                className="btn border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm"
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1040,6 +1612,55 @@ export default function OperationsManagement({
         />
       )}
 
+      {/* AI Evaluation Modal */}
+      {isAIModalOpen && (
+        <AIEvaluationModal
+          isOpen={isAIModalOpen}
+          onClose={() => {
+            setIsAIModalOpen(false);
+            setAIEvaluationOperationId("");
+          }}
+          operationId={aiEvaluationOperationId}
+          dealerId={dealerId}
+          onEvaluationComplete={async () => {
+            // Refresh operations list after evaluation
+            setRefreshing(true);
+            try {
+              await fetchOperations();
+            } finally {
+              setRefreshing(false);
+            }
+          }}
+        />
+      )}
+
+      {/* Bulk AI Evaluation Modal */}
+      {isBulkAIModalOpen && (
+        <AIEvaluationModal
+          isOpen={isBulkAIModalOpen}
+          onClose={() => {
+            setIsBulkAIModalOpen(false);
+            // Clear selections only when modal is closed
+            setSelectedOperations([]);
+          }}
+          operationIds={selectedOperations}
+          operations={operations.filter((op) =>
+            selectedOperations.includes(op.id)
+          )}
+          dealerId={dealerId}
+          onEvaluationComplete={async () => {
+            // Refresh operations list after evaluation
+            // Don't clear selections - keep them so user can continue confirming other operations
+            setRefreshing(true);
+            try {
+              await fetchOperations();
+            } finally {
+              setRefreshing(false);
+            }
+          }}
+        />
+      )}
+
       {/* Part Details Modal */}
       {isPartModalOpen && selectedPartNumber && selectedOperationId && (
         <PartDetailsModal
@@ -1048,6 +1669,23 @@ export default function OperationsManagement({
           operationId={selectedOperationId}
           partNumber={selectedPartNumber}
           dealerId={dealerId}
+        />
+      )}
+
+      {/* RO Details Modal */}
+      {isROModalOpen && selectedServiceRecordId && (
+        <RODetailsModal
+          isOpen={isROModalOpen}
+          onClose={() => {
+            setIsROModalOpen(false);
+            setSelectedServiceRecordId("");
+            setSelectedRONumber(null);
+            setHighlightedOperationId("");
+          }}
+          serviceRecordId={selectedServiceRecordId}
+          roNumber={selectedRONumber}
+          dealerId={dealerId}
+          highlightedOperationId={highlightedOperationId}
         />
       )}
     </div>

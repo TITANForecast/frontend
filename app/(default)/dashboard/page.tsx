@@ -15,7 +15,6 @@ import {
   processDashboardData,
   ProcessedDashboardData,
   DMSData,
-  KPIResults,
 } from "@/lib/utils/dashboard-data-processor";
 import { useAuth } from "@/components/auth-provider-multitenancy";
 
@@ -64,10 +63,10 @@ export default function Dashboard() {
         const result = await response.json();
 
         if (result.data) {
-          // Process data with pre-calculated KPIs if available
+          // Process data from API response
           const processed = processDashboardData(
             result.data as DMSData,
-            result.kpis as KPIResults | null
+            result.opcodes as { labels: string[]; values: number[] } | null
           );
           setDashboardData(processed);
           console.log(
@@ -131,7 +130,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-12 gap-6">
           {/* Labor GP % */}
           <DashboardCardAGKPIGauge
-            value={dashboardData?.kpis.laborGPPercent || 85.5}
+            value={dashboardData?.kpis.laborGPPercent || 0}
             name="Labor GP %"
             min={66}
             max={96}
@@ -142,7 +141,7 @@ export default function Dashboard() {
           />
           {/* Labor $/RO */}
           <DashboardCardAGKPIGauge
-            value={dashboardData?.kpis.laborPerRO || 222}
+            value={dashboardData?.kpis.laborPerRO || 0}
             name="Labor $/RO"
             min={120}
             max={280}
@@ -153,7 +152,7 @@ export default function Dashboard() {
           />
           {/* Hrs/RO */}
           <DashboardCardAGKPIGauge
-            value={dashboardData?.kpis.hoursPerRO || 1.29}
+            value={dashboardData?.kpis.hoursPerRO || 0}
             name="Hrs/RO"
             min={1.1}
             max={1.6}
@@ -164,7 +163,7 @@ export default function Dashboard() {
           />
           {/* ELR Total */}
           <DashboardCardAGKPIGauge
-            value={dashboardData?.kpis.elrTotal || 177.5}
+            value={dashboardData?.kpis.elrTotal || 0}
             name="ELR Total"
             min={140}
             max={280}

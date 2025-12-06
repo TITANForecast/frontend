@@ -1,4 +1,5 @@
 # Use the official Node.js 20 image as the base image
+# Must match package.json engines.node (>=20.0.0)
 FROM node:20-alpine AS base
 
 # Install dependencies only when needed
@@ -49,8 +50,8 @@ RUN npm run build
 FROM base AS runner
 WORKDIR /app
 
-# Install curl for health checks
-RUN apk add --no-cache curl
+# Install curl for health checks and prisma dependencies
+RUN apk add --no-cache curl openssl
 
 ENV NODE_ENV production
 # Uncomment the following line in case you want to disable telemetry during runtime.
@@ -71,8 +72,17 @@ RUN chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Copy Prisma schema and migrations for runtime migration support
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+
 # Copy Prisma generated client
 COPY --from=builder --chown=nextjs:nodejs /app/generated ./generated
+
+# Install Prisma CLI in runner stage (needed for migrations at runtime)
+# Copy package.json to get the exact version
+COPY --from=deps /app/package.json ./package.json
+RUN npm install prisma@6.17.1 --omit=dev && \
+    npm cache clean --force
 
 USER nextjs
 
@@ -84,4 +94,5 @@ ENV HOSTNAME "0.0.0.0"
 
 # server.js is created by next build from the standalone output
 # https://nextjs.org/docs/pages/api-reference/next-config-js/output
-CMD ["node", "server.js"]
+# Run Prisma migrations before starting the server
+CMD ["sh", "-c", "npx prisma migrate deploy && exec node server.js"]
