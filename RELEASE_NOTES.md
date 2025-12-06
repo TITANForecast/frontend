@@ -8,7 +8,7 @@
 
 ## 🎯 Release Overview
 
-This release includes major features for warranty AI processing, enhanced Cognito user management, zero-downtime deployments, and PgAdmin database tooling.
+This release includes major features for warranty AI processing, enhanced Cognito user management, zero-downtime deployments, PgAdmin database tooling, and dealer general settings.
 
 ### Key Features
 
@@ -17,6 +17,7 @@ This release includes major features for warranty AI processing, enhanced Cognit
    - AI-driven RO (Repair Order) selection and optimization
    - Warranty rule filtering and compliance checking
    - Confidence scoring and evaluation tracking
+   - Parts usage tracking in RO selection
 
 2. **👥 Enhanced Cognito User Management**
    - Password reset with branded email templates
@@ -29,13 +30,24 @@ This release includes major features for warranty AI processing, enhanced Cognit
    - Increased task count: 1 → 2 for staging and production
    - Prevents 503 errors during deployments
 
-4. **🗄️ PgAdmin Database Management**
+4. **⚙️ Dealer General Settings**
+   - Current warranty labor rate configuration
+   - Current warranty parts markup settings
+   - Warranty request cooldown period tracking
+   - Last submission date tracking for rate changes
+
+5. **📊 Enhanced Dashboard Metrics**
+   - New warranty opportunity widget with submission date tracking
+   - Top 100 label positioning improvements
+   - Metrics based on last submit date
+
+6. **🗄️ PgAdmin Database Management**
    - PgAdmin service deployed on staging
    - Web-based database administration
    - Pre-configured server connections
    - Accessible at `https://db-staging.titanforecast.com`
 
-5. **🔐 Authentication & Security Improvements**
+7. **🔐 Authentication & Security Improvements**
    - Branded Cognito email templates
    - Password reset flow with custom UI
    - User session management improvements
@@ -46,7 +58,7 @@ This release includes major features for warranty AI processing, enhanced Cognit
 
 ### Required Migrations
 
-**Migration**: `20251111005114_add_cognito_status_only`
+**Migration 1**: `20251111005114_add_cognito_status_only`
 
 ```sql
 -- Add cognitoStatus column to users table
@@ -54,6 +66,42 @@ ALTER TABLE "users" ADD COLUMN "cognitoStatus" TEXT;
 ```
 
 **Impact**: Non-breaking, adds optional tracking field
+
+**Migration 2**: `20251205041923_add_dealer_general_settings`
+
+```sql
+-- CreateTable
+CREATE TABLE "dealer_general_settings" (
+    "id" TEXT NOT NULL,
+    "dealer_id" TEXT NOT NULL,
+    "current_warranty_labor_rate" DECIMAL(10,2),
+    "current_warranty_parts_markup" DECIMAL(10,2),
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+    CONSTRAINT "dealer_general_settings_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "dealer_general_settings_dealer_id_key" ON "dealer_general_settings"("dealer_id");
+
+-- AddForeignKey
+ALTER TABLE "dealer_general_settings" ADD CONSTRAINT "dealer_general_settings_dealer_id_fkey" 
+  FOREIGN KEY ("dealer_id") REFERENCES "dealers"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+```
+
+**Impact**: Non-breaking, creates new table for dealer general settings
+
+**Migration 3**: `20251205124058_add_submission_dates_and_cooldown`
+
+```sql
+-- AlterTable
+ALTER TABLE "dealer_general_settings" 
+  ADD COLUMN "last_labor_rate_submission" TIMESTAMP(3),
+  ADD COLUMN "last_parts_profit_submission" TIMESTAMP(3),
+  ADD COLUMN "warranty_request_cooldown_period" INTEGER DEFAULT 180;
+```
+
+**Impact**: Non-breaking, adds cooldown tracking for warranty submissions
 
 ### Migration Execution
 
