@@ -220,6 +220,9 @@ export async function GET(request: NextRequest) {
           let hasMoreData = true;
 
           while (hasMoreData) {
+            // Fix: Use LATERAL joins to aggregate labor and parts separately
+            // This prevents cartesian product multiplication when an operation has multiple parts
+            // Each operation's labor_sale will only be counted once
             const query = `
               SELECT 
                 o.*,
@@ -259,13 +262,13 @@ export async function GET(request: NextRequest) {
                   END
                 ) as customer_address,
                 o.sale_type as pay_type,
-                COALESCE(SUM(l.labor_bill_hours), 0) as total_labor_hours,
-                COALESCE(SUM(l.labor_sale), 0) as total_labor_sale,
-                COALESCE(SUM(l.labor_cost), 0) as total_labor_cost,
-                COALESCE(SUM(p.parts_unit_sale * p.part_quantity), 0) as total_parts_sale,
-                COALESCE(SUM(p.parts_unit_cost * p.part_quantity), 0) as total_parts_cost,
-                COUNT(DISTINCT CASE WHEN p.part_number IS NOT NULL AND p.part_number != '' THEN p.id END) as parts_count,
-                STRING_AGG(DISTINCT NULLIF(p.part_number, ''), ', ') FILTER (WHERE p.part_number IS NOT NULL AND p.part_number != '') as parts_list,
+                COALESCE(labor_totals.total_labor_hours, 0) as total_labor_hours,
+                COALESCE(labor_totals.total_labor_sale, 0) as total_labor_sale,
+                COALESCE(labor_totals.total_labor_cost, 0) as total_labor_cost,
+                COALESCE(parts_totals.total_parts_sale, 0) as total_parts_sale,
+                COALESCE(parts_totals.total_parts_cost, 0) as total_parts_cost,
+                COALESCE(parts_totals.parts_count, 0) as parts_count,
+                parts_totals.parts_list,
                 o.ai_reasoning_summary
               FROM operation o
               LEFT JOIN service_record sr ON o.service_record_id = sr.id
@@ -277,10 +280,25 @@ export async function GET(request: NextRequest) {
               LEFT JOIN service_categories sc ON s.category_id = sc.id AND s.dealer_id = sc.dealer_id
               LEFT JOIN service_subcategories ss ON s.subcategory_id = ss.id AND s.dealer_id = ss.dealer_id
               LEFT JOIN users u ON o.updated_by::text = u.id
-              LEFT JOIN labor_line l ON o.id = l.operation_id
-              LEFT JOIN parts_line p ON o.id = p.operation_id
+              LEFT JOIN LATERAL (
+                SELECT 
+                  COALESCE(SUM(labor_bill_hours), 0) as total_labor_hours,
+                  COALESCE(SUM(labor_sale), 0) as total_labor_sale,
+                  COALESCE(SUM(labor_cost), 0) as total_labor_cost
+                FROM labor_line
+                WHERE operation_id = o.id
+              ) labor_totals ON true
+              LEFT JOIN LATERAL (
+                SELECT 
+                  COALESCE(SUM(parts_unit_sale * part_quantity), 0) as total_parts_sale,
+                  COALESCE(SUM(parts_unit_cost * part_quantity), 0) as total_parts_cost,
+                  COUNT(DISTINCT CASE WHEN part_number IS NOT NULL AND part_number != '' THEN id END) as parts_count,
+                  STRING_AGG(DISTINCT NULLIF(part_number, ''), ', ') FILTER (WHERE part_number IS NOT NULL AND part_number != '') as parts_list
+                FROM parts_line
+                WHERE operation_id = o.id
+              ) parts_totals ON true
               ${whereClause}
-              GROUP BY o.id, sr.open_date, sr.ro_number, s.id, s.name, sc.id, sc.name, ss.id, ss.name, u.name, v.make, v.year, v.model, v.trim, v.vin, c.full_name, c.salutation, c.first_name, c.middle_name, c.last_name, c.suffix, c.cell_phone, c.home_phone, c.work_phone, c.email_1, c.address_line_1, c.address_line_2, c.city, c.state, c.zip_code
+              GROUP BY o.id, sr.open_date, sr.ro_number, s.id, s.name, sc.id, sc.name, ss.id, ss.name, u.name, v.make, v.year, v.model, v.trim, v.vin, c.full_name, c.salutation, c.first_name, c.middle_name, c.last_name, c.suffix, c.cell_phone, c.home_phone, c.work_phone, c.email_1, c.address_line_1, c.address_line_2, c.city, c.state, c.zip_code, labor_totals.total_labor_hours, labor_totals.total_labor_sale, labor_totals.total_labor_cost, parts_totals.total_parts_sale, parts_totals.total_parts_cost, parts_totals.parts_count, parts_totals.parts_list
               ${havingClause}
               ${orderByClause}
               LIMIT ${batchSize} OFFSET ${offset}
