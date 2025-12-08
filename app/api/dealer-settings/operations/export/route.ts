@@ -156,14 +156,18 @@ export async function GET(request: NextRequest) {
       sortDirection.toLowerCase() === "asc" ? "ASC" : "DESC";
     const orderByClause = `ORDER BY ${validColumn} ${validDirection}, o.id DESC`;
 
-    // HAVING clause for labor/parts filter
-    let havingClause = "";
+    // WHERE clause for labor/parts filter (changed from HAVING since we're using subqueries)
+    // Add conditions to the main WHERE clause to filter operations
+    // Note: For warranty operations, we match RO Selection logic which requires labor_sale > 0 (not just hours)
+    let laborPartsWhereClause = "";
     if (laborPartsFilter === "labor") {
-      havingClause = `HAVING (SUM(l.labor_bill_hours) > 0 OR SUM(l.labor_sale) > 0)`;
+      // Match RO Selection: require labor_sale > 0 (not just hours)
+      // This ensures we exclude operations with $0 or negative revenue
+      laborPartsWhereClause = ` AND COALESCE(labor_totals.total_labor_sale, 0) > 0`;
     } else if (laborPartsFilter === "parts") {
-      havingClause = `HAVING SUM(p.parts_unit_sale * p.part_quantity) > 0`;
+      laborPartsWhereClause = ` AND COALESCE(parts_totals.total_parts_sale, 0) > 0`;
     } else if (laborPartsFilter === "laborOrParts") {
-      havingClause = `HAVING (SUM(l.labor_bill_hours) > 0 OR SUM(l.labor_sale) > 0 OR SUM(p.parts_unit_sale * p.part_quantity) > 0)`;
+      laborPartsWhereClause = ` AND (COALESCE(labor_totals.total_labor_sale, 0) > 0 OR COALESCE(parts_totals.total_parts_sale, 0) > 0)`;
     }
 
     // Create streaming response
@@ -220,9 +224,6 @@ export async function GET(request: NextRequest) {
           let hasMoreData = true;
 
           while (hasMoreData) {
-            // Fix: Use LATERAL joins to aggregate labor and parts separately
-            // This prevents cartesian product multiplication when an operation has multiple parts
-            // Each operation's labor_sale will only be counted once
             const query = `
               SELECT 
                 o.*,
@@ -268,7 +269,7 @@ export async function GET(request: NextRequest) {
                 COALESCE(parts_totals.total_parts_sale, 0) as total_parts_sale,
                 COALESCE(parts_totals.total_parts_cost, 0) as total_parts_cost,
                 COALESCE(parts_totals.parts_count, 0) as parts_count,
-                parts_totals.parts_list,
+                parts_totals.parts_list as parts_list,
                 o.ai_reasoning_summary
               FROM operation o
               LEFT JOIN service_record sr ON o.service_record_id = sr.id
@@ -280,26 +281,26 @@ export async function GET(request: NextRequest) {
               LEFT JOIN service_categories sc ON s.category_id = sc.id AND s.dealer_id = sc.dealer_id
               LEFT JOIN service_subcategories ss ON s.subcategory_id = ss.id AND s.dealer_id = ss.dealer_id
               LEFT JOIN users u ON o.updated_by::text = u.id
-              LEFT JOIN LATERAL (
+              LEFT JOIN (
                 SELECT 
-                  COALESCE(SUM(labor_bill_hours), 0) as total_labor_hours,
-                  COALESCE(SUM(labor_sale), 0) as total_labor_sale,
-                  COALESCE(SUM(labor_cost), 0) as total_labor_cost
-                FROM labor_line
-                WHERE operation_id = o.id
-              ) labor_totals ON true
-              LEFT JOIN LATERAL (
+                  l.operation_id,
+                  COALESCE(SUM(l.labor_bill_hours), 0) as total_labor_hours,
+                  COALESCE(SUM(l.labor_sale), 0) as total_labor_sale,
+                  COALESCE(SUM(l.labor_cost), 0) as total_labor_cost
+                FROM labor_line l
+                GROUP BY l.operation_id
+              ) labor_totals ON o.id = labor_totals.operation_id
+              LEFT JOIN (
                 SELECT 
-                  COALESCE(SUM(parts_unit_sale * part_quantity), 0) as total_parts_sale,
-                  COALESCE(SUM(parts_unit_cost * part_quantity), 0) as total_parts_cost,
-                  COUNT(DISTINCT CASE WHEN part_number IS NOT NULL AND part_number != '' THEN id END) as parts_count,
-                  STRING_AGG(DISTINCT NULLIF(part_number, ''), ', ') FILTER (WHERE part_number IS NOT NULL AND part_number != '') as parts_list
-                FROM parts_line
-                WHERE operation_id = o.id
-              ) parts_totals ON true
-              ${whereClause}
-              GROUP BY o.id, sr.open_date, sr.ro_number, s.id, s.name, sc.id, sc.name, ss.id, ss.name, u.name, v.make, v.year, v.model, v.trim, v.vin, c.full_name, c.salutation, c.first_name, c.middle_name, c.last_name, c.suffix, c.cell_phone, c.home_phone, c.work_phone, c.email_1, c.address_line_1, c.address_line_2, c.city, c.state, c.zip_code, labor_totals.total_labor_hours, labor_totals.total_labor_sale, labor_totals.total_labor_cost, parts_totals.total_parts_sale, parts_totals.total_parts_cost, parts_totals.parts_count, parts_totals.parts_list
-              ${havingClause}
+                  p.operation_id,
+                  COALESCE(SUM(p.parts_unit_sale * p.part_quantity), 0) as total_parts_sale,
+                  COALESCE(SUM(p.parts_unit_cost * p.part_quantity), 0) as total_parts_cost,
+                  COUNT(DISTINCT CASE WHEN p.part_number IS NOT NULL AND p.part_number != '' THEN p.id END) as parts_count,
+                  STRING_AGG(DISTINCT NULLIF(p.part_number, ''), ', ') FILTER (WHERE p.part_number IS NOT NULL AND p.part_number != '') as parts_list
+                FROM parts_line p
+                GROUP BY p.operation_id
+              ) parts_totals ON o.id = parts_totals.operation_id
+              ${whereClause}${laborPartsWhereClause}
               ${orderByClause}
               LIMIT ${batchSize} OFFSET ${offset}
             `;
