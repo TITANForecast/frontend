@@ -284,17 +284,27 @@ export async function GET(request: NextRequest) {
       const twelveMonthsAgoStr = twelveMonthsAgo.toISOString().split("T")[0];
 
       const escapedDealerId = dealerId.replace(/'/g, "''");
+      // Match the export query logic exactly: group by operation first, then sum
+      // This ensures each operation is counted once with its labor_line records properly aggregated
+      // Using same table structure and joins as export: FROM operation o, LEFT JOIN service_record sr
       const warrantyRevenueQuery = `
         SELECT 
-          COALESCE(SUM(l.labor_sale), 0) as past_year_warranty_labor_revenue,
-          COALESCE(SUM(l.labor_bill_hours), 0) as past_year_warranty_hours
-        FROM service_record sr
-        INNER JOIN operation o ON o.service_record_id = sr.id
-        LEFT JOIN labor_line l ON o.id = l.operation_id
-        WHERE sr.dealer_id = '${escapedDealerId}'
-          AND sr.open_date >= '${twelveMonthsAgoStr}'
-          AND o.sale_type = 'W'
-          AND COALESCE(l.labor_sale, 0) > 0
+          COALESCE(SUM(operation_totals.total_labor_sale), 0) as past_year_warranty_labor_revenue,
+          COALESCE(SUM(operation_totals.total_labor_hours), 0) as past_year_warranty_hours
+        FROM (
+          SELECT 
+            o.id,
+            COALESCE(SUM(l.labor_sale), 0) as total_labor_sale,
+            COALESCE(SUM(l.labor_bill_hours), 0) as total_labor_hours
+          FROM operation o
+          LEFT JOIN service_record sr ON o.service_record_id = sr.id
+          LEFT JOIN labor_line l ON o.id = l.operation_id
+          WHERE o.dealer_id = '${escapedDealerId}'
+            AND sr.open_date >= '${twelveMonthsAgoStr}'
+            AND o.sale_type = 'W'
+          GROUP BY o.id
+          HAVING COALESCE(SUM(l.labor_sale), 0) > 0
+        ) operation_totals
       `;
 
       const warrantyRevenueResult = await prisma.$queryRawUnsafe<any[]>(
