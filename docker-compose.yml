@@ -4,6 +4,7 @@ services:
   postgres:
     image: postgres:15.12
     container_name: titan-postgres-dev
+    shm_size: 512m  # Increase shared memory for large queries
     environment:
       POSTGRES_DB: titan_dev
       POSTGRES_USER: titan_admin

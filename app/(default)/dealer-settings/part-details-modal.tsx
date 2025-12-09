@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth-provider-multitenancy";
 import { X, Loader2 } from "lucide-react";
+import { formatCurrency, formatNumber } from "@/components/utils/utils";
 
 interface PartDetail {
   id: string;
@@ -102,20 +103,6 @@ export default function PartDetailsModal({
   };
 
   if (!isOpen) return null;
-
-  const formatCurrency = (value: number | null | undefined) => {
-    if (value === null || value === undefined || isNaN(value)) {
-      return "$0.00";
-    }
-    return `$${Number(value).toFixed(2)}`;
-  };
-
-  const formatNumber = (value: number | null | undefined) => {
-    if (value === null || value === undefined || isNaN(value)) {
-      return "0.00";
-    }
-    return Number(value).toFixed(2);
-  };
 
   return (
     <div className="fixed inset-0 bg-gray-900/50 dark:bg-gray-900/80 z-50 flex items-center justify-center p-4">

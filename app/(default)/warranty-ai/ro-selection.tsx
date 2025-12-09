@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth-provider-multitenancy";
 import { cn } from "@/lib/utils";
+import { formatCurrency, formatNumber } from "@/components/utils/utils";
 import {
   ChevronDown,
   ChevronRight,
@@ -606,8 +607,8 @@ export default function ROSSelection() {
                 return (
                   <div className={`text-2xl font-bold ${textColor}`}>
                     {searchMode === "labor"
-                      ? `$${calculatedValue.toFixed(2)}`
-                      : `${calculatedValue.toFixed(2)}%`}
+                      ? formatCurrency(calculatedValue)
+                      : `${formatNumber(calculatedValue, 2)}%`}
                   </div>
                 );
               })()}
@@ -620,14 +621,14 @@ export default function ROSSelection() {
               <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {searchMode === "labor" ? (
                   currentWarrantyLaborRate !== null ? (
-                    `$${currentWarrantyLaborRate.toFixed(2)}`
+                    formatCurrency(currentWarrantyLaborRate)
                   ) : (
                     <span className="text-gray-400 dark:text-gray-500">
                       Not Set
                     </span>
                   )
                 ) : currentWarrantyPartsMarkup !== null ? (
-                  `${currentWarrantyPartsMarkup.toFixed(2)}%`
+                  `${formatNumber(currentWarrantyPartsMarkup, 2)}%`
                 ) : (
                   <span className="text-gray-400 dark:text-gray-500">
                     Not Set
@@ -697,9 +698,8 @@ export default function ROSSelection() {
                     Past Year Warranty Labor Revenue
                   </div>
                   <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                    $
-                    {warrantyRevenueMetrics.pastYearWarrantyLaborRevenue.toFixed(
-                      2
+                    {formatCurrency(
+                      warrantyRevenueMetrics.pastYearWarrantyLaborRevenue
                     )}
                   </div>
                 </div>
@@ -708,9 +708,8 @@ export default function ROSSelection() {
                     Potential Warranty Labor Revenue
                   </div>
                   <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                    $
-                    {warrantyRevenueMetrics.potentialWarrantyLaborRevenue.toFixed(
-                      2
+                    {formatCurrency(
+                      warrantyRevenueMetrics.potentialWarrantyLaborRevenue
                     )}
                   </div>
                 </div>
@@ -725,9 +724,8 @@ export default function ROSSelection() {
                         : "text-red-600 dark:text-red-400"
                     }`}
                   >
-                    $
-                    {warrantyRevenueMetrics.additionalRevenuePotential.toFixed(
-                      2
+                    {formatCurrency(
+                      warrantyRevenueMetrics.additionalRevenuePotential
                     )}
                   </div>
                 </div>
@@ -1037,19 +1035,19 @@ export default function ROSSelection() {
                           : "N/A"}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300 cursor-default select-none">
-                        ${ro.total_labor_sale.toFixed(2)}
+                        {formatCurrency(ro.total_labor_sale)}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300 cursor-default select-none">
-                        {ro.total_labor_hours.toFixed(2)}
+                        {formatNumber(ro.total_labor_hours, 2)}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300 cursor-default select-none">
-                        ${ro.ro_level_elr.toFixed(2)}
+                        {formatCurrency(ro.ro_level_elr)}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300 cursor-default select-none">
-                        ${ro.total_parts_sale.toFixed(2)}
+                        {formatCurrency(ro.total_parts_sale)}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300 cursor-default select-none">
-                        {ro.ro_level_parts_markup_percent.toFixed(2)}%
+                        {formatNumber(ro.ro_level_parts_markup_percent, 2)}%
                       </td>
                     </tr>
                     {expandedROs.has(ro.service_record_id) && (
@@ -1379,7 +1377,7 @@ function OperationsTable({
                       "text-gray-600 dark:text-gray-300 whitespace-nowrap"
                     )}
                   >
-                    {op.labor_hours.toFixed(2)}
+                    {formatNumber(op.labor_hours, 2)}
                   </td>
                   <td
                     className={cn(
@@ -1387,7 +1385,7 @@ function OperationsTable({
                       "text-gray-600 dark:text-gray-300 whitespace-nowrap"
                     )}
                   >
-                    ${op.labor_sale.toFixed(2)}
+                    {formatCurrency(op.labor_sale)}
                   </td>
                   <td
                     className={cn(
@@ -1395,7 +1393,7 @@ function OperationsTable({
                       "text-gray-600 dark:text-gray-300 whitespace-nowrap"
                     )}
                   >
-                    ${op.operation_elr.toFixed(2)}
+                    {formatCurrency(op.operation_elr)}
                   </td>
                   <td
                     className={cn(
@@ -1403,7 +1401,7 @@ function OperationsTable({
                       "text-gray-600 dark:text-gray-300 whitespace-nowrap"
                     )}
                   >
-                    ${op.parts_sale.toFixed(2)}
+                    {formatCurrency(op.parts_sale)}
                   </td>
                   <td
                     className={cn(
@@ -1411,7 +1409,7 @@ function OperationsTable({
                       "text-gray-600 dark:text-gray-300 whitespace-nowrap"
                     )}
                   >
-                    {op.parts_cost > 0 ? `$${op.parts_cost.toFixed(2)}` : "N/A"}
+                    {op.parts_cost > 0 ? formatCurrency(op.parts_cost) : "N/A"}
                   </td>
                   <td
                     className={cn(
@@ -1419,7 +1417,7 @@ function OperationsTable({
                       "text-gray-600 dark:text-gray-300 whitespace-nowrap"
                     )}
                   >
-                    {op.parts_markup_percent.toFixed(2)}%
+                    {formatNumber(op.parts_markup_percent, 2)}%
                   </td>
                   <td className={tdClassName}>
                     {getEligibilityBadge(op.is_warranty_eligible)}

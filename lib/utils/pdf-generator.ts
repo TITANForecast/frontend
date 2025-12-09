@@ -1,6 +1,7 @@
 import PDFDocument from "pdfkit";
 import fs from "fs";
 import path from "path";
+import { formatCurrency, formatNumber } from "@/components/utils/utils";
 
 // Helper function to ensure font files are accessible
 function ensureFontFiles() {
@@ -462,7 +463,7 @@ export function generateROPDF(data: ROPDFData): PDFKit.PDFDocument {
         doc.text("", margin, yPosition, { width: 80 });
         doc.text(techInfo, margin + 80, yPosition, { width: 100 });
         doc.text(
-          (labor.laborBillHours || 0).toFixed(2),
+          formatNumber(labor.laborBillHours || 0, 2),
           margin + 180,
           yPosition,
           { width: 60 }
@@ -473,13 +474,13 @@ export function generateROPDF(data: ROPDFData): PDFKit.PDFDocument {
         });
         doc.text("1", margin + 400, yPosition, { width: 40 });
         doc.text(
-          `$${(labor.laborCost || 0).toFixed(2)}`,
+          formatCurrency(labor.laborCost || 0),
           margin + 440,
           yPosition,
           { width: 60 }
         );
         doc.text(
-          `$${(labor.laborSale || 0).toFixed(2)}`,
+          formatCurrency(labor.laborSale || 0),
           margin + 500,
           yPosition,
           { width: 62 }
@@ -504,13 +505,13 @@ export function generateROPDF(data: ROPDFData): PDFKit.PDFDocument {
           width: 40,
         });
         doc.text(
-          `$${(part.unitCost || 0).toFixed(2)}`,
+          formatCurrency(part.unitCost || 0),
           margin + 440,
           yPosition,
           { width: 60 }
         );
         doc.text(
-          `$${(part.unitSale || 0).toFixed(2)}`,
+          formatCurrency(part.unitSale || 0),
           margin + 500,
           yPosition,
           { width: 62 }
@@ -541,13 +542,13 @@ export function generateROPDF(data: ROPDFData): PDFKit.PDFDocument {
     doc.font("Courier-Bold").fontSize(9);
     doc.text("Sub Total Parts", margin + 300, yPosition, { width: 100 });
     doc.text(
-      `$${(operation.totalPartsCost || 0).toFixed(2)}`,
+      formatCurrency(operation.totalPartsCost || 0),
       margin + 400,
       yPosition,
       { width: 60 }
     );
     doc.text(
-      `$${(operation.totalPartsSale || 0).toFixed(2)}`,
+      formatCurrency(operation.totalPartsSale || 0),
       margin + 500,
       yPosition,
       { width: 62 }
@@ -559,14 +560,14 @@ export function generateROPDF(data: ROPDFData): PDFKit.PDFDocument {
       width: 100,
     });
     doc.text(
-      `$${(
+      formatCurrency(
         (operation.totalLaborCost || 0) + (operation.totalPartsCost || 0)
-      ).toFixed(2)}`,
+      ),
       margin + 400,
       yPosition,
       { width: 60 }
     );
-    doc.text(`$${operationTotal.toFixed(2)}`, margin + 500, yPosition, {
+    doc.text(formatCurrency(operationTotal), margin + 500, yPosition, {
       width: 62,
     });
 
@@ -600,19 +601,19 @@ export function generateROPDF(data: ROPDFData): PDFKit.PDFDocument {
   // Labor totals
   addText("Labor", margin, yPosition, { fontSize: 9 });
   addText(
-    `$${(data.totals.internalLaborCost || 0).toFixed(2)}`,
+    formatCurrency(data.totals.internalLaborCost || 0),
     margin + 100,
     yPosition,
     { fontSize: 9 }
   );
   addText(
-    `$${(data.totals.warrantyLaborCost || 0).toFixed(2)}`,
+    formatCurrency(data.totals.warrantyLaborCost || 0),
     margin + 220,
     yPosition,
     { fontSize: 9 }
   );
   addText(
-    `$${(data.totals.customerLaborCost || 0).toFixed(2)}`,
+    formatCurrency(data.totals.customerLaborCost || 0),
     margin + 320,
     yPosition,
     { fontSize: 9 }
@@ -622,19 +623,19 @@ export function generateROPDF(data: ROPDFData): PDFKit.PDFDocument {
   // Parts totals
   addText("Parts", margin, yPosition, { fontSize: 9 });
   addText(
-    `$${(data.totals.internalPartsCost || 0).toFixed(2)}`,
+    formatCurrency(data.totals.internalPartsCost || 0),
     margin + 100,
     yPosition,
     { fontSize: 9 }
   );
   addText(
-    `$${(data.totals.warrantyPartsCost || 0).toFixed(2)}`,
+    formatCurrency(data.totals.warrantyPartsCost || 0),
     margin + 220,
     yPosition,
     { fontSize: 9 }
   );
   addText(
-    `$${(data.totals.customerPartsCost || 0).toFixed(2)}`,
+    formatCurrency(data.totals.customerPartsCost || 0),
     margin + 320,
     yPosition,
     { fontSize: 9 }
@@ -654,7 +655,7 @@ export function generateROPDF(data: ROPDFData): PDFKit.PDFDocument {
     fontSize: 12,
     bold: true,
   });
-  addText(`$${grandTotal.toFixed(2)}`, margin + 500, yPosition, {
+  addText(formatCurrency(grandTotal), margin + 500, yPosition, {
     fontSize: 12,
     bold: true,
     width: 62,

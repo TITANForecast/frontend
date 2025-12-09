@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { AgCharts } from "@/lib/ag-charts-license";
 import { useAgChartsLoading } from "@/lib/use-ag-charts-license";
+import { formatNumber } from "@/components/utils/utils";
 
 interface AGKPIGaugeProps {
   value: number;
@@ -76,15 +77,15 @@ export default function DashboardCardAGKPIGauge({
         formatter({ value }: { value: number }) {
           // Add appropriate symbol to the value based on gauge type
           if (name.includes("GP %")) {
-            return `${value.toFixed(0)}%`;
+            return `${formatNumber(value, 0)}%`;
           } else if (name.includes("$/RO")) {
-            return `$${value.toFixed(0)}`;
+            return `$${formatNumber(value, 0)}`;
           } else if (name.includes("Hrs/RO")) {
-            return `${value.toFixed(2)}`;
+            return formatNumber(value, 2);
           } else if (name.includes("ELR")) {
-            return `$${value.toFixed(0)}`;
+            return `$${formatNumber(value, 0)}`;
           }
-          return `${value.toFixed(0)}`;
+          return `${formatNumber(value, 0)}`;
         },
       },
       startAngle: 270,
@@ -112,13 +113,13 @@ export default function DashboardCardAGKPIGauge({
           // Format value based on gauge type
           let formattedValue;
           if (name.includes("GP %")) {
-            formattedValue = `${value.toFixed(0)}%`;
+            formattedValue = `${formatNumber(value, 0)}%`;
           } else if (name.includes("$/RO")) {
-            formattedValue = `$${value.toFixed(0)}`;
+            formattedValue = `$${formatNumber(value, 0)}`;
           } else if (name.includes("Hrs/RO")) {
-            formattedValue = `${value.toFixed(2)}`;
+            formattedValue = formatNumber(value, 2);
           } else if (name.includes("ELR")) {
-            formattedValue = `$${value.toFixed(0)}`;
+            formattedValue = `$${formatNumber(value, 0)}`;
           } else {
             formattedValue = value.toString();
           }
@@ -148,13 +149,13 @@ export default function DashboardCardAGKPIGauge({
           formatter: ({ value }: { value: number }) => {
             // Add appropriate symbol to scale labels based on gauge type
             if (name.includes("GP %")) {
-              return `${value.toFixed(0)}%`;
+              return `${formatNumber(value, 0)}%`;
             } else if (name.includes("$/RO")) {
-              return `$${value.toFixed(0)}`;
+              return `$${formatNumber(value, 0)}`;
             } else if (name.includes("Hrs/RO")) {
-              return value.toFixed(2);
+              return formatNumber(value, 2);
             } else if (name.includes("ELR")) {
-              return `$${value.toFixed(0)}`;
+              return `$${formatNumber(value, 0)}`;
             }
             return value.toString();
           },

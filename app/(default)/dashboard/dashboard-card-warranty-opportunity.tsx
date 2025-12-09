@@ -1,6 +1,7 @@
 "use client";
 
 import EditMenu from "@/components/edit-menu";
+import { formatCurrency, formatNumber } from "@/components/utils/utils";
 
 interface WarrantyData {
   currentLaborRate?: number | null;
@@ -36,7 +37,9 @@ export default function DashboardCardWarrantyOpportunity({ data }: Props) {
               Current Warranty Labor
             </div>
             <div className="text-2xl font-bold text-yellow-800 dark:text-yellow-200">
-              ${data?.currentLaborRate?.toFixed(2) ?? "0.00"}
+              {data?.currentLaborRate
+                ? formatCurrency(data.currentLaborRate)
+                : "$0.00"}
             </div>
           </div>
 
@@ -80,7 +83,7 @@ export default function DashboardCardWarrantyOpportunity({ data }: Props) {
                 <div
                   className={`flex items-center text-2xl font-bold ${valueColor} gap-1`}
                 >
-                  {potential.toFixed(2)}{" "}
+                  {formatNumber(potential, 2)}{" "}
                   <span className="text-xs font-normal">(Top 100)</span>
                 </div>
                 <div className={`text-xs ${dateColor} mt-1`}>
@@ -133,7 +136,9 @@ export default function DashboardCardWarrantyOpportunity({ data }: Props) {
               Current Warranty Parts
             </div>
             <div className="text-2xl font-bold text-yellow-800 dark:text-yellow-200">
-              {data?.currentPartsGP?.toFixed(2) ?? "0.00"}%
+              {data?.currentPartsGP
+                ? `${formatNumber(data.currentPartsGP, 2)}%`
+                : "0.00%"}
             </div>
           </div>
 
@@ -177,7 +182,7 @@ export default function DashboardCardWarrantyOpportunity({ data }: Props) {
                 <div
                   className={`flex items-center text-2xl font-bold ${valueColor} gap-1`}
                 >
-                  {potential.toFixed(2)}%{" "}
+                  {formatNumber(potential, 2)}%{" "}
                   <span className="text-xs font-normal">(Top 100)</span>
                 </div>
                 <div className={`text-xs ${dateColor} mt-1`}>

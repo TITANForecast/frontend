@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import ReactECharts from "echarts-for-react";
 import EditMenu from "@/components/edit-menu";
+import { formatCurrency } from "@/components/utils/utils";
 
 interface AdvisorData {
   names: string[];
@@ -37,8 +38,17 @@ export default function DashboardCardAdvisorElr({ data }: Props) {
 
   // Use real data if available, otherwise use mock data
   const chartData = data || {
-    names: ["M. Jordan", "J. Diezzy", "C. Pratt", "M. Goodbar", "C. Crunch", 
-            "F. Astair", "S. Walton", "Y. Bear", "J. Doe"],
+    names: [
+      "M. Jordan",
+      "J. Diezzy",
+      "C. Pratt",
+      "M. Goodbar",
+      "C. Crunch",
+      "F. Astair",
+      "S. Walton",
+      "Y. Bear",
+      "J. Doe",
+    ],
     elr: [185, 178, 172, 168, 165, 160, 155, 148, 142],
   };
 
@@ -55,7 +65,7 @@ export default function DashboardCardAdvisorElr({ data }: Props) {
         color: isDark ? "#F9FAFB" : "#111827",
       },
       formatter: function (params: any) {
-        return `${params[0].name}: $${params[0].value.toFixed(2)}`;
+        return `${params[0].name}: ${formatCurrency(params[0].value)}`;
       },
     },
     grid: {

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth-provider-multitenancy";
 import { X, ChevronDown, ChevronRight, Loader2, Download } from "lucide-react";
+import { formatCurrency, formatNumber } from "@/components/utils/utils";
 
 interface Operation {
   id: string;
@@ -534,13 +535,12 @@ export default function RODetailsModal({
                                         Labor Hours
                                       </h4>
                                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                                        {parseDecimal(
-                                          operation.total_labor_hours
-                                        ) > 0
-                                          ? parseDecimal(
-                                              operation.total_labor_hours
-                                            ).toFixed(2)
-                                          : "0.00"}
+                                        {formatNumber(
+                                          parseDecimal(
+                                            operation.total_labor_hours
+                                          ),
+                                          2
+                                        )}
                                       </p>
                                     </div>
                                     <div>
@@ -548,10 +548,11 @@ export default function RODetailsModal({
                                         Labor Sale Total
                                       </h4>
                                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                                        $
-                                        {parseDecimal(
-                                          operation.total_labor_sale
-                                        ).toFixed(2)}
+                                        {formatCurrency(
+                                          parseDecimal(
+                                            operation.total_labor_sale
+                                          )
+                                        )}
                                       </p>
                                     </div>
                                     <div>
@@ -559,10 +560,11 @@ export default function RODetailsModal({
                                         Labor Cost
                                       </h4>
                                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                                        $
-                                        {parseDecimal(
-                                          operation.total_labor_cost
-                                        ).toFixed(2)}
+                                        {formatCurrency(
+                                          parseDecimal(
+                                            operation.total_labor_cost
+                                          )
+                                        )}
                                       </p>
                                     </div>
                                     <div>
@@ -570,10 +572,11 @@ export default function RODetailsModal({
                                         Parts Sale Total
                                       </h4>
                                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                                        $
-                                        {parseDecimal(
-                                          operation.total_parts_sale
-                                        ).toFixed(2)}
+                                        {formatCurrency(
+                                          parseDecimal(
+                                            operation.total_parts_sale
+                                          )
+                                        )}
                                       </p>
                                     </div>
                                     <div>
@@ -581,10 +584,11 @@ export default function RODetailsModal({
                                         Parts Cost
                                       </h4>
                                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                                        $
-                                        {parseDecimal(
-                                          operation.total_parts_cost
-                                        ).toFixed(2)}
+                                        {formatCurrency(
+                                          parseDecimal(
+                                            operation.total_parts_cost
+                                          )
+                                        )}
                                       </p>
                                     </div>
                                     <div>
@@ -601,7 +605,7 @@ export default function RODetailsModal({
                                           );
                                           if (laborHours > 0) {
                                             const elr = laborSale / laborHours;
-                                            return `$${elr.toFixed(2)}`;
+                                            return formatCurrency(elr);
                                           }
                                           return "N/A";
                                         })()}
@@ -624,7 +628,8 @@ export default function RODetailsModal({
                                               ((partsSale - partsCost) /
                                                 partsCost) *
                                               100;
-                                            return `${profitPercent.toFixed(
+                                            return `${formatNumber(
+                                              profitPercent,
                                               2
                                             )}%`;
                                           }
@@ -723,11 +728,12 @@ export default function RODetailsModal({
                                         <p className="text-sm text-gray-900 dark:text-gray-100">
                                           {operation.warranty_evaluation_confidence !==
                                           null
-                                            ? `${(
+                                            ? `${formatNumber(
                                                 Number(
                                                   operation.warranty_evaluation_confidence
-                                                ) * 100
-                                              ).toFixed(1)}%`
+                                                ) * 100,
+                                                1
+                                              )}%`
                                             : "N/A"}
                                         </p>
                                       </div>

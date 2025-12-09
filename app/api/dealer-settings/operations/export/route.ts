@@ -4,6 +4,7 @@ import {
   dealerUnauthorizedResponse,
 } from "@/lib/auth/dealer-middleware";
 import { prisma } from "@/lib/db/prisma-admin-data";
+import { formatNumber } from "@/components/utils/utils";
 
 /**
  * GET /api/dealer-settings/operations/export
@@ -350,11 +351,11 @@ export async function GET(request: NextRequest) {
                     : "No",
                   op.ai_confidence_service !== null &&
                   op.ai_confidence_service !== undefined
-                    ? (op.ai_confidence_service * 100).toFixed(1)
+                    ? formatNumber(op.ai_confidence_service * 100, 1)
                     : "",
                   op.ai_confidence_warranty !== null &&
                   op.ai_confidence_warranty !== undefined
-                    ? (op.ai_confidence_warranty * 100).toFixed(1)
+                    ? formatNumber(op.ai_confidence_warranty * 100, 1)
                     : "",
                   escapeCSV(op.ai_reasoning_summary || ""),
                   escapeCSV(op.customer_name || ""),
@@ -366,15 +367,17 @@ export async function GET(request: NextRequest) {
                   escapeCSV(op.vehicle_model || ""),
                   escapeCSV(op.vehicle_trim || ""),
                   escapeCSV(op.vehicle_vin || ""),
-                  laborHours > 0 ? laborHours.toFixed(2) : "0.00",
-                  laborSale.toFixed(2),
-                  parseDecimal(op.total_labor_cost).toFixed(2),
-                  partsSale.toFixed(2),
-                  partsCost.toFixed(2),
+                  formatNumber(laborHours, 2),
+                  formatNumber(laborSale, 2),
+                  formatNumber(parseDecimal(op.total_labor_cost), 2),
+                  formatNumber(partsSale, 2),
+                  formatNumber(partsCost, 2),
                   op.parts_count || 0,
                   escapeCSV(op.parts_list || ""),
-                  elr !== null ? `$${elr.toFixed(2)}` : "N/A",
-                  partMarkup !== null ? `${partMarkup.toFixed(2)}%` : "N/A",
+                  elr !== null ? `$${formatNumber(elr, 2)}` : "N/A",
+                  partMarkup !== null
+                    ? `${formatNumber(partMarkup, 2)}%`
+                    : "N/A",
                   escapeCSV(op.labor_complaint || ""),
                   escapeCSV(op.labor_cause || ""),
                   escapeCSV(op.labor_correction || ""),

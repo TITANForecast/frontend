@@ -19,6 +19,7 @@ import OperationEditModal from "./operation-edit-modal";
 import PartDetailsModal from "./part-details-modal";
 import AIEvaluationModal from "./ai-evaluation-modal";
 import RODetailsModal from "./ro-details-modal";
+import { formatCurrency, formatNumber } from "@/components/utils/utils";
 import MultiSelectDropdown from "@/components/multi-select-dropdown";
 
 interface Operation {
@@ -1210,9 +1211,10 @@ export default function OperationsManagement({
                               Service:{" "}
                               {operation.ai_confidence_service !== null &&
                               operation.ai_confidence_service !== undefined
-                                ? `${(
-                                    operation.ai_confidence_service * 100
-                                  ).toFixed(1)}%`
+                                ? `${formatNumber(
+                                    operation.ai_confidence_service * 100,
+                                    1
+                                  )}%`
                                 : "-"}
                             </div>
                             <div className="text-gray-600 dark:text-gray-300">
@@ -1221,16 +1223,18 @@ export default function OperationsManagement({
                                 null &&
                               operation.warranty_evaluation_confidence !==
                                 undefined
-                                ? `${(
+                                ? `${formatNumber(
                                     Number(
                                       operation.warranty_evaluation_confidence
-                                    ) * 100
-                                  ).toFixed(1)}%`
+                                    ) * 100,
+                                    1
+                                  )}%`
                                 : operation.ai_confidence_warranty !== null &&
                                   operation.ai_confidence_warranty !== undefined
-                                ? `${(
-                                    operation.ai_confidence_warranty * 100
-                                  ).toFixed(1)}%`
+                                ? `${formatNumber(
+                                    operation.ai_confidence_warranty * 100,
+                                    1
+                                  )}%`
                                 : "-"}
                             </div>
                             {operation.ai_reviewed === false && (
@@ -1308,11 +1312,10 @@ export default function OperationsManagement({
                                   Labor Hours
                                 </h4>
                                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                                  {parseDecimal(operation.total_labor_hours) > 0
-                                    ? parseDecimal(
-                                        operation.total_labor_hours
-                                      ).toFixed(2)
-                                    : "0.00"}
+                                  {formatNumber(
+                                    parseDecimal(operation.total_labor_hours),
+                                    2
+                                  )}
                                 </p>
                               </div>
                               <div>
@@ -1320,10 +1323,9 @@ export default function OperationsManagement({
                                   Labor Sale Total
                                 </h4>
                                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                                  $
-                                  {parseDecimal(
-                                    operation.total_labor_sale
-                                  ).toFixed(2)}
+                                  {formatCurrency(
+                                    parseDecimal(operation.total_labor_sale)
+                                  )}
                                 </p>
                               </div>
                               <div>
@@ -1331,10 +1333,9 @@ export default function OperationsManagement({
                                   Labor Cost
                                 </h4>
                                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                                  $
-                                  {parseDecimal(
-                                    operation.total_labor_cost
-                                  ).toFixed(2)}
+                                  {formatCurrency(
+                                    parseDecimal(operation.total_labor_cost)
+                                  )}
                                 </p>
                               </div>
                               <div>
@@ -1342,10 +1343,9 @@ export default function OperationsManagement({
                                   Parts Sale Total
                                 </h4>
                                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                                  $
-                                  {parseDecimal(
-                                    operation.total_parts_sale
-                                  ).toFixed(2)}
+                                  {formatCurrency(
+                                    parseDecimal(operation.total_parts_sale)
+                                  )}
                                 </p>
                               </div>
                               <div>
@@ -1353,10 +1353,9 @@ export default function OperationsManagement({
                                   Parts Cost
                                 </h4>
                                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                                  $
-                                  {parseDecimal(
-                                    operation.total_parts_cost
-                                  ).toFixed(2)}
+                                  {formatCurrency(
+                                    parseDecimal(operation.total_parts_cost)
+                                  )}
                                 </p>
                               </div>
                               <div>
@@ -1373,7 +1372,7 @@ export default function OperationsManagement({
                                     );
                                     if (laborHours > 0) {
                                       const elr = laborSale / laborHours;
-                                      return `$${elr.toFixed(2)}`;
+                                      return formatCurrency(elr);
                                     }
                                     return "N/A";
                                   })()}
@@ -1395,7 +1394,10 @@ export default function OperationsManagement({
                                       const profitPercent =
                                         ((partsSale - partsCost) / partsCost) *
                                         100;
-                                      return `${profitPercent.toFixed(2)}%`;
+                                      return `${formatNumber(
+                                        profitPercent,
+                                        2
+                                      )}%`;
                                     }
                                     return "N/A";
                                   })()}
@@ -1496,11 +1498,12 @@ export default function OperationsManagement({
                                   <p className="text-sm text-gray-900 dark:text-gray-100">
                                     {operation.warranty_evaluation_confidence !==
                                     null
-                                      ? `${(
+                                      ? `${formatNumber(
                                           Number(
                                             operation.warranty_evaluation_confidence
-                                          ) * 100
-                                        ).toFixed(1)}%`
+                                          ) * 100,
+                                          1
+                                        )}%`
                                       : "N/A"}
                                   </p>
                                 </div>
