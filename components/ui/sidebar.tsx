@@ -120,6 +120,13 @@ const NAVIGATION_ITEMS: NavItem[] = [
         segment: "custom-reports",
         icon: null,
       },
+      {
+        id: "ro-performance-summary",
+        title: "RO Performance Summary",
+        href: "/reports/ro-performance-summary",
+        segment: "ro-performance-summary",
+        icon: null,
+      },
     ],
   },
   {
