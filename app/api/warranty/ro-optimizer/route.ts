@@ -347,15 +347,16 @@ export async function GET(request: NextRequest) {
       }
 
       // Calculate potential warranty labor revenue
-      // Formula: (New Average ELR rate - current) * Number of paid warranty hours for past 12 months
+      // Formula: New Average ELR rate * Number of paid warranty hours for past 12 months
+      // This represents the total revenue if all past year warranty hours were billed at the new rate
       let potentialWarrantyLaborRevenue = 0;
-      if (currentWarrantyLaborRate !== null && newAverageELR > 0) {
-        const rateDifference = newAverageELR - currentWarrantyLaborRate;
-        potentialWarrantyLaborRevenue = rateDifference * pastYearWarrantyHours;
+      if (newAverageELR > 0) {
+        potentialWarrantyLaborRevenue = newAverageELR * pastYearWarrantyHours;
       }
 
       // Calculate additional revenue potential
       // Formula: Potential Warranty Labor Revenue - Past Year Warranty Labor Revenue
+      // This represents the additional revenue that could have been earned
       const additionalRevenuePotential =
         potentialWarrantyLaborRevenue - pastYearWarrantyLaborRevenue;
 
