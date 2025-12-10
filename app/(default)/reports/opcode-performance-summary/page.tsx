@@ -197,7 +197,6 @@ export default function OpcodePerformanceSummary() {
         headerName: "Opcode",
         width: 150,
         filter: "agTextColumnFilter",
-        pinned: "left",
         enableRowGroup: true,
       },
       {
@@ -205,7 +204,14 @@ export default function OpcodePerformanceSummary() {
         headerName: "Description",
         width: 250,
         filter: "agTextColumnFilter",
-        pinned: "left",
+        valueGetter: (params: ValueGetterParams) => {
+          // For grouped rows, get description from aggregated data
+          if (params.node?.group) {
+            return params.node.aggData?.opcode_description || "";
+          }
+          return params.data?.opcode_description || "";
+        },
+        aggFunc: "first", // Use first value for aggregation
       },
       {
         field: "ro_number",
@@ -258,7 +264,7 @@ export default function OpcodePerformanceSummary() {
       // Metrics with Aggregation
       {
         field: "ro_count",
-        headerName: "RO Count",
+        headerName: "Operation Count",
         width: 120,
         aggFunc: "sum",
         valueFormatter: integerFormatter,
@@ -369,15 +375,16 @@ export default function OpcodePerformanceSummary() {
     () => ({
       headerName: "Group",
       minWidth: 250,
+      pinned: "left",
       cellRenderer: "agGroupCellRenderer",
       cellRendererParams: {
         suppressCount: false,
       },
       comparator: (valueA, valueB, nodeA, nodeB) => {
-        // Sort groups by RO Count ascending (low to high)
+        // Sort groups by Operation Count descending (high to low)
         const roCountA = nodeA?.aggData?.ro_count || 0;
         const roCountB = nodeB?.aggData?.ro_count || 0;
-        return roCountB - roCountA; // Ascending order (highest first)
+        return roCountB - roCountA; // Descending order (highest first)
       },
     }),
     []
@@ -401,7 +408,7 @@ export default function OpcodePerformanceSummary() {
     }, 100);
   };
 
-  // Auto-sort groups by RO count descending when grouping changes
+  // Auto-sort groups by Operation count descending when grouping changes
   const onColumnRowGroupChanged = useCallback(() => {
     if (gridApi) {
       // Check if any grouping is active
