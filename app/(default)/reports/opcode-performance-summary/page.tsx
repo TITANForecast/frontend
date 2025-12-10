@@ -44,8 +44,10 @@ ModuleRegistry.registerModules([
   FiltersToolPanelModule,
 ]);
 
-interface ROPerformanceData {
+interface OpcodePerformanceData {
   operation_id: string;
+  opcode: string;
+  opcode_description: string;
   service_record_id: string;
   ro_number: string;
   ro_date: string;
@@ -53,7 +55,6 @@ interface ROPerformanceData {
   ro_mileage: number;
   make: string;
   model: string;
-  opcode: string;
   mileage_band: string;
   ro_count: number;
   sales_percent: number;
@@ -67,11 +68,11 @@ interface ROPerformanceData {
   discount_percent: number;
 }
 
-export default function ROPerformanceSummary() {
+export default function OpcodePerformanceSummary() {
   const { currentDealer, getAuthToken } = useAuth();
   const [isDark, setIsDark] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<ROPerformanceData[]>([]);
+  const [data, setData] = useState<OpcodePerformanceData[]>([]);
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
 
   // Filter states
@@ -122,7 +123,7 @@ export default function ROPerformanceSummary() {
       });
 
       const response = await fetch(
-        `/api/reports/ro-performance-summary?${params.toString()}`,
+        `/api/reports/opcode-performance-summary?${params.toString()}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -137,7 +138,7 @@ export default function ROPerformanceSummary() {
       const result = await response.json();
       setData(result.data || []);
     } catch (error) {
-      console.error("Error fetching RO Performance Summary:", error);
+      console.error("Error fetching Opcode Performance Summary:", error);
     } finally {
       setLoading(false);
     }
@@ -188,15 +189,29 @@ export default function ROPerformanceSummary() {
   };
 
   // Column definitions
-  const columnDefs: ColDef<ROPerformanceData>[] = useMemo(
+  const columnDefs: ColDef<OpcodePerformanceData>[] = useMemo(
     () => [
-      // RO Details (groupable by default)
+      // Opcode Details (groupable by default)
+      {
+        field: "opcode",
+        headerName: "Opcode",
+        width: 150,
+        filter: "agTextColumnFilter",
+        pinned: "left",
+        enableRowGroup: true,
+      },
+      {
+        field: "opcode_description",
+        headerName: "Description",
+        width: 250,
+        filter: "agTextColumnFilter",
+        pinned: "left",
+      },
       {
         field: "ro_number",
         headerName: "RO Number",
         width: 150,
         filter: "agTextColumnFilter",
-        pinned: "left",
         enableRowGroup: true,
       },
       {
@@ -359,12 +374,10 @@ export default function ROPerformanceSummary() {
         suppressCount: false,
       },
       comparator: (valueA, valueB, nodeA, nodeB) => {
-        // Sort groups by RO Count descending (high to low)
+        // Sort groups by RO Count ascending (low to high)
         const roCountA = nodeA?.aggData?.ro_count || 0;
         const roCountB = nodeB?.aggData?.ro_count || 0;
-        // Return positive when A > B to put higher values first (descending)
-        // Flipped from roCountB - roCountA to fix reversed order
-        return roCountA - roCountB;
+        return roCountA - roCountB; // Ascending order (lowest first)
       },
     }),
     []
@@ -372,6 +385,20 @@ export default function ROPerformanceSummary() {
 
   const onGridReady = (params: GridReadyEvent) => {
     setGridApi(params.api);
+    // Set default grouping by opcode
+    params.api.setRowGroupColumns(["opcode"]);
+    // Apply sort to trigger the comparator for initial grouping
+    setTimeout(() => {
+      params.api.applyColumnState({
+        state: [
+          {
+            colId: "ag-Grid-AutoColumn",
+            sort: "asc",
+          },
+        ],
+        defaultState: { sort: null },
+      });
+    }, 100);
   };
 
   // Auto-sort groups by RO count descending when grouping changes
@@ -383,13 +410,16 @@ export default function ROPerformanceSummary() {
         // Use setTimeout to ensure grouping is complete before sorting
         setTimeout(() => {
           // Apply sort on the auto group column to trigger the comparator
-          // The comparator will handle the descending order (high to low)
-          const autoGroupCol = gridApi.getColumn("ag-Grid-AutoColumn");
-          if (autoGroupCol) {
-            // Force refresh to apply comparator sorting
-            gridApi.refreshClientSideRowModel("sort");
-          }
-        }, 0);
+          gridApi.applyColumnState({
+            state: [
+              {
+                colId: "ag-Grid-AutoColumn",
+                sort: "asc",
+              },
+            ],
+            defaultState: { sort: null },
+          });
+        }, 100);
       }
     }
   }, [gridApi]);
@@ -409,7 +439,7 @@ export default function ROPerformanceSummary() {
   const exportToCSV = () => {
     if (gridApi) {
       gridApi.exportDataAsCsv({
-        fileName: `ro-performance-summary-${
+        fileName: `opcode-performance-summary-${
           new Date().toISOString().split("T")[0]
         }.csv`,
       });
@@ -429,11 +459,11 @@ export default function ROPerformanceSummary() {
       {/* Page Header */}
       <div className="mb-8">
         <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">
-          RO Performance Summary
+          Opcode Performance Summary
         </h1>
         <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-          Analyze repair orders with flexible grouping by make, model, advisor,
-          and mileage bands
+          Analyze opcodes with flexible grouping by RO, make, model, advisor,
+          and mileage bands. Expand opcodes to view individual operations.
         </p>
       </div>
 
@@ -456,16 +486,16 @@ export default function ROPerformanceSummary() {
           <div className="px-4 pb-4">
             <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
               <li>
-                • Drag column headers (Make, Model, Advisor, Mileage Band) to
-                the group area above the grid
+                • Drag column headers (RO Number, Make, Model, Advisor, Mileage
+                Band) to the group area above the grid
               </li>
               <li>
                 • Create multi-level grouping by dragging multiple columns
                 (e.g., Advisor → Make → Model)
               </li>
               <li>
-                • Each row represents a single RO with aggregated metrics from
-                all its operations
+                • By default, operations are grouped by Opcode. Expand an opcode
+                to see its individual operations.
               </li>
               <li>
                 • Metrics will automatically aggregate when grouped (sum for
@@ -604,7 +634,9 @@ export default function ROPerformanceSummary() {
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-sm">
             <div>
-              <div className="text-gray-500 dark:text-gray-400">Total ROs</div>
+              <div className="text-gray-500 dark:text-gray-400">
+                Total Operations
+              </div>
               <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 {data.length.toLocaleString()}
               </div>
@@ -715,7 +747,7 @@ export default function ROPerformanceSummary() {
             overflowY: "auto",
           }}
         >
-          <AgGridReact<ROPerformanceData>
+          <AgGridReact<OpcodePerformanceData>
             rowData={data}
             columnDefs={columnDefs}
             defaultColDef={defaultColDef}

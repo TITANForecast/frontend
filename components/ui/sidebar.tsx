@@ -127,6 +127,13 @@ const NAVIGATION_ITEMS: NavItem[] = [
         segment: "ro-performance-summary",
         icon: null,
       },
+      {
+        id: "opcode-performance-summary",
+        title: "Opcode Performance Summary",
+        href: "/reports/opcode-performance-summary",
+        segment: "opcode-performance-summary",
+        icon: null,
+      },
     ],
   },
   {

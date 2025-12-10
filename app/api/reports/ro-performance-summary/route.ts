@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
         ? `WHERE ${whereConditions.join(" AND ")}`
         : "";
 
-    // Main query to fetch RO-level data with all metrics
+    // Main query to fetch RO-level data with all metrics aggregated
     // Returns one row per RO, aggregating all operations within that RO
     const query = `
       WITH ro_aggregates AS (
@@ -90,9 +90,6 @@ export async function GET(request: NextRequest) {
           v.make,
           v.model,
           
-          -- Get first opcode for display (sorted alphabetically for consistency)
-          MIN(o.operation_code) as opcode,
-          
           -- Labor aggregates per RO
           SUM(COALESCE(l.labor_bill_hours, 0)) as total_labor_hours,
           SUM(COALESCE(l.labor_sale, 0)) as total_labor_sale,
@@ -103,7 +100,6 @@ export async function GET(request: NextRequest) {
           SUM(COALESCE(p.parts_unit_cost * p.part_quantity, 0)) as total_parts_cost,
           
           -- Sales % calculation: percentage of operations that resulted in a sale
-          -- Count operations with sales vs total operations
           COUNT(DISTINCT o.id) as total_operations,
           COUNT(DISTINCT CASE 
             WHEN COALESCE(l.labor_sale, 0) > 0 OR COALESCE(p.parts_unit_sale * p.part_quantity, 0) > 0 
@@ -127,7 +123,6 @@ export async function GET(request: NextRequest) {
         ro_mileage,
         COALESCE(make, 'Unknown') as make,
         COALESCE(model, 'Unknown') as model,
-        COALESCE(opcode, 'N/A') as opcode,
         
         -- Metrics
         1 as ro_count,
@@ -212,7 +207,6 @@ export async function GET(request: NextRequest) {
       ro_mileage: parseFloat(String(row.ro_mileage || 0)),
       make: row.make || "Unknown",
       model: row.model || "Unknown",
-      opcode: row.opcode || "N/A",
       mileage_band: row.mileage_band || "Unknown",
 
       // Metrics
