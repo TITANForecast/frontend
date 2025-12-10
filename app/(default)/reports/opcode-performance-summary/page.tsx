@@ -377,7 +377,7 @@ export default function OpcodePerformanceSummary() {
         // Sort groups by RO Count ascending (low to high)
         const roCountA = nodeA?.aggData?.ro_count || 0;
         const roCountB = nodeB?.aggData?.ro_count || 0;
-        return roCountA - roCountB; // Ascending order (lowest first)
+        return roCountB - roCountA; // Ascending order (highest first)
       },
     }),
     []
