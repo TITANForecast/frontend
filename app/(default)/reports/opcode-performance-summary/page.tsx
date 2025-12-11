@@ -195,14 +195,14 @@ export default function OpcodePerformanceSummary() {
       {
         field: "opcode",
         headerName: "Opcode",
-        width: 150,
+        width: 180,
         filter: "agTextColumnFilter",
         enableRowGroup: true,
       },
       {
         field: "opcode_description",
         headerName: "Description",
-        width: 250,
+        width: 300,
         filter: "agTextColumnFilter",
         valueGetter: (params: ValueGetterParams) => {
           // For grouped rows, get description from aggregated data
@@ -216,14 +216,14 @@ export default function OpcodePerformanceSummary() {
       {
         field: "ro_number",
         headerName: "RO Number",
-        width: 150,
+        width: 180,
         filter: "agTextColumnFilter",
         enableRowGroup: true,
       },
       {
         field: "ro_date",
         headerName: "RO Date",
-        width: 130,
+        width: 150,
         filter: "agDateColumnFilter",
         valueFormatter: (params) => {
           if (!params.value) return "";
@@ -235,28 +235,28 @@ export default function OpcodePerformanceSummary() {
       {
         field: "make",
         headerName: "Make",
-        width: 140,
+        width: 150,
         enableRowGroup: true,
         filter: "agSetColumnFilter",
       },
       {
         field: "model",
         headerName: "Model",
-        width: 160,
+        width: 180,
         enableRowGroup: true,
         filter: "agSetColumnFilter",
       },
       {
         field: "advisor",
         headerName: "Advisor",
-        width: 160,
+        width: 180,
         enableRowGroup: true,
         filter: "agSetColumnFilter",
       },
       {
         field: "mileage_band",
         headerName: "Mileage Band",
-        width: 150,
+        width: 180,
         enableRowGroup: true,
         filter: "agSetColumnFilter",
       },
@@ -265,7 +265,7 @@ export default function OpcodePerformanceSummary() {
       {
         field: "ro_count",
         headerName: "Operation Count",
-        width: 120,
+        width: 200,
         aggFunc: "sum",
         valueFormatter: integerFormatter,
         cellStyle: { textAlign: "right" },
@@ -273,15 +273,15 @@ export default function OpcodePerformanceSummary() {
       {
         field: "sales_percent",
         headerName: "Sales %",
-        width: 120,
-        aggFunc: "avg",
+        width: 150,
+        aggFunc: "sum",
         valueFormatter: percentFormatter,
         cellStyle: { textAlign: "right" },
       },
       {
         field: "labor_hours",
         headerName: "Labor Hours",
-        width: 140,
+        width: 180,
         aggFunc: "sum",
         valueFormatter: numberFormatter,
         cellStyle: { textAlign: "right" },
@@ -289,7 +289,7 @@ export default function OpcodePerformanceSummary() {
       {
         field: "labor_revenue",
         headerName: "Labor Revenue",
-        width: 160,
+        width: 200,
         aggFunc: "sum",
         valueFormatter: currencyFormatter,
         cellStyle: { textAlign: "right" },
@@ -297,7 +297,7 @@ export default function OpcodePerformanceSummary() {
       {
         field: "labor_rev_per_ro",
         headerName: "Labor Rev/RO",
-        width: 150,
+        width: 200,
         valueGetter: (params: ValueGetterParams) => {
           // For aggregated rows, calculate from aggregated values
           if (params.node?.group) {
@@ -313,7 +313,7 @@ export default function OpcodePerformanceSummary() {
       {
         field: "labor_gp_percent",
         headerName: "Labor GP %",
-        width: 140,
+        width: 180,
         aggFunc: "avg",
         valueFormatter: percentFormatter,
         cellStyle: { textAlign: "right" },
@@ -321,7 +321,7 @@ export default function OpcodePerformanceSummary() {
       {
         field: "parts_revenue",
         headerName: "Parts Revenue",
-        width: 160,
+        width: 200,
         aggFunc: "sum",
         valueFormatter: currencyFormatter,
         cellStyle: { textAlign: "right" },
@@ -329,7 +329,7 @@ export default function OpcodePerformanceSummary() {
       {
         field: "parts_gp_percent",
         headerName: "Parts GP %",
-        width: 140,
+        width: 180,
         aggFunc: "avg",
         valueFormatter: percentFormatter,
         cellStyle: { textAlign: "right" },
@@ -337,7 +337,7 @@ export default function OpcodePerformanceSummary() {
       {
         field: "elr",
         headerName: "ELR",
-        width: 120,
+        width: 150,
         valueGetter: (params: ValueGetterParams) => {
           // For aggregated rows, calculate from aggregated values
           if (params.node?.group) {
@@ -353,7 +353,7 @@ export default function OpcodePerformanceSummary() {
       {
         field: "discount_percent",
         headerName: "Discount %",
-        width: 140,
+        width: 180,
         aggFunc: "avg",
         valueFormatter: percentFormatter,
         cellStyle: { textAlign: "right" },
@@ -413,14 +413,22 @@ export default function OpcodePerformanceSummary() {
     if (gridApi) {
       // Check if any grouping is active
       const rowGroupColumns = gridApi.getRowGroupColumns();
-      
+
       // Columns to hide when grouping is active (detail columns with no data at group level)
-      const detailColumns = ["ro_number", "ro_date", "opcode_description", "model", "advisor", "mileage_band", "make"];
-      
+      const detailColumns = [
+        "ro_number",
+        "ro_date",
+        "opcode_description",
+        "model",
+        "advisor",
+        "mileage_band",
+        "make",
+      ];
+
       if (rowGroupColumns.length > 0) {
         // Grouping is active - hide detail columns
         gridApi.setColumnsVisible(detailColumns, false);
-        
+
         // Use setTimeout to ensure grouping is complete before sorting
         setTimeout(() => {
           // Apply sort on the auto group column to trigger the comparator
@@ -445,21 +453,31 @@ export default function OpcodePerformanceSummary() {
   const onRowGroupOpened = useCallback(() => {
     if (gridApi) {
       const rowGroupColumns = gridApi.getRowGroupColumns();
-      
+
       // Only manage column visibility if grouping is active
       if (rowGroupColumns.length > 0) {
-        const detailColumns = ["ro_number", "ro_date", "opcode_description", "model", "advisor", "mileage_band", "make"];
-        
-        // Check if any group rows are expanded
-        let hasExpandedRows = false;
-        gridApi.forEachNode((node) => {
-          if (node.group && node.expanded) {
-            hasExpandedRows = true;
+        const detailColumns = [
+          "ro_number",
+          "ro_date",
+          "opcode_description",
+          "model",
+          "advisor",
+          "mileage_band",
+          "make",
+        ];
+
+        // Check if any leaf (actual data) rows are visible
+        // This ensures columns only show when expanded all the way to the data level
+        let hasVisibleLeafRows = false;
+        gridApi.forEachNodeAfterFilterAndSort((node) => {
+          // If node is displayed and not a group, it's a visible leaf row
+          if (!node.group && node.displayed) {
+            hasVisibleLeafRows = true;
           }
         });
-        
-        // Show columns if any row is expanded, hide if all collapsed
-        gridApi.setColumnsVisible(detailColumns, hasExpandedRows);
+
+        // Show columns only if leaf rows are visible, hide otherwise
+        gridApi.setColumnsVisible(detailColumns, hasVisibleLeafRows);
       }
     }
   }, [gridApi]);
@@ -799,6 +817,7 @@ export default function OpcodePerformanceSummary() {
             animateRows={true}
             rowGroupPanelShow="always"
             suppressAggFuncInHeader={true}
+            suppressColumnVirtualisation={false}
             sideBar={{
               toolPanels: [
                 {

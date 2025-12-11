@@ -97,14 +97,7 @@ export async function GET(request: NextRequest) {
           
           -- Parts aggregates per RO
           SUM(COALESCE(p.parts_unit_sale * p.part_quantity, 0)) as total_parts_sale,
-          SUM(COALESCE(p.parts_unit_cost * p.part_quantity, 0)) as total_parts_cost,
-          
-          -- Sales % calculation: percentage of operations that resulted in a sale
-          COUNT(DISTINCT o.id) as total_operations,
-          COUNT(DISTINCT CASE 
-            WHEN COALESCE(l.labor_sale, 0) > 0 OR COALESCE(p.parts_unit_sale * p.part_quantity, 0) > 0 
-            THEN o.id 
-          END) as sold_operations
+          SUM(COALESCE(p.parts_unit_cost * p.part_quantity, 0)) as total_parts_cost
           
         FROM service_record sr
         LEFT JOIN vehicle v ON sr.vehicle_id = v.id
@@ -114,6 +107,11 @@ export async function GET(request: NextRequest) {
         ${whereClause}
         GROUP BY sr.id, sr.ro_number, sr.open_date, sr.service_advisor_name, sr.ro_mileage, v.make, v.model
         HAVING COUNT(DISTINCT o.id) > 0
+      ),
+      grand_totals AS (
+        SELECT 
+          SUM(total_labor_sale + total_parts_sale) as grand_total_revenue
+        FROM ro_aggregates
       )
       SELECT 
         service_record_id,
@@ -127,10 +125,10 @@ export async function GET(request: NextRequest) {
         -- Metrics
         1 as ro_count,
         
-        -- Sales % = (sold operations / total operations) * 100
+        -- Sales % = (row total revenue / grand total revenue) * 100
         CASE 
-          WHEN total_operations > 0 
-          THEN (sold_operations::numeric / total_operations::numeric) * 100
+          WHEN grand_totals.grand_total_revenue > 0
+          THEN ((total_labor_sale + total_parts_sale) / grand_totals.grand_total_revenue) * 100
           ELSE 0
         END as sales_percent,
         
@@ -187,6 +185,7 @@ export async function GET(request: NextRequest) {
         END as mileage_band
         
       FROM ro_aggregates
+      CROSS JOIN grand_totals
       ORDER BY ro_date DESC, ro_number DESC
       LIMIT 10000;
     `;

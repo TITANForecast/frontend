@@ -80,73 +80,100 @@ export async function GET(request: NextRequest) {
     // Main query to fetch operation-level data grouped by opcode
     // Returns one row per operation, with opcode and RO-level fields included
     const query = `
+      WITH operation_aggregates AS (
+        SELECT 
+          o.id as operation_id,
+          COALESCE(o.operation_code, 'N/A') as opcode,
+          COALESCE(o.operation_description, '') as opcode_description,
+          sr.id as service_record_id,
+          sr.ro_number,
+          sr.open_date as ro_date,
+          sr.service_advisor_name as advisor,
+          sr.ro_mileage,
+          COALESCE(v.make, 'Unknown') as make,
+          COALESCE(v.model, 'Unknown') as model,
+          
+          -- Operation-level labor metrics
+          COALESCE(SUM(l.labor_bill_hours), 0) as labor_hours,
+          COALESCE(SUM(l.labor_sale), 0) as labor_revenue,
+          COALESCE(SUM(l.labor_cost), 0) as labor_cost,
+          
+          -- Operation-level parts metrics
+          COALESCE(SUM(p.parts_unit_sale * p.part_quantity), 0) as parts_revenue,
+          COALESCE(SUM(p.parts_unit_cost * p.part_quantity), 0) as parts_cost,
+          
+          -- Mileage band calculation
+          CASE 
+            WHEN sr.ro_mileage IS NULL THEN 'Unknown'
+            WHEN sr.ro_mileage >= 0 AND sr.ro_mileage < 10000 THEN '1-10k'
+            WHEN sr.ro_mileage >= 10000 AND sr.ro_mileage < 20000 THEN '10-20k'
+            WHEN sr.ro_mileage >= 20000 AND sr.ro_mileage < 30000 THEN '20-30k'
+            WHEN sr.ro_mileage >= 30000 AND sr.ro_mileage < 40000 THEN '30-40k'
+            WHEN sr.ro_mileage >= 40000 AND sr.ro_mileage < 50000 THEN '40-50k'
+            WHEN sr.ro_mileage >= 50000 AND sr.ro_mileage < 60000 THEN '50-60k'
+            WHEN sr.ro_mileage >= 60000 AND sr.ro_mileage < 70000 THEN '60-70k'
+            WHEN sr.ro_mileage >= 70000 AND sr.ro_mileage < 80000 THEN '70-80k'
+            WHEN sr.ro_mileage >= 80000 AND sr.ro_mileage < 90000 THEN '80-90k'
+            WHEN sr.ro_mileage >= 90000 AND sr.ro_mileage < 100000 THEN '90-100k'
+            WHEN sr.ro_mileage >= 100000 AND sr.ro_mileage < 110000 THEN '100-110k'
+            WHEN sr.ro_mileage >= 110000 AND sr.ro_mileage < 120000 THEN '110-120k'
+            WHEN sr.ro_mileage >= 120000 AND sr.ro_mileage < 130000 THEN '120-130k'
+            WHEN sr.ro_mileage >= 130000 AND sr.ro_mileage < 140000 THEN '130-140k'
+            WHEN sr.ro_mileage >= 140000 AND sr.ro_mileage < 150000 THEN '140-150k'
+            ELSE '150k+'
+          END as mileage_band
+          
+        FROM service_record sr
+        INNER JOIN vehicle v ON sr.vehicle_id = v.id
+        INNER JOIN operation o ON o.service_record_id = sr.id
+        LEFT JOIN labor_line l ON o.id = l.operation_id
+        LEFT JOIN parts_line p ON o.id = p.operation_id
+        ${whereClause}
+        GROUP BY 
+          o.id,
+          o.operation_code,
+          o.operation_description,
+          sr.id, 
+          sr.ro_number, 
+          sr.open_date, 
+          sr.service_advisor_name, 
+          sr.ro_mileage, 
+          v.make, 
+          v.model
+      ),
+      grand_totals AS (
+        SELECT 
+          SUM(labor_revenue + parts_revenue) as grand_total_revenue
+        FROM operation_aggregates
+      )
       SELECT 
-        o.id as operation_id,
-        COALESCE(o.operation_code, 'N/A') as opcode,
-        COALESCE(o.operation_description, '') as opcode_description,
-        sr.id as service_record_id,
-        sr.ro_number,
-        sr.open_date as ro_date,
-        sr.service_advisor_name as advisor,
-        sr.ro_mileage,
-        COALESCE(v.make, 'Unknown') as make,
-        COALESCE(v.model, 'Unknown') as model,
+        operation_id,
+        opcode,
+        opcode_description,
+        service_record_id,
+        ro_number,
+        ro_date,
+        advisor,
+        ro_mileage,
+        make,
+        model,
+        labor_hours,
+        labor_revenue,
+        labor_cost,
+        parts_revenue,
+        parts_cost,
+        mileage_band,
         
-        -- Operation-level labor metrics
-        COALESCE(SUM(l.labor_bill_hours), 0) as labor_hours,
-        COALESCE(SUM(l.labor_sale), 0) as labor_revenue,
-        COALESCE(SUM(l.labor_cost), 0) as labor_cost,
-        
-        -- Operation-level parts metrics
-        COALESCE(SUM(p.parts_unit_sale * p.part_quantity), 0) as parts_revenue,
-        COALESCE(SUM(p.parts_unit_cost * p.part_quantity), 0) as parts_cost,
-        
-        -- Sales %: 100 if operation has any sale, 0 otherwise
+        -- Sales % = (operation total revenue / grand total revenue) * 100
         CASE 
-          WHEN COALESCE(SUM(l.labor_sale), 0) > 0 OR COALESCE(SUM(p.parts_unit_sale * p.part_quantity), 0) > 0 
-          THEN 100.0
-          ELSE 0.0
-        END as sales_percent,
+          WHEN grand_totals.grand_total_revenue > 0
+          THEN ((labor_revenue + parts_revenue) / grand_totals.grand_total_revenue) * 100
+          ELSE 0
+        END as sales_percent
         
-        -- Mileage band calculation
-        CASE 
-          WHEN sr.ro_mileage IS NULL THEN 'Unknown'
-          WHEN sr.ro_mileage >= 0 AND sr.ro_mileage < 10000 THEN '1-10k'
-          WHEN sr.ro_mileage >= 10000 AND sr.ro_mileage < 20000 THEN '10-20k'
-          WHEN sr.ro_mileage >= 20000 AND sr.ro_mileage < 30000 THEN '20-30k'
-          WHEN sr.ro_mileage >= 30000 AND sr.ro_mileage < 40000 THEN '30-40k'
-          WHEN sr.ro_mileage >= 40000 AND sr.ro_mileage < 50000 THEN '40-50k'
-          WHEN sr.ro_mileage >= 50000 AND sr.ro_mileage < 60000 THEN '50-60k'
-          WHEN sr.ro_mileage >= 60000 AND sr.ro_mileage < 70000 THEN '60-70k'
-          WHEN sr.ro_mileage >= 70000 AND sr.ro_mileage < 80000 THEN '70-80k'
-          WHEN sr.ro_mileage >= 80000 AND sr.ro_mileage < 90000 THEN '80-90k'
-          WHEN sr.ro_mileage >= 90000 AND sr.ro_mileage < 100000 THEN '90-100k'
-          WHEN sr.ro_mileage >= 100000 AND sr.ro_mileage < 110000 THEN '100-110k'
-          WHEN sr.ro_mileage >= 110000 AND sr.ro_mileage < 120000 THEN '110-120k'
-          WHEN sr.ro_mileage >= 120000 AND sr.ro_mileage < 130000 THEN '120-130k'
-          WHEN sr.ro_mileage >= 130000 AND sr.ro_mileage < 140000 THEN '130-140k'
-          WHEN sr.ro_mileage >= 140000 AND sr.ro_mileage < 150000 THEN '140-150k'
-          ELSE '150k+'
-        END as mileage_band
-        
-      FROM service_record sr
-      INNER JOIN vehicle v ON sr.vehicle_id = v.id
-      INNER JOIN operation o ON o.service_record_id = sr.id
-      LEFT JOIN labor_line l ON o.id = l.operation_id
-      LEFT JOIN parts_line p ON o.id = p.operation_id
-      ${whereClause}
-      GROUP BY 
-        o.id,
-        o.operation_code,
-        o.operation_description,
-        sr.id, 
-        sr.ro_number, 
-        sr.open_date, 
-        sr.service_advisor_name, 
-        sr.ro_mileage, 
-        v.make, 
-        v.model
-      ORDER BY o.operation_code, sr.open_date DESC, sr.ro_number DESC
+      FROM operation_aggregates
+      CROSS JOIN grand_totals
+      ORDER BY opcode, ro_date DESC, ro_number DESC
       LIMIT 10000;
     `;
 
