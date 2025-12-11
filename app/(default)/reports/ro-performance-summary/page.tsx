@@ -379,7 +379,14 @@ export default function ROPerformanceSummary() {
     if (gridApi) {
       // Check if any grouping is active
       const rowGroupColumns = gridApi.getRowGroupColumns();
+      
+      // Columns to hide when grouping is active (detail columns with no data at group level)
+      const detailColumns = ["ro_number", "ro_date", "model", "advisor", "mileage_band", "make"];
+      
       if (rowGroupColumns.length > 0) {
+        // Grouping is active - hide detail columns
+        gridApi.setColumnsVisible(detailColumns, false);
+        
         // Use setTimeout to ensure grouping is complete before sorting
         setTimeout(() => {
           // Apply sort on the auto group column to trigger the comparator
@@ -390,6 +397,32 @@ export default function ROPerformanceSummary() {
             gridApi.refreshClientSideRowModel("sort");
           }
         }, 0);
+      } else {
+        // No grouping - show all detail columns
+        gridApi.setColumnsVisible(detailColumns, true);
+      }
+    }
+  }, [gridApi]);
+
+  // Handle row expansion/collapse to show/hide detail columns
+  const onRowGroupOpened = useCallback(() => {
+    if (gridApi) {
+      const rowGroupColumns = gridApi.getRowGroupColumns();
+      
+      // Only manage column visibility if grouping is active
+      if (rowGroupColumns.length > 0) {
+        const detailColumns = ["ro_number", "ro_date", "model", "advisor", "mileage_band"];
+        
+        // Check if any group rows are expanded
+        let hasExpandedRows = false;
+        gridApi.forEachNode((node) => {
+          if (node.group && node.expanded) {
+            hasExpandedRows = true;
+          }
+        });
+        
+        // Show columns if any row is expanded, hide if all collapsed
+        gridApi.setColumnsVisible(detailColumns, hasExpandedRows);
       }
     }
   }, [gridApi]);
@@ -722,6 +755,7 @@ export default function ROPerformanceSummary() {
             autoGroupColumnDef={autoGroupColumnDef}
             onGridReady={onGridReady}
             onColumnRowGroupChanged={onColumnRowGroupChanged}
+            onRowGroupOpened={onRowGroupOpened}
             groupDefaultExpanded={0}
             animateRows={true}
             rowGroupPanelShow="always"
