@@ -8,6 +8,7 @@ import {
   GridReadyEvent,
   ValueFormatterParams,
   ValueGetterParams,
+  ICellRendererParams,
 } from "ag-grid-community";
 import {
   AllCommunityModule,
@@ -33,6 +34,8 @@ import {
   Plus,
 } from "lucide-react";
 import { initializeAgGridLicense } from "@/lib/ag-charts-license";
+import RODetailsModal from "@/app/(default)/dealer-settings/ro-details-modal";
+import MultiSelectDropdown from "@/components/multi-select-dropdown";
 
 // Import AG Grid CSS
 import "ag-grid-community/styles/ag-grid.css";
@@ -83,6 +86,7 @@ export default function ROPerformanceSummary() {
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
 
   // Filter states
+  const [datePreset, setDatePreset] = useState<string>("custom");
   const [startDate, setStartDate] = useState(() => {
     const date = new Date();
     date.setMonth(date.getMonth() - 3);
@@ -102,6 +106,11 @@ export default function ROPerformanceSummary() {
     useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [showGroupMenu, setShowGroupMenu] = useState<boolean>(false);
+  const [selectedRO, setSelectedRO] = useState<{
+    serviceRecordId: string;
+    roNumber: string;
+  } | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const gridContainerRef = React.useRef<HTMLDivElement>(null);
   const groupMenuRef = React.useRef<HTMLDivElement>(null);
 
@@ -166,6 +175,58 @@ export default function ROPerformanceSummary() {
     fetchData();
   }, [fetchData]);
 
+  // Handle date preset changes
+  const handleDatePresetChange = (preset: string) => {
+    setDatePreset(preset);
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // End of today
+    const endDateStr = today.toISOString().split("T")[0];
+    let startDateStr = "";
+
+    switch (preset) {
+      case "last30":
+        const last30 = new Date(today);
+        last30.setDate(today.getDate() - 30);
+        startDateStr = last30.toISOString().split("T")[0];
+        break;
+      case "last60":
+        const last60 = new Date(today);
+        last60.setDate(today.getDate() - 60);
+        startDateStr = last60.toISOString().split("T")[0];
+        break;
+      case "last90":
+        const last90 = new Date(today);
+        last90.setDate(today.getDate() - 90);
+        startDateStr = last90.toISOString().split("T")[0];
+        break;
+      case "monthToDate":
+        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+        startDateStr = monthStart.toISOString().split("T")[0];
+        break;
+      case "previousMonth":
+        const prevMonthStart = new Date(
+          today.getFullYear(),
+          today.getMonth() - 1,
+          1
+        );
+        const prevMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+        startDateStr = prevMonthStart.toISOString().split("T")[0];
+        setStartDate(startDateStr);
+        setEndDate(prevMonthEnd.toISOString().split("T")[0]);
+        return;
+      case "yearToDate":
+        const yearStart = new Date(today.getFullYear(), 0, 1);
+        startDateStr = yearStart.toISOString().split("T")[0];
+        break;
+      default:
+        // Custom - don't change dates
+        return;
+    }
+
+    setStartDate(startDateStr);
+    setEndDate(endDateStr);
+  };
+
   // Currency formatter
   const currencyFormatter = (params: ValueFormatterParams) => {
     if (params.value == null || isNaN(params.value)) return "$0.00";
@@ -209,6 +270,29 @@ export default function ROPerformanceSummary() {
         width: 180,
         filter: "agTextColumnFilter",
         enableRowGroup: true,
+        cellRenderer: (params: ICellRendererParams<ROPerformanceData>) => {
+          if (!params.value || params.node?.group) {
+            return params.value || "";
+          }
+          return (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                const rowData = params.data;
+                if (rowData) {
+                  setSelectedRO({
+                    serviceRecordId: rowData.service_record_id,
+                    roNumber: rowData.ro_number,
+                  });
+                  setIsModalOpen(true);
+                }
+              }}
+              className="text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 hover:underline cursor-pointer"
+            >
+              {params.value}
+            </button>
+          );
+        },
       },
       {
         field: "ro_date",
@@ -565,7 +649,7 @@ export default function ROPerformanceSummary() {
       {/* Page Header */}
       <div className="mb-8">
         <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">
-          RO Performance Summary
+          Custom RO
         </h1>
         <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
           Analyze repair orders with flexible grouping by make, model, advisor,
@@ -618,90 +702,89 @@ export default function ROPerformanceSummary() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          {/* Date Preset */}
+          <div className="sm:col-span-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Date Range
+            </label>
+            <select
+              value={datePreset}
+              onChange={(e) => handleDatePresetChange(e.target.value)}
+              className="form-select w-full min-h-[42px]"
+            >
+              <option value="custom">Custom Range</option>
+              <option value="last30">Last 30 Days</option>
+              <option value="last60">Last 60 Days</option>
+              <option value="last90">Last 90 Days</option>
+              <option value="monthToDate">Month to Date</option>
+              <option value="previousMonth">Previous Month</option>
+              <option value="yearToDate">Year to Date</option>
+            </select>
+          </div>
+
           {/* Date Range */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <div className="sm:col-span-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Start Date
             </label>
             <input
               type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
-                       bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                       focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setDatePreset("custom");
+              }}
+              disabled={datePreset !== "custom"}
+              className={`form-input w-full ${
+                datePreset !== "custom" ? "opacity-50 cursor-not-allowed" : ""
+              }`}
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <div className="sm:col-span-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               End Date
             </label>
             <input
               type="date"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
-                       bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                       focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setDatePreset("custom");
+              }}
+              disabled={datePreset !== "custom"}
+              className={`form-input w-full ${
+                datePreset !== "custom" ? "opacity-50 cursor-not-allowed" : ""
+              }`}
             />
           </div>
 
           {/* Pay Type */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Pay Type
-            </label>
-            <div className="space-y-2">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={selectedPayTypes.includes("C")}
-                  onChange={() => handlePayTypeChange("C")}
-                  className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
-                />
-                <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                  Customer Pay
-                </span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={selectedPayTypes.includes("W")}
-                  onChange={() => handlePayTypeChange("W")}
-                  className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
-                />
-                <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                  Warranty
-                </span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={selectedPayTypes.includes("I")}
-                  onChange={() => handlePayTypeChange("I")}
-                  className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
-                />
-                <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                  Internal
-                </span>
-              </label>
-            </div>
+          <div className="sm:col-span-1">
+            <MultiSelectDropdown
+              label="Pay Type"
+              options={[
+                { value: "C", label: "Customer Pay" },
+                { value: "W", label: "Warranty" },
+                { value: "I", label: "Internal" },
+              ]}
+              value={selectedPayTypes}
+              onChange={setSelectedPayTypes}
+              placeholder="Select pay types..."
+            />
           </div>
 
           {/* Warranty Eligibility */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <div className="sm:col-span-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Warranty Eligibility
             </label>
             <select
               value={warrantyEligibility}
               onChange={(e) => setWarrantyEligibility(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
-                       bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                       focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              className="form-select w-full min-h-[42px]"
             >
               <option value="all">All</option>
               <option value="yes">Eligible</option>
@@ -718,7 +801,7 @@ export default function ROPerformanceSummary() {
             disabled={loading}
             className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 
                      disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors
-                     flex items-center gap-2"
+                     flex items-center gap-2 text-sm"
           >
             {loading ? (
               <>
@@ -930,6 +1013,13 @@ export default function ROPerformanceSummary() {
             suppressAggFuncInHeader={true}
             suppressColumnVirtualisation={false}
             getRowStyle={(params) => {
+              // Check if grouping is active
+              const rowGroupColumns = params.api.getRowGroupColumns();
+              if (rowGroupColumns.length === 0) {
+                // No grouping - return undefined for transparent/normal background
+                return undefined;
+              }
+
               if (!params.node.group) {
                 // Leaf rows (actual data rows) - lightest background
                 return {
@@ -978,6 +1068,20 @@ export default function ROPerformanceSummary() {
           />
         </div>
       </div>
+
+      {/* RO Details Modal */}
+      {selectedRO && currentDealer && (
+        <RODetailsModal
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedRO(null);
+          }}
+          serviceRecordId={selectedRO.serviceRecordId}
+          roNumber={selectedRO.roNumber}
+          dealerId={currentDealer.id}
+        />
+      )}
     </div>
   );
 }
