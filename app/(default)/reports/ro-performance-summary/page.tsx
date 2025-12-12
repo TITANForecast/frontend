@@ -23,7 +23,15 @@ import {
   FiltersToolPanelModule,
 } from "ag-grid-enterprise";
 import { useAuth } from "@/components/auth-provider-multitenancy";
-import { Loader2, Download, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Loader2,
+  Download,
+  ChevronDown,
+  ChevronUp,
+  Maximize2,
+  Minimize2,
+  Plus,
+} from "lucide-react";
 import { initializeAgGridLicense } from "@/lib/ag-charts-license";
 
 // Import AG Grid CSS
@@ -92,6 +100,10 @@ export default function ROPerformanceSummary() {
   const [warrantyEligibility, setWarrantyEligibility] = useState<string>("all");
   const [instructionsExpanded, setInstructionsExpanded] =
     useState<boolean>(false);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [showGroupMenu, setShowGroupMenu] = useState<boolean>(false);
+  const gridContainerRef = React.useRef<HTMLDivElement>(null);
+  const groupMenuRef = React.useRef<HTMLDivElement>(null);
 
   // Detect dark mode
   useEffect(() => {
@@ -196,7 +208,6 @@ export default function ROPerformanceSummary() {
         headerName: "RO Number",
         width: 180,
         filter: "agTextColumnFilter",
-        pinned: "left",
         enableRowGroup: true,
       },
       {
@@ -465,6 +476,34 @@ export default function ROPerformanceSummary() {
     }
   };
 
+  const toggleFullscreen = async () => {
+    if (!gridContainerRef.current) return;
+
+    try {
+      if (!document.fullscreenElement) {
+        await gridContainerRef.current.requestFullscreen();
+        setIsFullscreen(true);
+      } else {
+        await document.exitFullscreen();
+        setIsFullscreen(false);
+      }
+    } catch (error) {
+      console.error("Error toggling fullscreen:", error);
+    }
+  };
+
+  // Listen for fullscreen changes (e.g., user pressing ESC)
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, []);
+
   const handlePayTypeChange = (payType: string) => {
     setSelectedPayTypes((prev) =>
       prev.includes(payType)
@@ -472,6 +511,54 @@ export default function ROPerformanceSummary() {
         : [...prev, payType]
     );
   };
+
+  // Groupable columns definition
+  const groupableColumns = [
+    { field: "ro_number", label: "RO Number" },
+    { field: "make", label: "Make" },
+    { field: "model", label: "Model" },
+    { field: "advisor", label: "Advisor" },
+    { field: "mileage_band", label: "Mileage Band" },
+  ];
+
+  const addColumnToGroup = (field: string) => {
+    if (gridApi) {
+      const currentGroups = gridApi.getRowGroupColumns();
+      const isAlreadyGrouped = currentGroups.some(
+        (col) => col.getColId() === field
+      );
+
+      if (!isAlreadyGrouped) {
+        const allGroupFields = [
+          ...currentGroups.map((col) => col.getColId()),
+          field,
+        ];
+        gridApi.setRowGroupColumns(allGroupFields);
+      }
+
+      setShowGroupMenu(false);
+    }
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        groupMenuRef.current &&
+        !groupMenuRef.current.contains(event.target as Node)
+      ) {
+        setShowGroupMenu(false);
+      }
+    };
+
+    if (showGroupMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showGroupMenu]);
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto">
@@ -752,7 +839,72 @@ export default function ROPerformanceSummary() {
       </div>
 
       {/* AG Grid */}
-      <div className="w-full" style={{ height: "700px" }}>
+      <div
+        ref={gridContainerRef}
+        className="w-full relative bg-white dark:bg-gray-900 p-4"
+        style={{ height: "700px" }}
+      >
+        {/* Add Group Column Button */}
+        <div className="absolute top-6 left-6 z-10" ref={groupMenuRef}>
+          <button
+            onClick={() => setShowGroupMenu(!showGroupMenu)}
+            className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 
+                     transition-colors shadow-lg flex items-center gap-2"
+            title="Add column to grouping"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+
+          {/* Dropdown Menu */}
+          {showGroupMenu && (
+            <div
+              className="absolute top-12 left-0 bg-white dark:bg-gray-800 rounded-lg shadow-xl 
+                          border border-gray-200 dark:border-gray-700 py-2 min-w-[200px] z-20"
+            >
+              <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
+                Add to Group
+              </div>
+              {groupableColumns.map((col) => {
+                const isGrouped = gridApi
+                  ?.getRowGroupColumns()
+                  .some((c) => c.getColId() === col.field);
+                return (
+                  <button
+                    key={col.field}
+                    onClick={() => addColumnToGroup(col.field)}
+                    disabled={isGrouped}
+                    className={`w-full text-left px-4 py-2 text-sm transition-colors
+                      ${
+                        isGrouped
+                          ? "text-gray-400 dark:text-gray-600 cursor-not-allowed"
+                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      }`}
+                  >
+                    {col.label}
+                    {isGrouped && (
+                      <span className="ml-2 text-xs">(grouped)</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Fullscreen Button - Floating inside grid */}
+        <button
+          onClick={toggleFullscreen}
+          className="absolute top-6 right-6 z-10 p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 
+                   transition-colors shadow-lg flex items-center gap-2"
+          title={isFullscreen ? "Exit Fullscreen (ESC)" : "Enter Fullscreen"}
+        >
+          {isFullscreen ? (
+            <Minimize2 className="w-4 h-4" />
+          ) : (
+            <Maximize2 className="w-4 h-4" />
+          )}
+        </button>
+
         <div
           className={`${
             isDark ? "ag-theme-quartz-dark" : "ag-theme-quartz"
@@ -777,6 +929,27 @@ export default function ROPerformanceSummary() {
             rowGroupPanelShow="always"
             suppressAggFuncInHeader={true}
             suppressColumnVirtualisation={false}
+            getRowStyle={(params) => {
+              if (!params.node.group) {
+                // Leaf rows (actual data rows) - lightest background
+                return {
+                  backgroundColor: isDark
+                    ? "rgba(255, 255, 255, 0.08)"
+                    : "rgba(0, 0, 0, 0.06)",
+                };
+              } else {
+                // Group rows - progressively lighter based on depth
+                const level = params.node.level || 0;
+                const opacity = isDark
+                  ? 0.02 + level * 0.015
+                  : 0.015 + level * 0.01;
+                return {
+                  backgroundColor: isDark
+                    ? `rgba(255, 255, 255, ${opacity})`
+                    : `rgba(0, 0, 0, ${opacity})`,
+                };
+              }
+            }}
             sideBar={{
               toolPanels: [
                 {
