@@ -1180,7 +1180,7 @@ export default function ROPerformanceSummary() {
         type={toastType}
         open={toastOpen}
         setOpen={setToastOpen}
-        className="fixed bottom-4 right-4 z-50"
+        className="fixed top-4 right-4 z-50"
       >
         {toastMessage}
       </Toast>
