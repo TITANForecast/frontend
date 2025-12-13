@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { AgGridReact } from "ag-grid-react";
 import {
   ColDef,
@@ -31,22 +32,20 @@ import {
   ChevronUp,
   Maximize2,
   Minimize2,
-  Plus,
+  Edit,
   Save,
+  X,
+  Trash2,
 } from "lucide-react";
 import { initializeAgGridLicense } from "@/lib/ag-charts-license";
 import RODetailsModal from "@/app/(default)/dealer-settings/ro-details-modal";
 import MultiSelectDropdown from "@/components/multi-select-dropdown";
-import SaveReportModal, {
-  SaveReportConfig,
-} from "@/components/save-report-modal";
+import { UserRole } from "@/lib/types/auth";
 import Toast from "@/components/toast";
 
-// Import AG Grid CSS
 import "ag-grid-community/styles/ag-grid.css";
 import "ag-grid-community/styles/ag-theme-quartz.css";
 
-// Initialize AG Grid Enterprise license
 initializeAgGridLicense().catch(console.error);
 
 ModuleRegistry.registerModules([
@@ -60,10 +59,8 @@ ModuleRegistry.registerModules([
   FiltersToolPanelModule,
 ]);
 
-interface OpcodePerformanceData {
+interface ROPerformanceData {
   operation_id: string;
-  opcode: string;
-  opcode_description: string;
   service_record_id: string;
   ro_number: string;
   ro_date: string;
@@ -71,6 +68,7 @@ interface OpcodePerformanceData {
   ro_mileage: number;
   make: string;
   model: string;
+  opcode: string;
   mileage_band: string;
   ro_count: number;
   sales_percent: number;
@@ -84,46 +82,73 @@ interface OpcodePerformanceData {
   discount_percent: number;
 }
 
-export default function OpcodePerformanceSummary() {
-  const { currentDealer, getAuthToken } = useAuth();
+interface OpcodePerformanceData extends ROPerformanceData {
+  opcode_description: string;
+}
+
+interface SavedReport {
+  id: string;
+  name: string;
+  reportType: string;
+  visibility: string;
+  allowFilters: boolean;
+  filters: any;
+  grouping: any;
+  columnState: any;
+  createdBy: string;
+  creator: {
+    id: string;
+    name: string;
+    email: string;
+  };
+}
+
+export default function SavedReportPage() {
+  const params = useParams();
+  const router = useRouter();
+  const reportId = params.id as string;
+  const { currentDealer, getAuthToken, user, hasRole } = useAuth();
+
+  const [savedReport, setSavedReport] = useState<SavedReport | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isDark, setIsDark] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<OpcodePerformanceData[]>([]);
+  const [data, setData] = useState<any[]>([]);
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
+
+  // Edit mode
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editedName, setEditedName] = useState("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Filter states
   const [datePreset, setDatePreset] = useState<string>("custom");
-  const [startDate, setStartDate] = useState(() => {
-    const date = new Date();
-    date.setMonth(date.getMonth() - 3);
-    return date.toISOString().split("T")[0];
-  });
-  const [endDate, setEndDate] = useState(() => {
-    const date = new Date();
-    return date.toISOString().split("T")[0];
-  });
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [selectedPayTypes, setSelectedPayTypes] = useState<string[]>([
     "C",
     "W",
     "I",
   ]);
   const [warrantyEligibility, setWarrantyEligibility] = useState<string>("all");
-  const [instructionsExpanded, setInstructionsExpanded] =
-    useState<boolean>(false);
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
-  const [showGroupMenu, setShowGroupMenu] = useState<boolean>(false);
   const [selectedRO, setSelectedRO] = useState<{
     serviceRecordId: string;
     roNumber: string;
   } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [isSaveReportModalOpen, setIsSaveReportModalOpen] =
-    useState<boolean>(false);
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState<"success" | "error">("success");
   const gridContainerRef = React.useRef<HTMLDivElement>(null);
-  const groupMenuRef = React.useRef<HTMLDivElement>(null);
+
+  const canEdit =
+    savedReport &&
+    ((savedReport.visibility === "local" &&
+      savedReport.createdBy === user?.id) ||
+      (savedReport.visibility === "public" && hasRole([UserRole.SUPER_ADMIN])));
 
   // Detect dark mode
   useEffect(() => {
@@ -138,11 +163,58 @@ export default function OpcodePerformanceSummary() {
     return () => observer.disconnect();
   }, []);
 
-  // Fetch data
-  const fetchData = useCallback(async () => {
-    if (!currentDealer?.id) return;
+  // Fetch saved report
+  useEffect(() => {
+    const fetchSavedReport = async () => {
+      if (!reportId) return;
 
-    setLoading(true);
+      setLoading(true);
+      try {
+        const token = await getAuthToken();
+        const response = await fetch(`/api/reports/saved/${reportId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch saved report");
+        }
+
+        const result = await response.json();
+        const report = result.data;
+        setSavedReport(report);
+        setEditedName(report.name);
+
+        // Load saved filters
+        if (report.filters) {
+          setDatePreset(report.filters.datePreset || "custom");
+          setStartDate(report.filters.startDate || "");
+          setEndDate(report.filters.endDate || "");
+          setSelectedPayTypes(report.filters.payTypes || ["C", "W", "I"]);
+          setWarrantyEligibility(report.filters.warrantyEligibility || "all");
+        }
+      } catch (err: any) {
+        setError(err.message || "Failed to load saved report");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSavedReport();
+  }, [reportId, getAuthToken]);
+
+  // Fetch data when report is loaded
+  useEffect(() => {
+    if (savedReport && currentDealer) {
+      fetchData();
+    }
+  }, [savedReport, currentDealer]);
+
+  const fetchData = useCallback(async () => {
+    if (!savedReport || !currentDealer) return;
+
+    setDataLoading(true);
     try {
       const token = await getAuthToken();
       const params = new URLSearchParams({
@@ -153,14 +225,16 @@ export default function OpcodePerformanceSummary() {
         warrantyEligibility,
       });
 
-      const response = await fetch(
-        `/api/reports/opcode-performance-summary?${params.toString()}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const endpoint =
+        savedReport.reportType === "custom-ro"
+          ? "/api/reports/ro-performance-summary"
+          : "/api/reports/opcode-performance-summary";
+
+      const response = await fetch(`${endpoint}?${params.toString()}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       if (!response.ok) {
         throw new Error("Failed to fetch data");
@@ -169,11 +243,12 @@ export default function OpcodePerformanceSummary() {
       const result = await response.json();
       setData(result.data || []);
     } catch (error) {
-      console.error("Error fetching Opcode Performance Summary:", error);
+      console.error("Error fetching data:", error);
     } finally {
-      setLoading(false);
+      setDataLoading(false);
     }
   }, [
+    savedReport,
     currentDealer,
     startDate,
     endDate,
@@ -182,15 +257,11 @@ export default function OpcodePerformanceSummary() {
     getAuthToken,
   ]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
   // Handle date preset changes
   const handleDatePresetChange = (preset: string) => {
     setDatePreset(preset);
     const today = new Date();
-    today.setHours(23, 59, 59, 999); // End of today
+    today.setHours(23, 59, 59, 999);
     const endDateStr = today.toISOString().split("T")[0];
     let startDateStr = "";
 
@@ -238,7 +309,6 @@ export default function OpcodePerformanceSummary() {
     setEndDate(endDateStr);
   };
 
-  // Currency formatter
   const currencyFormatter = (params: ValueFormatterParams) => {
     if (params.value == null || isNaN(params.value)) return "$0.00";
     return `$${Number(params.value).toLocaleString("en-US", {
@@ -247,7 +317,6 @@ export default function OpcodePerformanceSummary() {
     })}`;
   };
 
-  // Number formatter
   const numberFormatter = (params: ValueFormatterParams) => {
     if (params.value == null || isNaN(params.value)) return "0.00";
     return Number(params.value).toLocaleString("en-US", {
@@ -256,13 +325,11 @@ export default function OpcodePerformanceSummary() {
     });
   };
 
-  // Percent formatter
   const percentFormatter = (params: ValueFormatterParams) => {
     if (params.value == null || isNaN(params.value)) return "0.0%";
     return `${Number(params.value).toFixed(1)}%`;
   };
 
-  // Integer formatter
   const integerFormatter = (params: ValueFormatterParams) => {
     if (params.value == null || isNaN(params.value)) return "0";
     return Number(params.value).toLocaleString("en-US", {
@@ -271,38 +338,42 @@ export default function OpcodePerformanceSummary() {
     });
   };
 
-  // Column definitions
-  const columnDefs: ColDef<OpcodePerformanceData>[] = useMemo(
-    () => [
-      // Opcode Details (groupable by default)
-      {
-        field: "opcode",
-        headerName: "Opcode",
-        width: 180,
-        filter: "agTextColumnFilter",
-        enableRowGroup: true,
-      },
-      {
-        field: "opcode_description",
-        headerName: "Description",
-        width: 300,
-        filter: "agTextColumnFilter",
-        valueGetter: (params: ValueGetterParams) => {
-          // For grouped rows, get description from aggregated data
-          if (params.node?.group) {
-            return params.node.aggData?.opcode_description || "";
-          }
-          return params.data?.opcode_description || "";
-        },
-        aggFunc: "first", // Use first value for aggregation
-      },
+  // Column definitions (simplified version - you'd need the full column defs)
+  const columnDefs: ColDef<any>[] = useMemo(() => {
+    const isOpcode = savedReport?.reportType === "custom-opcode";
+
+    return [
+      ...(isOpcode
+        ? [
+            {
+              field: "opcode",
+              headerName: "Opcode",
+              width: 180,
+              filter: "agTextColumnFilter",
+              enableRowGroup: true,
+            },
+            {
+              field: "opcode_description",
+              headerName: "Description",
+              width: 300,
+              filter: "agTextColumnFilter",
+              valueGetter: (params: ValueGetterParams) => {
+                if (params.node?.group) {
+                  return params.node.aggData?.opcode_description || "";
+                }
+                return params.data?.opcode_description || "";
+              },
+              aggFunc: "first",
+            },
+          ]
+        : []),
       {
         field: "ro_number",
         headerName: "RO Number",
         width: 180,
         filter: "agTextColumnFilter",
         enableRowGroup: true,
-        cellRenderer: (params: ICellRendererParams<OpcodePerformanceData>) => {
+        cellRenderer: (params: ICellRendererParams<any>) => {
           if (!params.value || params.node?.group) {
             return params.value || "";
           }
@@ -336,8 +407,6 @@ export default function OpcodePerformanceSummary() {
           return new Date(params.value).toLocaleDateString();
         },
       },
-
-      // Groupable Columns
       {
         field: "make",
         headerName: "Make",
@@ -366,12 +435,10 @@ export default function OpcodePerformanceSummary() {
         enableRowGroup: true,
         filter: "agSetColumnFilter",
       },
-
-      // Metrics with Aggregation
       {
         field: "ro_count",
-        headerName: "Operation Count",
-        width: 200,
+        headerName: isOpcode ? "Operation Count" : "RO Count",
+        width: isOpcode ? 200 : 150,
         aggFunc: "sum",
         valueFormatter: integerFormatter,
         cellStyle: { textAlign: "right" },
@@ -380,14 +447,14 @@ export default function OpcodePerformanceSummary() {
         field: "sales_percent",
         headerName: "Sales %",
         width: 150,
-        aggFunc: "sum",
+        aggFunc: "avg",
         valueFormatter: percentFormatter,
         cellStyle: { textAlign: "right" },
       },
       {
         field: "labor_hours",
         headerName: "Labor Hours",
-        width: 180,
+        width: 160,
         aggFunc: "sum",
         valueFormatter: numberFormatter,
         cellStyle: { textAlign: "right" },
@@ -395,21 +462,20 @@ export default function OpcodePerformanceSummary() {
       {
         field: "labor_revenue",
         headerName: "Labor Revenue",
-        width: 200,
+        width: 180,
         aggFunc: "sum",
         valueFormatter: currencyFormatter,
         cellStyle: { textAlign: "right" },
       },
       {
         field: "labor_rev_per_ro",
-        headerName: "Labor Rev/RO",
-        width: 200,
+        headerName: isOpcode ? "Labor Rev/Op" : "Labor Rev/RO",
+        width: isOpcode ? 180 : 170,
         valueGetter: (params: ValueGetterParams) => {
-          // For aggregated rows, calculate from aggregated values
           if (params.node?.group) {
-            const laborRevenue = params.node.aggData?.labor_revenue || 0;
-            const roCount = params.node.aggData?.ro_count || 1;
-            return laborRevenue / roCount;
+            const totalRevenue = params.node.aggData?.labor_revenue || 0;
+            const count = params.node.aggData?.ro_count || 1;
+            return totalRevenue / count;
           }
           return params.data?.labor_rev_per_ro || 0;
         },
@@ -419,7 +485,7 @@ export default function OpcodePerformanceSummary() {
       {
         field: "labor_gp_percent",
         headerName: "Labor GP %",
-        width: 180,
+        width: 150,
         aggFunc: "avg",
         valueFormatter: percentFormatter,
         cellStyle: { textAlign: "right" },
@@ -427,7 +493,7 @@ export default function OpcodePerformanceSummary() {
       {
         field: "parts_revenue",
         headerName: "Parts Revenue",
-        width: 200,
+        width: 180,
         aggFunc: "sum",
         valueFormatter: currencyFormatter,
         cellStyle: { textAlign: "right" },
@@ -435,7 +501,7 @@ export default function OpcodePerformanceSummary() {
       {
         field: "parts_gp_percent",
         headerName: "Parts GP %",
-        width: 180,
+        width: 150,
         aggFunc: "avg",
         valueFormatter: percentFormatter,
         cellStyle: { textAlign: "right" },
@@ -443,13 +509,12 @@ export default function OpcodePerformanceSummary() {
       {
         field: "elr",
         headerName: "ELR",
-        width: 150,
+        width: 120,
         valueGetter: (params: ValueGetterParams) => {
-          // For aggregated rows, calculate from aggregated values
           if (params.node?.group) {
-            const laborRevenue = params.node.aggData?.labor_revenue || 0;
-            const laborHours = params.node.aggData?.labor_hours || 1;
-            return laborRevenue / laborHours;
+            const totalRevenue = params.node.aggData?.labor_revenue || 0;
+            const totalHours = params.node.aggData?.labor_hours || 1;
+            return totalRevenue / totalHours;
           }
           return params.data?.elr || 0;
         },
@@ -459,20 +524,21 @@ export default function OpcodePerformanceSummary() {
       {
         field: "discount_percent",
         headerName: "Discount %",
-        width: 180,
+        width: 150,
         aggFunc: "avg",
         valueFormatter: percentFormatter,
         cellStyle: { textAlign: "right" },
       },
-    ],
-    []
-  );
+    ];
+  }, [savedReport]);
 
   const defaultColDef: ColDef = useMemo(
     () => ({
       resizable: true,
       sortable: true,
       filter: true,
+      enableRowGroup: true,
+      enableValue: true,
     }),
     []
   );
@@ -481,16 +547,9 @@ export default function OpcodePerformanceSummary() {
     () => ({
       headerName: "Group",
       minWidth: 250,
-      pinned: "left",
       cellRenderer: "agGroupCellRenderer",
       cellRendererParams: {
         suppressCount: false,
-      },
-      comparator: (valueA, valueB, nodeA, nodeB) => {
-        // Sort groups by Operation Count descending (high to low)
-        const roCountA = nodeA?.aggData?.ro_count || 0;
-        const roCountB = nodeB?.aggData?.ro_count || 0;
-        return roCountB - roCountA; // Descending order (highest first)
       },
     }),
     []
@@ -498,65 +557,28 @@ export default function OpcodePerformanceSummary() {
 
   const onGridReady = (params: GridReadyEvent) => {
     setGridApi(params.api);
-    // Set default grouping by opcode
-    params.api.setRowGroupColumns(["opcode"]);
-    // Apply sort to trigger the comparator for initial grouping
-    setTimeout(() => {
-      params.api.applyColumnState({
-        state: [
-          {
-            colId: "ag-Grid-AutoColumn",
-            sort: "asc",
-          },
-        ],
-        defaultState: { sort: null },
-      });
-    }, 100);
-  };
 
-  // Auto-sort groups by Operation count descending when grouping changes
-  const onColumnRowGroupChanged = useCallback(() => {
-    if (gridApi) {
-      // Check if any grouping is active
-      const rowGroupColumns = gridApi.getRowGroupColumns();
-
-      // Columns to hide when grouping is active (detail columns with no data at group level)
-      const detailColumns = [
-        "ro_number",
-        "ro_date",
-        "opcode_description",
-        "model",
-        "advisor",
-        "mileage_band",
-        "make",
-      ];
-
-      if (rowGroupColumns.length > 0) {
-        // Grouping is active - hide detail columns
-        gridApi.setColumnsVisible(detailColumns, false);
-
-        // Use setTimeout to ensure grouping is complete before sorting
-        setTimeout(() => {
-          // Apply sort on the auto group column to trigger the comparator
-          gridApi.applyColumnState({
-            state: [
-              {
-                colId: "ag-Grid-AutoColumn",
-                sort: "asc",
-              },
-            ],
-            defaultState: { sort: null },
-          });
-        }, 100);
-      } else {
-        // No grouping - show all detail columns
-        gridApi.setColumnsVisible(detailColumns, true);
+    // Apply saved grouping and column state
+    if (savedReport) {
+      if (savedReport.grouping && Array.isArray(savedReport.grouping)) {
+        params.api.setRowGroupColumns(savedReport.grouping);
+      }
+      if (savedReport.columnState) {
+        params.api.applyColumnState({
+          state: savedReport.columnState,
+          applyOrder: true,
+        });
       }
     }
-  }, [gridApi]);
 
-  // Handle row expansion/collapse to show/hide detail columns
-  const onRowGroupOpened = useCallback(() => {
+    // Lock grouping if not in edit mode
+    if (!isEditMode) {
+      params.api.setGridOption("rowGroupPanelShow", "never");
+    }
+  };
+
+  // Auto-hide grouped parent columns (like in custom reports)
+  const handleRowGroupChanged = useCallback(() => {
     if (gridApi) {
       const rowGroupColumns = gridApi.getRowGroupColumns();
 
@@ -565,18 +587,17 @@ export default function OpcodePerformanceSummary() {
         const detailColumns = [
           "ro_number",
           "ro_date",
-          "opcode_description",
           "model",
           "advisor",
           "mileage_band",
           "make",
+          "opcode",
+          "opcode_description",
         ];
 
         // Check if any leaf (actual data) rows are visible
-        // This ensures columns only show when expanded all the way to the data level
         let hasVisibleLeafRows = false;
         gridApi.forEachNodeAfterFilterAndSort((node) => {
-          // If node is displayed and not a group, it's a visible leaf row
           if (!node.group && node.displayed) {
             hasVisibleLeafRows = true;
           }
@@ -587,6 +608,125 @@ export default function OpcodePerformanceSummary() {
       }
     }
   }, [gridApi]);
+
+  useEffect(() => {
+    if (gridApi) {
+      // Listen for row group changes
+      const listener = () => handleRowGroupChanged();
+      gridApi.addEventListener("rowGroupOpened", listener);
+      gridApi.addEventListener("expandOrCollapseAll", listener);
+
+      // Initial call
+      handleRowGroupChanged();
+
+      return () => {
+        gridApi.removeEventListener("rowGroupOpened", listener);
+        gridApi.removeEventListener("expandOrCollapseAll", listener);
+      };
+    }
+  }, [gridApi, handleRowGroupChanged]);
+
+  // Toggle edit mode
+  useEffect(() => {
+    if (gridApi) {
+      if (isEditMode) {
+        gridApi.setGridOption("rowGroupPanelShow", "always");
+      } else {
+        gridApi.setGridOption("rowGroupPanelShow", "never");
+      }
+    }
+  }, [isEditMode, gridApi]);
+
+  const handleSaveChanges = async () => {
+    if (!gridApi || !savedReport) return;
+
+    try {
+      const token = await getAuthToken();
+
+      // Get current state
+      const groupColumns = gridApi.getRowGroupColumns();
+      const grouping = groupColumns.map((col) => col.getColId());
+      const columnState = gridApi.getColumnState();
+      const filters = {
+        datePreset,
+        startDate,
+        endDate,
+        payTypes: selectedPayTypes,
+        warrantyEligibility,
+      };
+
+      const response = await fetch(`/api/reports/saved/${reportId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: editedName,
+          filters,
+          grouping,
+          columnState,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save changes");
+      }
+
+      const result = await response.json();
+      setSavedReport(result.data);
+      setIsEditMode(false);
+
+      // Show success toast
+      setToastMessage("Changes saved successfully!");
+      setToastType("success");
+      setToastOpen(true);
+
+      // Refresh sidebar to update report name if changed
+      window.dispatchEvent(new Event("refreshSavedReports"));
+
+      // Auto-hide toast after 3 seconds
+      setTimeout(() => setToastOpen(false), 3000);
+    } catch (error: any) {
+      console.error("Error saving changes:", error);
+      setToastMessage(error.message || "Failed to save changes");
+      setToastType("error");
+      setToastOpen(true);
+      setTimeout(() => setToastOpen(false), 5000);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      const token = await getAuthToken();
+      const response = await fetch(`/api/reports/saved/${reportId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete report");
+      }
+
+      // Show success toast
+      setToastMessage("Report deleted successfully!");
+      setToastType("success");
+      setToastOpen(true);
+
+      // Redirect after a short delay
+      setTimeout(() => {
+        router.push("/reports/ro-performance-summary");
+      }, 1000);
+    } catch (error: any) {
+      console.error("Error deleting report:", error);
+      setToastMessage(error.message || "Failed to delete report");
+      setToastType("error");
+      setToastOpen(true);
+      setTimeout(() => setToastOpen(false), 5000);
+    }
+  };
 
   const expandAll = () => {
     if (gridApi) {
@@ -603,7 +743,7 @@ export default function OpcodePerformanceSummary() {
   const exportToCSV = () => {
     if (gridApi) {
       gridApi.exportDataAsCsv({
-        fileName: `opcode-performance-summary-${
+        fileName: `${savedReport?.name || "report"}-${
           new Date().toISOString().split("T")[0]
         }.csv`,
       });
@@ -626,7 +766,6 @@ export default function OpcodePerformanceSummary() {
     }
   };
 
-  // Listen for fullscreen changes (e.g., user pressing ESC)
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
@@ -638,298 +777,228 @@ export default function OpcodePerformanceSummary() {
     };
   }, []);
 
-  const handlePayTypeChange = (payType: string) => {
-    setSelectedPayTypes((prev) =>
-      prev.includes(payType)
-        ? prev.filter((pt) => pt !== payType)
-        : [...prev, payType]
+  if (loading) {
+    return (
+      <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-violet-600" />
+        </div>
+      </div>
     );
-  };
+  }
 
-  // Groupable columns definition
-  const groupableColumns = [
-    { field: "opcode", label: "Opcode" },
-    { field: "ro_number", label: "RO Number" },
-    { field: "make", label: "Make" },
-    { field: "model", label: "Model" },
-    { field: "advisor", label: "Advisor" },
-    { field: "mileage_band", label: "Mileage Band" },
-  ];
+  if (error || !savedReport) {
+    return (
+      <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
+          <p className="text-red-800 dark:text-red-200">
+            {error || "Report not found"}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
-  const addColumnToGroup = (field: string) => {
-    if (gridApi) {
-      const currentGroups = gridApi.getRowGroupColumns();
-      const isAlreadyGrouped = currentGroups.some(
-        (col) => col.getColId() === field
-      );
-
-      if (!isAlreadyGrouped) {
-        const allGroupFields = [
-          ...currentGroups.map((col) => col.getColId()),
-          field,
-        ];
-        gridApi.setRowGroupColumns(allGroupFields);
-      }
-
-      setShowGroupMenu(false);
-    }
-  };
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        groupMenuRef.current &&
-        !groupMenuRef.current.contains(event.target as Node)
-      ) {
-        setShowGroupMenu(false);
-      }
-    };
-
-    if (showGroupMenu) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [showGroupMenu]);
-
-  // Save report functionality
-  const handleSaveReport = async (config: SaveReportConfig) => {
-    if (!gridApi || !currentDealer) return;
-
-    try {
-      const token = await getAuthToken();
-
-      // Get current grouping state
-      const groupColumns = gridApi.getRowGroupColumns();
-      const grouping = groupColumns.map((col) => col.getColId());
-
-      // Get column state
-      const columnState = gridApi.getColumnState();
-
-      // Prepare filters
-      const filters = {
-        datePreset,
-        startDate,
-        endDate,
-        payTypes: selectedPayTypes,
-        warrantyEligibility,
-      };
-
-      const response = await fetch("/api/reports/saved", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          name: config.name,
-          reportType: "custom-opcode",
-          visibility: config.visibility,
-          allowFilters: config.allowFilters,
-          filters,
-          grouping,
-          columnState,
-          dealerId: currentDealer.id,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to save report");
-      }
-
-      // Show success toast
-      setToastMessage("Report saved successfully!");
-      setToastType("success");
-      setToastOpen(true);
-
-      // Refresh sidebar to show new report
-      window.dispatchEvent(new Event("refreshSavedReports"));
-
-      // Auto-hide toast after 3 seconds
-      setTimeout(() => setToastOpen(false), 3000);
-    } catch (error: any) {
-      console.error("Error saving report:", error);
-      setToastMessage(error.message || "Failed to save report");
-      setToastType("error");
-      setToastOpen(true);
-      setTimeout(() => setToastOpen(false), 5000);
-      throw error;
-    }
-  };
+  const filtersLocked = !savedReport.allowFilters && !isEditMode;
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto">
       {/* Page Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">
-          Custom Opcode
-        </h1>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-          Analyze opcodes with flexible grouping by RO, make, model, advisor,
-          and mileage bands. Expand opcodes to view individual operations.
-        </p>
-      </div>
-
-      {/* Instructions - Collapsible */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg mb-6">
-        <button
-          onClick={() => setInstructionsExpanded(!instructionsExpanded)}
-          className="w-full flex items-center justify-between p-4 text-left hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors rounded-lg"
-        >
-          <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100">
-            💡 How to Use Grouping
-          </h3>
-          {instructionsExpanded ? (
-            <ChevronUp className="w-5 h-5 text-blue-900 dark:text-blue-100" />
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          {isEditMode ? (
+            <input
+              type="text"
+              value={editedName}
+              onChange={(e) => setEditedName(e.target.value)}
+              className="form-input text-2xl md:text-3xl font-bold mb-2"
+            />
           ) : (
-            <ChevronDown className="w-5 h-5 text-blue-900 dark:text-blue-100" />
+            <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">
+              {savedReport.name}
+            </h1>
           )}
-        </button>
-        {instructionsExpanded && (
-          <div className="px-4 pb-4">
-            <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-              <li>
-                • Drag column headers (RO Number, Make, Model, Advisor, Mileage
-                Band) to the group area above the grid
-              </li>
-              <li>
-                • Create multi-level grouping by dragging multiple columns
-                (e.g., Advisor → Make → Model)
-              </li>
-              <li>
-                • By default, operations are grouped by Opcode. Expand an opcode
-                to see its individual operations.
-              </li>
-              <li>
-                • Metrics will automatically aggregate when grouped (sum for
-                counts/revenue, weighted average for percentages)
-              </li>
-              <li>• Click expand/collapse buttons to view group details</li>
-              <li>
-                • Use the sidebar (columns icon) to show/hide columns and manage
-                filters
-              </li>
-            </ul>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+            {savedReport.reportType === "custom-ro"
+              ? "Custom RO"
+              : "Custom Opcode"}{" "}
+            •{savedReport.visibility === "public" ? " Public" : " Private"} •
+            Created by {savedReport.creator.name}
+          </p>
+        </div>
+
+        {canEdit && (
+          <div className="flex gap-2">
+            {isEditMode ? (
+              <>
+                <button
+                  onClick={() => setIsEditMode(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <X size={16} />
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveChanges}
+                  className="px-4 py-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <Save size={16} />
+                  Save Changes
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <Trash2 size={16} />
+                  Delete
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setIsEditMode(true)}
+                className="px-4 py-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 rounded-lg transition-colors flex items-center gap-2"
+              >
+                <Edit size={16} />
+                Edit Report
+              </button>
+            )}
           </div>
         )}
       </div>
 
-      {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          {/* Date Preset */}
-          <div className="sm:col-span-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Date Range
-            </label>
-            <select
-              value={datePreset}
-              onChange={(e) => handleDatePresetChange(e.target.value)}
-              className="form-select w-full min-h-[42px]"
-            >
-              <option value="custom">Custom Range</option>
-              <option value="last30">Last 30 Days</option>
-              <option value="last60">Last 60 Days</option>
-              <option value="last90">Last 90 Days</option>
-              <option value="monthToDate">Month to Date</option>
-              <option value="previousMonth">Previous Month</option>
-              <option value="yearToDate">Year to Date</option>
-            </select>
-          </div>
+      {/* Filters - Collapsed by default */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">
+        <button
+          onClick={() => setFiltersExpanded(!filtersExpanded)}
+          className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors rounded-lg"
+        >
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            Filters {filtersLocked && "(Locked)"}
+          </h3>
+          {filtersExpanded ? (
+            <ChevronUp className="w-5 h-5 text-gray-500" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-gray-500" />
+          )}
+        </button>
+        {filtersExpanded && (
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className="sm:col-span-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Date Preset
+                </label>
+                <select
+                  value={datePreset}
+                  onChange={(e) =>
+                    !filtersLocked && handleDatePresetChange(e.target.value)
+                  }
+                  disabled={filtersLocked}
+                  className={`form-select w-full min-h-[42px] ${
+                    filtersLocked ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                >
+                  <option value="custom">Custom Range</option>
+                  <option value="last30">Last 30 Days</option>
+                  <option value="last60">Last 60 Days</option>
+                  <option value="last90">Last 90 Days</option>
+                  <option value="monthToDate">Month to Date</option>
+                  <option value="previousMonth">Previous Month</option>
+                  <option value="yearToDate">Year to Date</option>
+                </select>
+              </div>
 
-          {/* Date Range */}
-          <div className="sm:col-span-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Start Date
-            </label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => {
-                setStartDate(e.target.value);
-                setDatePreset("custom");
-              }}
-              disabled={datePreset !== "custom"}
-              className={`form-input w-full ${
-                datePreset !== "custom" ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-            />
-          </div>
+              <div className="sm:col-span-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Start Date
+                </label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) =>
+                    !filtersLocked && setStartDate(e.target.value)
+                  }
+                  disabled={filtersLocked}
+                  className={`form-input w-full ${
+                    filtersLocked ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                />
+              </div>
 
-          <div className="sm:col-span-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              End Date
-            </label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => {
-                setEndDate(e.target.value);
-                setDatePreset("custom");
-              }}
-              disabled={datePreset !== "custom"}
-              className={`form-input w-full ${
-                datePreset !== "custom" ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-            />
-          </div>
+              <div className="sm:col-span-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  End Date
+                </label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => !filtersLocked && setEndDate(e.target.value)}
+                  disabled={filtersLocked}
+                  className={`form-input w-full ${
+                    filtersLocked ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                />
+              </div>
 
-          {/* Pay Type */}
-          <div className="sm:col-span-1">
-            <MultiSelectDropdown
-              label="Pay Type"
-              options={[
-                { value: "C", label: "Customer Pay" },
-                { value: "W", label: "Warranty" },
-                { value: "I", label: "Internal" },
-              ]}
-              value={selectedPayTypes}
-              onChange={setSelectedPayTypes}
-              placeholder="Select pay types..."
-            />
-          </div>
+              <div className="sm:col-span-1">
+                <MultiSelectDropdown
+                  label="Pay Type"
+                  options={[
+                    { value: "C", label: "Customer Pay" },
+                    { value: "W", label: "Warranty" },
+                    { value: "I", label: "Internal" },
+                  ]}
+                  value={selectedPayTypes}
+                  onChange={setSelectedPayTypes}
+                  placeholder="Select pay types..."
+                  disabled={filtersLocked}
+                />
+              </div>
 
-          {/* Warranty Eligibility */}
-          <div className="sm:col-span-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Warranty Eligibility
-            </label>
-            <select
-              value={warrantyEligibility}
-              onChange={(e) => setWarrantyEligibility(e.target.value)}
-              className="form-select w-full min-h-[42px]"
-            >
-              <option value="all">All</option>
-              <option value="yes">Eligible</option>
-              <option value="no">Not Eligible</option>
-              <option value="unset">Unset</option>
-            </select>
-          </div>
-        </div>
+              <div className="sm:col-span-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Warranty Eligibility
+                </label>
+                <select
+                  value={warrantyEligibility}
+                  onChange={(e) =>
+                    !filtersLocked && setWarrantyEligibility(e.target.value)
+                  }
+                  disabled={filtersLocked}
+                  className={`form-select w-full min-h-[42px] ${
+                    filtersLocked ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                >
+                  <option value="all">All</option>
+                  <option value="yes">Eligible</option>
+                  <option value="no">Not Eligible</option>
+                  <option value="unset">Unset</option>
+                </select>
+              </div>
+            </div>
 
-        {/* Apply Filters Button */}
-        <div className="flex justify-end mt-4">
-          <button
-            onClick={fetchData}
-            disabled={loading}
-            className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 
-                     disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors
-                     flex items-center gap-2 text-sm"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Loading...
-              </>
-            ) : (
-              "Apply Filters"
+            {!filtersLocked && (
+              <div className="flex justify-end mt-4">
+                <button
+                  onClick={fetchData}
+                  disabled={dataLoading}
+                  className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 
+                         disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors
+                         flex items-center gap-2 text-sm"
+                >
+                  {dataLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    "Apply Filters"
+                  )}
+                </button>
+              </div>
             )}
-          </button>
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Summary Stats */}
@@ -941,7 +1010,9 @@ export default function OpcodePerformanceSummary() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-sm">
             <div>
               <div className="text-gray-500 dark:text-gray-400">
-                Total Operations
+                {savedReport?.reportType === "custom-opcode"
+                  ? "Total Operations"
+                  : "Total ROs"}
               </div>
               <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 {data.length.toLocaleString()}
@@ -1038,14 +1109,6 @@ export default function OpcodePerformanceSummary() {
           <Download className="w-4 h-4" />
           Export CSV
         </button>
-        <button
-          onClick={() => setIsSaveReportModalOpen(true)}
-          className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 
-                   transition-colors text-sm flex items-center gap-2"
-        >
-          <Save className="w-4 h-4" />
-          Save Report
-        </button>
       </div>
 
       {/* AG Grid */}
@@ -1054,54 +1117,6 @@ export default function OpcodePerformanceSummary() {
         className="w-full relative bg-white dark:bg-gray-900 p-4"
         style={{ height: "700px" }}
       >
-        {/* Add Group Column Button */}
-        <div className="absolute top-6 left-6 z-10" ref={groupMenuRef}>
-          <button
-            onClick={() => setShowGroupMenu(!showGroupMenu)}
-            className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 
-                     transition-colors shadow-lg flex items-center gap-2"
-            title="Add column to grouping"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
-
-          {/* Dropdown Menu */}
-          {showGroupMenu && (
-            <div
-              className="absolute top-12 left-0 bg-white dark:bg-gray-800 rounded-lg shadow-xl 
-                          border border-gray-200 dark:border-gray-700 py-2 min-w-[200px] z-20"
-            >
-              <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
-                Add to Group
-              </div>
-              {groupableColumns.map((col) => {
-                const isGrouped = gridApi
-                  ?.getRowGroupColumns()
-                  .some((c) => c.getColId() === col.field);
-                return (
-                  <button
-                    key={col.field}
-                    onClick={() => addColumnToGroup(col.field)}
-                    disabled={isGrouped}
-                    className={`w-full text-left px-4 py-2 text-sm transition-colors
-                      ${
-                        isGrouped
-                          ? "text-gray-400 dark:text-gray-600 cursor-not-allowed"
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      }`}
-                  >
-                    {col.label}
-                    {isGrouped && (
-                      <span className="ml-2 text-xs">(grouped)</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Fullscreen Button - Floating inside grid */}
         <button
           onClick={toggleFullscreen}
           className="absolute top-6 right-6 z-10 p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 
@@ -1119,43 +1134,31 @@ export default function OpcodePerformanceSummary() {
           className={`${
             isDark ? "ag-theme-quartz-dark" : "ag-theme-quartz"
           } rounded-lg border border-gray-200 dark:border-gray-700`}
-          style={{
-            height: "100%",
-            width: "100%",
-            overflowX: "scroll",
-            overflowY: "auto",
-          }}
+          style={{ height: "100%", width: "100%" }}
         >
-          <AgGridReact<OpcodePerformanceData>
+          <AgGridReact<any>
             rowData={data}
             columnDefs={columnDefs}
             defaultColDef={defaultColDef}
             autoGroupColumnDef={autoGroupColumnDef}
             onGridReady={onGridReady}
-            onColumnRowGroupChanged={onColumnRowGroupChanged}
-            onRowGroupOpened={onRowGroupOpened}
+            onRowGroupOpened={handleRowGroupChanged}
             groupDefaultExpanded={0}
             animateRows={true}
-            rowGroupPanelShow="always"
             suppressAggFuncInHeader={true}
-            suppressColumnVirtualisation={false}
             getRowStyle={(params) => {
-              // Check if grouping is active
               const rowGroupColumns = params.api.getRowGroupColumns();
               if (rowGroupColumns.length === 0) {
-                // No grouping - return undefined for transparent/normal background
                 return undefined;
               }
 
               if (!params.node.group) {
-                // Leaf rows (actual data rows) - lightest background
                 return {
                   backgroundColor: isDark
                     ? "rgba(255, 255, 255, 0.08)"
                     : "rgba(0, 0, 0, 0.06)",
                 };
               } else {
-                // Group rows - progressively lighter based on depth
                 const level = params.node.level || 0;
                 const opacity = isDark
                   ? 0.02 + level * 0.015
@@ -1175,11 +1178,6 @@ export default function OpcodePerformanceSummary() {
                   labelKey: "columns",
                   iconKey: "columns",
                   toolPanel: "agColumnsToolPanel",
-                  toolPanelParams: {
-                    suppressRowGroups: false,
-                    suppressValues: false,
-                    suppressPivots: true,
-                  },
                 },
                 {
                   id: "filters",
@@ -1191,7 +1189,7 @@ export default function OpcodePerformanceSummary() {
               ],
             }}
             theme="legacy"
-            loading={loading}
+            loading={dataLoading}
           />
         </div>
       </div>
@@ -1210,20 +1208,41 @@ export default function OpcodePerformanceSummary() {
         />
       )}
 
-      {/* Save Report Modal */}
-      <SaveReportModal
-        isOpen={isSaveReportModalOpen}
-        onClose={() => setIsSaveReportModalOpen(false)}
-        onSave={handleSaveReport}
-        reportType="custom-opcode"
-      />
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-gray-900/50 dark:bg-gray-900/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              Delete Report?
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+              Are you sure you want to delete "{savedReport.name}"? This action
+              cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+              >
+                Delete Report
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toast Notification */}
       <Toast
         type={toastType}
         open={toastOpen}
         setOpen={setToastOpen}
-        className="fixed bottom-4 right-4 z-50"
+        className="fixed top-4 right-4 z-50"
       >
         {toastMessage}
       </Toast>

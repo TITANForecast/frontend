@@ -24,6 +24,13 @@ import {
   UserCog,
 } from "lucide-react";
 
+interface SavedReport {
+  id: string;
+  name: string;
+  reportType: string;
+  visibility: string;
+}
+
 // Navigation constants
 interface NavItem {
   id: string;
@@ -194,13 +201,50 @@ export default function Sidebar({
   const sidebar = useRef<HTMLDivElement>(null);
   const { sidebarOpen, setSidebarOpen, sidebarExpanded, setSidebarExpanded } =
     useAppProvider();
-  const { user } = useAuth();
+  const { user, getAuthToken } = useAuth();
   const segments = useSelectedLayoutSegments();
   const breakpoint = useWindowWidth();
   const expandOnly =
     !sidebarExpanded && breakpoint && breakpoint >= 1024 && breakpoint < 1536;
+  const [savedReports, setSavedReports] = useState<SavedReport[]>([]);
 
-  // Filter navigation items based on user role
+  // Fetch saved reports
+  useEffect(() => {
+    const fetchSavedReports = async () => {
+      if (!user) return;
+
+      try {
+        const token = await getAuthToken();
+        const response = await fetch("/api/reports/saved", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          setSavedReports(result.data || []);
+        }
+      } catch (error) {
+        console.error("Error fetching saved reports:", error);
+      }
+    };
+
+    fetchSavedReports();
+
+    // Listen for custom event to refresh saved reports
+    const handleRefreshReports = () => {
+      fetchSavedReports();
+    };
+
+    window.addEventListener("refreshSavedReports", handleRefreshReports);
+
+    return () => {
+      window.removeEventListener("refreshSavedReports", handleRefreshReports);
+    };
+  }, [user, getAuthToken]);
+
+  // Filter navigation items based on user role and add saved reports
   const filterNavItems = (items: NavItem[]): NavItem[] => {
     return items
       .filter((item) => {
@@ -214,6 +258,22 @@ export default function Sidebar({
         return item.requiredRoles.includes(user.role);
       })
       .map((item) => {
+        // Add saved reports to Reports section
+        if (item.id === "reports" && item.children) {
+          const savedReportItems: NavItem[] = savedReports.map((report) => ({
+            id: `saved-${report.id}`,
+            title: report.name,
+            href: `/reports/saved/${report.id}`,
+            segment: report.id,
+            icon: null,
+          }));
+
+          return {
+            ...item,
+            children: [...item.children, ...savedReportItems],
+          };
+        }
+
         // Recursively filter children if they exist
         if (item.children) {
           return {

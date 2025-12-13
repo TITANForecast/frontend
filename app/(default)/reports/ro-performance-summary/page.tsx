@@ -32,10 +32,15 @@ import {
   Maximize2,
   Minimize2,
   Plus,
+  Save,
 } from "lucide-react";
 import { initializeAgGridLicense } from "@/lib/ag-charts-license";
 import RODetailsModal from "@/app/(default)/dealer-settings/ro-details-modal";
 import MultiSelectDropdown from "@/components/multi-select-dropdown";
+import SaveReportModal, {
+  SaveReportConfig,
+} from "@/components/save-report-modal";
+import Toast from "@/components/toast";
 
 // Import AG Grid CSS
 import "ag-grid-community/styles/ag-grid.css";
@@ -111,6 +116,11 @@ export default function ROPerformanceSummary() {
     roNumber: string;
   } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isSaveReportModalOpen, setIsSaveReportModalOpen] =
+    useState<boolean>(false);
+  const [toastOpen, setToastOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<"success" | "error">("success");
   const gridContainerRef = React.useRef<HTMLDivElement>(null);
   const groupMenuRef = React.useRef<HTMLDivElement>(null);
 
@@ -644,6 +654,72 @@ export default function ROPerformanceSummary() {
     };
   }, [showGroupMenu]);
 
+  // Save report functionality
+  const handleSaveReport = async (config: SaveReportConfig) => {
+    if (!gridApi || !currentDealer) return;
+
+    try {
+      const token = await getAuthToken();
+
+      // Get current grouping state
+      const groupColumns = gridApi.getRowGroupColumns();
+      const grouping = groupColumns.map((col) => col.getColId());
+
+      // Get column state
+      const columnState = gridApi.getColumnState();
+
+      // Prepare filters
+      const filters = {
+        datePreset,
+        startDate,
+        endDate,
+        payTypes: selectedPayTypes,
+        warrantyEligibility,
+      };
+
+      const response = await fetch("/api/reports/saved", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: config.name,
+          reportType: "custom-ro",
+          visibility: config.visibility,
+          allowFilters: config.allowFilters,
+          filters,
+          grouping,
+          columnState,
+          dealerId: currentDealer.id,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to save report");
+      }
+
+      // Show success toast
+      setToastMessage("Report saved successfully!");
+      setToastType("success");
+      setToastOpen(true);
+
+      // Refresh sidebar to show new report
+      window.dispatchEvent(new Event("refreshSavedReports"));
+
+      // Auto-hide toast after 3 seconds
+      setTimeout(() => setToastOpen(false), 3000);
+    } catch (error: any) {
+      console.error("Error saving report:", error);
+      setToastMessage(error.message || "Failed to save report");
+      setToastType("error");
+      setToastOpen(true);
+      setTimeout(() => setToastOpen(false), 5000);
+      throw error;
+    }
+  };
+
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto">
       {/* Page Header */}
@@ -795,7 +871,7 @@ export default function ROPerformanceSummary() {
         </div>
 
         {/* Apply Filters Button */}
-        <div className="mt-4">
+        <div className="flex justify-end mt-4">
           <button
             onClick={fetchData}
             disabled={loading}
@@ -918,6 +994,14 @@ export default function ROPerformanceSummary() {
         >
           <Download className="w-4 h-4" />
           Export CSV
+        </button>
+        <button
+          onClick={() => setIsSaveReportModalOpen(true)}
+          className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 
+                   transition-colors text-sm flex items-center gap-2"
+        >
+          <Save className="w-4 h-4" />
+          Save Report
         </button>
       </div>
 
@@ -1082,6 +1166,24 @@ export default function ROPerformanceSummary() {
           dealerId={currentDealer.id}
         />
       )}
+
+      {/* Save Report Modal */}
+      <SaveReportModal
+        isOpen={isSaveReportModalOpen}
+        onClose={() => setIsSaveReportModalOpen(false)}
+        onSave={handleSaveReport}
+        reportType="custom-ro"
+      />
+
+      {/* Toast Notification */}
+      <Toast
+        type={toastType}
+        open={toastOpen}
+        setOpen={setToastOpen}
+        className="fixed bottom-4 right-4 z-50"
+      >
+        {toastMessage}
+      </Toast>
     </div>
   );
 }

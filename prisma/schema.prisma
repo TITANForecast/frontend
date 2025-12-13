@@ -49,6 +49,7 @@ model Dealer {
   serviceCategories   ServiceCategory[]
   serviceSubcategories ServiceSubcategory[]
   services            Service[]
+  savedReports        SavedReport[]        @relation("DealerSavedReports")
 
   @@map("dealers")
 }
@@ -110,6 +111,7 @@ model User {
   dealers          UserDealer[]
   servicesCreated  Service[]    @relation("ServiceCreatedBy")
   servicesUpdated  Service[]    @relation("ServiceUpdatedBy")
+  savedReports     SavedReport[] @relation("SavedReportCreator")
 
   @@index([email])
   @@index([cognitoSub])
@@ -219,4 +221,34 @@ model Service {
   @@index([dealerId, isActive])
   @@index([dealerId, categoryId])
   @@map("services")
+}
+
+model SavedReport {
+  id             String    @id @default(cuid())
+  name           String    @db.VarChar(100)
+  reportType     String    @map("report_type") @db.VarChar(50) // "custom-ro" or "custom-opcode"
+  visibility     String    @db.VarChar(20) // "local" or "public"
+  allowFilters   Boolean   @default(true) @map("allow_filters")
+  
+  // Saved configuration (stored as JSON)
+  filters        Json?     // Date range, pay types, warranty eligibility, etc.
+  grouping       Json?     // Group columns and their order
+  columnState    Json?     @map("column_state") // Column visibility, widths, order, etc.
+  
+  // Ownership
+  createdBy      String    @map("created_by")
+  dealerId       String?   @map("dealer_id") // Optional: for dealer-specific reports
+  
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  creator        User      @relation("SavedReportCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  dealer         Dealer?   @relation("DealerSavedReports", fields: [dealerId], references: [id], onDelete: Cascade)
+  
+  @@index([createdBy])
+  @@index([reportType])
+  @@index([visibility])
+  @@index([dealerId])
+  @@map("saved_reports")
 }
