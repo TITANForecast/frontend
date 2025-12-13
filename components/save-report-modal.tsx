@@ -98,7 +98,6 @@ export default function SaveReportModal({
             </div>
           )}
 
-          {/* Report Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Report Name <span className="text-red-500">*</span>
