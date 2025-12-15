@@ -258,19 +258,54 @@ export default function Sidebar({
         return item.requiredRoles.includes(user.role);
       })
       .map((item) => {
-        // Add saved reports to Reports section
+        // Handle Reports section: add My Reports subsection and public reports
         if (item.id === "reports" && item.children) {
-          const savedReportItems: NavItem[] = savedReports.map((report) => ({
-            id: `saved-${report.id}`,
+          // Get local and public reports
+          const localReports = savedReports.filter(
+            (report) => report.visibility === "local"
+          );
+          const publicReports = savedReports.filter(
+            (report) => report.visibility === "public"
+          );
+
+          // Create My Reports subsection with local reports
+          const myReportsSection: NavItem = {
+            id: "my-reports",
+            title: "My Reports",
+            segment: "my-reports",
+            icon: null,
+            children: localReports.map((report) => ({
+              id: `local-${report.id}`,
+              title: report.name,
+              href: `/reports/saved/${report.id}`,
+              segment: report.id,
+              icon: null,
+            })),
+          };
+
+          // Create public report items
+          const publicReportItems: NavItem[] = publicReports.map((report) => ({
+            id: `public-${report.id}`,
             title: report.name,
             href: `/reports/saved/${report.id}`,
             segment: report.id,
             icon: null,
           }));
 
+          // Build the children array: base items, My Reports, then public reports
+          const children = [...item.children];
+
+          // Only add My Reports section if there are local reports
+          if (localReports.length > 0) {
+            children.push(myReportsSection);
+          }
+
+          // Add public reports
+          children.push(...publicReportItems);
+
           return {
             ...item,
-            children: [...item.children, ...savedReportItems],
+            children,
           };
         }
 
@@ -336,15 +371,80 @@ export default function Sidebar({
               </a>
               <div className="lg:hidden lg:sidebar-expanded:block 2xl:block">
                 <ul className={`pl-8 mt-1 ${!open && "hidden"}`}>
-                  {item.children?.map((child) => (
-                    <li key={child.id} className="mb-1 last:mb-0">
-                      <SidebarLink href={child.href || "#"}>
-                        <span className="text-sm font-medium lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
-                          {child.title}
-                        </span>
-                      </SidebarLink>
-                    </li>
-                  ))}
+                  {item.children?.map((child) => {
+                    const childHasChildren =
+                      child.children && child.children.length > 0;
+                    const childIsActive = segments.includes(child.segment);
+
+                    if (childHasChildren) {
+                      // Render nested expandable item (e.g., My Reports)
+                      return (
+                        <li key={child.id} className="mb-1 last:mb-0">
+                          <SidebarLinkGroup open={childIsActive}>
+                            {(handleChildClick, childOpen) => (
+                              <>
+                                <a
+                                  href="#0"
+                                  className={`block text-gray-800 dark:text-gray-100 truncate transition text-sm ${
+                                    childIsActive
+                                      ? ""
+                                      : "hover:text-gray-900 dark:hover:text-white"
+                                  }`}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    handleChildClick();
+                                  }}
+                                >
+                                  <div className="flex items-center justify-between py-1">
+                                    <span className="font-medium lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
+                                      {child.title}
+                                    </span>
+                                    <ChevronDown
+                                      size={10}
+                                      className={`shrink-0 ml-1 text-gray-400 dark:text-gray-500 transition-transform ${
+                                        childOpen && "rotate-180"
+                                      }`}
+                                    />
+                                  </div>
+                                </a>
+                                <ul
+                                  className={`pl-4 mt-1 ${
+                                    !childOpen && "hidden"
+                                  }`}
+                                >
+                                  {child.children?.map((grandchild) => (
+                                    <li
+                                      key={grandchild.id}
+                                      className="mb-1 last:mb-0"
+                                    >
+                                      <SidebarLink
+                                        href={grandchild.href || "#"}
+                                      >
+                                        <span className="text-sm font-medium lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
+                                          {grandchild.title}
+                                        </span>
+                                      </SidebarLink>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </>
+                            )}
+                          </SidebarLinkGroup>
+                        </li>
+                      );
+                    } else {
+                      // Render normal child item
+                      return (
+                        <li key={child.id} className="mb-1 last:mb-0">
+                          <SidebarLink href={child.href || "#"}>
+                            <span className="text-sm font-medium lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
+                              {child.title}
+                            </span>
+                          </SidebarLink>
+                        </li>
+                      );
+                    }
+                  })}
                 </ul>
               </div>
             </>
