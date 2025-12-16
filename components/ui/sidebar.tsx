@@ -260,30 +260,37 @@ export default function Sidebar({
       .map((item) => {
         // Handle Reports section: add My Reports subsection and public reports
         if (item.id === "reports" && item.children) {
-          // Get local and public reports
+          // Get local and public reports - ensure strict filtering
           const localReports = savedReports.filter(
-            (report) => report.visibility === "local"
+            (report) => report.visibility?.toLowerCase() === "local"
           );
           const publicReports = savedReports.filter(
-            (report) => report.visibility === "public"
+            (report) => report.visibility?.toLowerCase() === "public"
           );
 
-          // Create My Reports subsection with local reports
-          const myReportsSection: NavItem = {
-            id: "my-reports",
-            title: "My Reports",
-            segment: "my-reports",
-            icon: null,
-            children: localReports.map((report) => ({
-              id: `local-${report.id}`,
-              title: report.name,
-              href: `/reports/saved/${report.id}`,
-              segment: report.id,
-              icon: null,
-            })),
-          };
+          // Build the children array: base items, My Reports (if local reports exist), then public reports
+          const children = [...item.children];
 
-          // Create public report items
+          // Only add My Reports section if there are local reports
+          if (localReports.length > 0) {
+            // Create My Reports subsection with ONLY local reports
+            const myReportsSection: NavItem = {
+              id: "my-reports",
+              title: "My Reports",
+              segment: "my-reports",
+              icon: null,
+              children: localReports.map((report) => ({
+                id: `local-${report.id}`,
+                title: report.name,
+                href: `/reports/saved/${report.id}`,
+                segment: report.id,
+                icon: null,
+              })),
+            };
+            children.push(myReportsSection);
+          }
+
+          // Add public reports as separate items (not under My Reports)
           const publicReportItems: NavItem[] = publicReports.map((report) => ({
             id: `public-${report.id}`,
             title: report.name,
@@ -291,16 +298,6 @@ export default function Sidebar({
             segment: report.id,
             icon: null,
           }));
-
-          // Build the children array: base items, My Reports, then public reports
-          const children = [...item.children];
-
-          // Only add My Reports section if there are local reports
-          if (localReports.length > 0) {
-            children.push(myReportsSection);
-          }
-
-          // Add public reports
           children.push(...publicReportItems);
 
           return {
