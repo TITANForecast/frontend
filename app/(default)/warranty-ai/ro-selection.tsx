@@ -144,6 +144,8 @@ export default function ROSSelection() {
   >(null);
   const [warrantyRequestCooldownPeriod, setWarrantyRequestCooldownPeriod] =
     useState<number>(180);
+  const [cooldownPerCalendarYear, setCooldownPerCalendarYear] =
+    useState<boolean>(false);
 
   // Warranty revenue metrics (only for labor mode)
   const [warrantyRevenueMetrics, setWarrantyRevenueMetrics] = useState<{
@@ -204,6 +206,7 @@ export default function ROSSelection() {
         setWarrantyRequestCooldownPeriod(
           data.warrantyRequestCooldownPeriod ?? 180
         );
+        setCooldownPerCalendarYear(data.cooldownPerCalendarYear ?? false);
       }
     } catch (err) {
       console.error("Failed to fetch general settings:", err);
@@ -647,7 +650,13 @@ export default function ROSSelection() {
                     : lastPartsProfitSubmission;
 
                 let eligibleDate: Date;
-                if (lastSubmission) {
+                if (cooldownPerCalendarYear && lastSubmission) {
+                  // If per calendar year is enabled, set eligible date to Jan 1 of next year
+                  const lastSub = new Date(lastSubmission);
+                  const nextYear = lastSub.getFullYear() + 1;
+                  eligibleDate = new Date(nextYear, 0, 1); // January 1st of next year
+                } else if (lastSubmission) {
+                  // Use cooldown period in days
                   const lastSub = new Date(lastSubmission);
                   lastSub.setHours(0, 0, 0, 0);
                   eligibleDate = new Date(lastSub);

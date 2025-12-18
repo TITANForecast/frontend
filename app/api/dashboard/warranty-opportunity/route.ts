@@ -50,12 +50,20 @@ export async function GET(request: NextRequest) {
     // Calculate eligibility dates
     const cooldownPeriod =
       generalSettings?.warrantyRequestCooldownPeriod ?? 180;
+    const cooldownPerCalendarYear =
+      generalSettings?.cooldownPerCalendarYear ?? false;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     // Calculate labor eligibility date
     let eligibleLaborDate: Date | null = null;
-    if (generalSettings?.lastLaborRateSubmission) {
+    if (cooldownPerCalendarYear && generalSettings?.lastLaborRateSubmission) {
+      // If per calendar year is enabled, set eligible date to Jan 1 of next year
+      const lastSubmission = new Date(generalSettings.lastLaborRateSubmission);
+      const nextYear = lastSubmission.getFullYear() + 1;
+      eligibleLaborDate = new Date(nextYear, 0, 1); // January 1st of next year
+    } else if (generalSettings?.lastLaborRateSubmission) {
+      // Use cooldown period in days
       const lastSubmission = new Date(generalSettings.lastLaborRateSubmission);
       lastSubmission.setHours(0, 0, 0, 0);
       eligibleLaborDate = new Date(lastSubmission);
@@ -68,7 +76,15 @@ export async function GET(request: NextRequest) {
 
     // Calculate parts eligibility date
     let eligiblePartsDate: Date | null = null;
-    if (generalSettings?.lastPartsProfitSubmission) {
+    if (cooldownPerCalendarYear && generalSettings?.lastPartsProfitSubmission) {
+      // If per calendar year is enabled, set eligible date to Jan 1 of next year
+      const lastSubmission = new Date(
+        generalSettings.lastPartsProfitSubmission
+      );
+      const nextYear = lastSubmission.getFullYear() + 1;
+      eligiblePartsDate = new Date(nextYear, 0, 1); // January 1st of next year
+    } else if (generalSettings?.lastPartsProfitSubmission) {
+      // Use cooldown period in days
       const lastSubmission = new Date(
         generalSettings.lastPartsProfitSubmission
       );

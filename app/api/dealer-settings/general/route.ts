@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
           currentWarrantyLaborRate: null,
           currentWarrantyPartsMarkup: null,
           warrantyRequestCooldownPeriod: 180,
+          cooldownPerCalendarYear: false,
         },
       });
     }
@@ -61,6 +62,7 @@ export async function GET(request: NextRequest) {
         : null,
       warrantyRequestCooldownPeriod:
         settings.warrantyRequestCooldownPeriod ?? 180,
+      cooldownPerCalendarYear: settings.cooldownPerCalendarYear ?? false,
       createdAt: settings.createdAt.toISOString(),
       updatedAt: settings.updatedAt.toISOString(),
     });
@@ -106,6 +108,7 @@ export async function PUT(request: NextRequest) {
       lastLaborRateSubmission,
       lastPartsProfitSubmission,
       warrantyRequestCooldownPeriod,
+      cooldownPerCalendarYear,
     } = body;
 
     // Validate inputs
@@ -195,6 +198,11 @@ export async function PUT(request: NextRequest) {
           warrantyRequestCooldownPeriod !== undefined
             ? warrantyRequestCooldownPeriod
             : 180,
+        cooldownPerCalendarYear:
+          cooldownPerCalendarYear !== null &&
+          cooldownPerCalendarYear !== undefined
+            ? cooldownPerCalendarYear
+            : false,
       },
       create: {
         dealerId,
@@ -215,6 +223,11 @@ export async function PUT(request: NextRequest) {
           warrantyRequestCooldownPeriod !== undefined
             ? warrantyRequestCooldownPeriod
             : 180,
+        cooldownPerCalendarYear:
+          cooldownPerCalendarYear !== null &&
+          cooldownPerCalendarYear !== undefined
+            ? cooldownPerCalendarYear
+            : false,
       },
     });
 
@@ -235,6 +248,7 @@ export async function PUT(request: NextRequest) {
         : null,
       warrantyRequestCooldownPeriod:
         settings.warrantyRequestCooldownPeriod ?? 180,
+      cooldownPerCalendarYear: settings.cooldownPerCalendarYear ?? false,
       createdAt: settings.createdAt.toISOString(),
       updatedAt: settings.updatedAt.toISOString(),
     });

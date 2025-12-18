@@ -13,6 +13,7 @@ interface GeneralSettings {
   lastLaborRateSubmission: string | null;
   lastPartsProfitSubmission: string | null;
   warrantyRequestCooldownPeriod: number;
+  cooldownPerCalendarYear: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -35,6 +36,8 @@ export default function GeneralSettings({ dealerId }: GeneralSettingsProps) {
   const [lastLaborSubmission, setLastLaborSubmission] = useState<string>("");
   const [lastPartsSubmission, setLastPartsSubmission] = useState<string>("");
   const [cooldownPeriod, setCooldownPeriod] = useState<string>("180");
+  const [cooldownPerCalendarYear, setCooldownPerCalendarYear] =
+    useState<boolean>(false);
 
   const canWrite = hasRole([UserRole.SUPER_ADMIN, UserRole.MULTI_DEALER]);
 
@@ -92,6 +95,12 @@ export default function GeneralSettings({ dealerId }: GeneralSettingsProps) {
           ? String(data.warrantyRequestCooldownPeriod)
           : "180"
       );
+      setCooldownPerCalendarYear(
+        data.cooldownPerCalendarYear !== null &&
+          data.cooldownPerCalendarYear !== undefined
+          ? data.cooldownPerCalendarYear
+          : false
+      );
     } catch (err: any) {
       setError(err.message || "Failed to load general settings");
     } finally {
@@ -124,6 +133,7 @@ export default function GeneralSettings({ dealerId }: GeneralSettingsProps) {
         lastLaborRateSubmission?: string | null;
         lastPartsProfitSubmission?: string | null;
         warrantyRequestCooldownPeriod?: number | null;
+        cooldownPerCalendarYear?: boolean;
       } = {};
 
       // Parse and validate labor rate
@@ -172,6 +182,9 @@ export default function GeneralSettings({ dealerId }: GeneralSettingsProps) {
       payload.lastPartsProfitSubmission = lastPartsSubmission.trim()
         ? lastPartsSubmission.trim()
         : null;
+
+      // Set cooldown per calendar year
+      payload.cooldownPerCalendarYear = cooldownPerCalendarYear;
 
       const response = await fetch(
         `/api/dealer-settings/general?dealerId=${dealerId}`,
@@ -343,7 +356,7 @@ export default function GeneralSettings({ dealerId }: GeneralSettingsProps) {
             id="cooldownPeriod"
             value={cooldownPeriod}
             onChange={(e) => setCooldownPeriod(e.target.value)}
-            disabled={!canWrite || saving}
+            disabled={!canWrite || saving || cooldownPerCalendarYear}
             min="0"
             step="1"
             placeholder="Enter cooldown period in days (e.g., 180)"
@@ -353,6 +366,29 @@ export default function GeneralSettings({ dealerId }: GeneralSettingsProps) {
             Number of days that must pass after a submission before another
             warranty rate increase request can be submitted. Used for both labor
             and parts.
+          </p>
+        </div>
+
+        {/* Per Calendar Year Option */}
+        <div>
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="cooldownPerCalendarYear"
+              checked={cooldownPerCalendarYear}
+              onChange={(e) => setCooldownPerCalendarYear(e.target.checked)}
+              disabled={!canWrite || saving}
+              className="w-4 h-4 text-violet-600 bg-gray-100 border-gray-300 rounded focus:ring-violet-500 dark:focus:ring-violet-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            />
+            <label
+              htmlFor="cooldownPerCalendarYear"
+              className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer"
+            >
+              Per Calendar Year
+            </label>
+          </div>
+          <p className="mt-1 ml-7 text-xs text-gray-500 dark:text-gray-400">
+            If selected, the cooldown period in days is not applied. Instead, the eligible date will be January 1st of the year following the last submission date (e.g., if last submission was in 2025, eligible date is January 1, 2026).
           </p>
         </div>
 
