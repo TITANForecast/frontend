@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "@/components/auth-provider-multitenancy";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatNumber } from "@/components/utils/utils";
+import { calculateEligibleDate } from "@/lib/utils/warranty-utils";
 import {
   ChevronDown,
   ChevronRight,
@@ -649,27 +650,11 @@ export default function ROSSelection() {
                     ? lastLaborRateSubmission
                     : lastPartsProfitSubmission;
 
-                let eligibleDate: Date;
-                if (cooldownPerCalendarYear && lastSubmission) {
-                  // If per calendar year is enabled, set eligible date to Jan 1 of next year
-                  const lastSub = new Date(lastSubmission);
-                  const nextYear = lastSub.getFullYear() + 1;
-                  eligibleDate = new Date(nextYear, 0, 1); // January 1st of next year
-                } else if (lastSubmission) {
-                  // Use cooldown period in days
-                  const lastSub = new Date(lastSubmission);
-                  lastSub.setHours(0, 0, 0, 0);
-                  eligibleDate = new Date(lastSub);
-                  eligibleDate.setDate(
-                    eligibleDate.getDate() + warrantyRequestCooldownPeriod
-                  );
-                } else {
-                  // If no submission date, use today + cooldown as default
-                  eligibleDate = new Date();
-                  eligibleDate.setDate(
-                    eligibleDate.getDate() + warrantyRequestCooldownPeriod
-                  );
-                }
+                const eligibleDate = calculateEligibleDate(
+                  lastSubmission,
+                  warrantyRequestCooldownPeriod,
+                  cooldownPerCalendarYear
+                );
 
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);

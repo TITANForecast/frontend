@@ -2,6 +2,7 @@
 
 import EditMenu from "@/components/edit-menu";
 import { formatCurrency, formatNumber } from "@/components/utils/utils";
+import { calculateEligibleDate } from "@/lib/utils/warranty-utils";
 
 interface WarrantyData {
   currentLaborRate?: number | null;
@@ -12,6 +13,10 @@ interface WarrantyData {
   totalEligibleROsParts?: number | null;
   eligibleLaborDate?: string | null;
   eligiblePartsDate?: string | null;
+  cooldownPerCalendarYear?: boolean | null;
+  lastLaborRateSubmission?: string | null;
+  lastPartsProfitSubmission?: string | null;
+  warrantyRequestCooldownPeriod?: number | null;
 }
 
 interface Props {
@@ -88,35 +93,27 @@ export default function DashboardCardWarrantyOpportunity({ data }: Props) {
                 </div>
                 <div className={`text-xs ${dateColor} mt-1`}>
                   {(() => {
-                    const eligibleDate = data?.eligibleLaborDate
-                      ? new Date(data.eligibleLaborDate)
-                      : null;
+                    const eligibleDate = calculateEligibleDate(
+                      data?.lastLaborRateSubmission ?? null,
+                      data?.warrantyRequestCooldownPeriod ?? 180,
+                      data?.cooldownPerCalendarYear ?? false
+                    );
+
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
+                    eligibleDate.setHours(0, 0, 0, 0);
 
-                    if (eligibleDate) {
-                      eligibleDate.setHours(0, 0, 0, 0);
-                      if (eligibleDate <= today) {
-                        return "ELIGIBLE TO FILE";
-                      } else {
-                        return `ELIGIBLE ${eligibleDate.toLocaleDateString(
-                          "en-US",
-                          {
-                            month: "2-digit",
-                            day: "2-digit",
-                            year: "numeric",
-                          }
-                        )}`;
-                      }
+                    if (eligibleDate <= today) {
+                      return "ELIGIBLE TO FILE";
                     } else {
-                      // Fallback to 180 days if no date available
-                      const date = new Date();
-                      date.setDate(date.getDate() + 180);
-                      return `ELIGIBLE ${date.toLocaleDateString("en-US", {
-                        month: "2-digit",
-                        day: "2-digit",
-                        year: "numeric",
-                      })}`;
+                      return `ELIGIBLE ${eligibleDate.toLocaleDateString(
+                        "en-US",
+                        {
+                          month: "2-digit",
+                          day: "2-digit",
+                          year: "numeric",
+                        }
+                      )}`;
                     }
                   })()}
                 </div>
@@ -187,28 +184,27 @@ export default function DashboardCardWarrantyOpportunity({ data }: Props) {
                 </div>
                 <div className={`text-xs ${dateColor} mt-1`}>
                   {(() => {
-                    const eligibleDate = data?.eligiblePartsDate
-                      ? new Date(data.eligiblePartsDate)
-                      : null;
+                    const eligibleDate = calculateEligibleDate(
+                      data?.lastPartsProfitSubmission ?? null,
+                      data?.warrantyRequestCooldownPeriod ?? 180,
+                      data?.cooldownPerCalendarYear ?? false
+                    );
+
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
+                    eligibleDate.setHours(0, 0, 0, 0);
 
-                    if (eligibleDate) {
-                      eligibleDate.setHours(0, 0, 0, 0);
-                      if (eligibleDate <= today) {
-                        return "ELIGIBLE TO FILE";
-                      } else {
-                        return `ELIGIBLE ${eligibleDate.toLocaleDateString(
-                          "en-US",
-                          {
-                            month: "2-digit",
-                            day: "2-digit",
-                            year: "numeric",
-                          }
-                        )}`;
-                      }
-                    } else {
+                    if (eligibleDate <= today) {
                       return "ELIGIBLE TO FILE";
+                    } else {
+                      return `ELIGIBLE ${eligibleDate.toLocaleDateString(
+                        "en-US",
+                        {
+                          month: "2-digit",
+                          day: "2-digit",
+                          year: "numeric",
+                        }
+                      )}`;
                     }
                   })()}
                 </div>

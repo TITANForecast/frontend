@@ -32,13 +32,61 @@ export default function Dashboard() {
     totalEligibleROsParts: number | null;
     eligibleLaborDate: string | null;
     eligiblePartsDate: string | null;
+    cooldownPerCalendarYear: boolean | null;
   } | null>(null);
+  const [cooldownPerCalendarYear, setCooldownPerCalendarYear] =
+    useState<boolean>(false);
+  const [lastLaborRateSubmission, setLastLaborRateSubmission] = useState<
+    string | null
+  >(null);
+  const [lastPartsProfitSubmission, setLastPartsProfitSubmission] = useState<
+    string | null
+  >(null);
+  const [warrantyRequestCooldownPeriod, setWarrantyRequestCooldownPeriod] =
+    useState<number>(180);
 
   // Date range state - default to past 30 days
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: addDays(new Date(), -30),
     to: new Date(),
   });
+
+  useEffect(() => {
+    async function fetchGeneralSettings() {
+      if (!currentDealer) return;
+
+      try {
+        const token = await getAuthToken();
+        const headers: HeadersInit = {
+          "Content-Type": "application/json",
+        };
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(
+          `/api/dealer-settings/general?dealerId=${currentDealer.id}`,
+          { headers }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setCooldownPerCalendarYear(data.cooldownPerCalendarYear ?? false);
+          setLastLaborRateSubmission(data.lastLaborRateSubmission ?? null);
+          setLastPartsProfitSubmission(data.lastPartsProfitSubmission ?? null);
+          setWarrantyRequestCooldownPeriod(
+            data.warrantyRequestCooldownPeriod ?? 180
+          );
+        }
+      } catch (err) {
+        console.error("Failed to fetch general settings:", err);
+      }
+    }
+
+    if (currentDealer) {
+      fetchGeneralSettings();
+    }
+  }, [currentDealer]);
 
   useEffect(() => {
     async function fetchData() {
@@ -113,6 +161,7 @@ export default function Dashboard() {
             totalEligibleROsParts: null,
             eligibleLaborDate: null,
             eligiblePartsDate: null,
+            cooldownPerCalendarYear: null,
           });
         }
       } catch (error) {
@@ -179,6 +228,11 @@ export default function Dashboard() {
                       warrantyData.totalEligibleROsParts ?? null,
                     eligibleLaborDate: warrantyData.eligibleLaborDate ?? null,
                     eligiblePartsDate: warrantyData.eligiblePartsDate ?? null,
+                    cooldownPerCalendarYear: cooldownPerCalendarYear,
+                    lastLaborRateSubmission: lastLaborRateSubmission,
+                    lastPartsProfitSubmission: lastPartsProfitSubmission,
+                    warrantyRequestCooldownPeriod:
+                      warrantyRequestCooldownPeriod,
                   }
                 : dashboardData?.warranty
             }

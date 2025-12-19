@@ -304,6 +304,7 @@ export async function GET(request: NextRequest) {
       totalEligibleROsParts: partsROs.length,
       eligibleLaborDate: eligibleLaborDate?.toISOString() ?? null,
       eligiblePartsDate: eligiblePartsDate?.toISOString() ?? null,
+      cooldownPerCalendarYear,
     });
   } catch (error) {
     console.error("Error calculating warranty opportunity:", error);

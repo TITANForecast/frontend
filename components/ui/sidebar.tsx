@@ -207,6 +207,7 @@ export default function Sidebar({
   const expandOnly =
     !sidebarExpanded && breakpoint && breakpoint >= 1024 && breakpoint < 1536;
   const [savedReports, setSavedReports] = useState<SavedReport[]>([]);
+  const [myReportsOpen, setMyReportsOpen] = useState<boolean>(false);
 
   // Fetch saved reports
   useEffect(() => {
@@ -268,10 +269,20 @@ export default function Sidebar({
             (report) => report.visibility?.toLowerCase() === "public"
           );
 
-          // Build the children array: base items, My Reports (if local reports exist), then public reports
+          // Build the children array: base items, public reports, then My Reports (pinned at bottom)
           const children = [...item.children];
 
-          // Only add My Reports section if there are local reports
+          // Add public reports as separate items first (above My Reports)
+          const publicReportItems: NavItem[] = publicReports.map((report) => ({
+            id: `public-${report.id}`,
+            title: report.name,
+            href: `/reports/saved/${report.id}`,
+            segment: report.id,
+            icon: null,
+          }));
+          children.push(...publicReportItems);
+
+          // Only add My Reports section if there are local reports (pinned at bottom)
           if (localReports.length > 0) {
             // Create My Reports subsection with ONLY local reports
             const myReportsSection: NavItem = {
@@ -289,16 +300,6 @@ export default function Sidebar({
             };
             children.push(myReportsSection);
           }
-
-          // Add public reports as separate items (not under My Reports)
-          const publicReportItems: NavItem[] = publicReports.map((report) => ({
-            id: `public-${report.id}`,
-            title: report.name,
-            href: `/reports/saved/${report.id}`,
-            segment: report.id,
-            icon: null,
-          }));
-          children.push(...publicReportItems);
 
           return {
             ...item,
@@ -372,9 +373,60 @@ export default function Sidebar({
                     const childHasChildren =
                       child.children && child.children.length > 0;
                     const childIsActive = segments.includes(child.segment);
+                    const isMyReports = child.id === "my-reports";
 
                     if (childHasChildren) {
-                      // Render nested expandable item (e.g., My Reports)
+                      // Special handling for My Reports - render without SidebarLinkGroup wrapper to avoid extra padding
+                      if (isMyReports) {
+                        return (
+                          <li key={child.id} className="mb-1 last:mb-0">
+                            <a
+                              href="#0"
+                              className={`block text-gray-800 dark:text-gray-100 truncate transition text-sm ${
+                                childIsActive
+                                  ? ""
+                                  : "hover:text-gray-900 dark:hover:text-white"
+                              }`}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setMyReportsOpen(!myReportsOpen);
+                              }}
+                            >
+                              <div className="flex items-center justify-between py-1">
+                                <span className="font-medium lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
+                                  {child.title}
+                                </span>
+                                <ChevronDown
+                                  size={10}
+                                  className={`shrink-0 ml-1 text-gray-400 dark:text-gray-500 transition-transform ${
+                                    myReportsOpen && "rotate-180"
+                                  }`}
+                                />
+                              </div>
+                            </a>
+                            <ul
+                              className={`pl-4 mt-1 ${
+                                !myReportsOpen && "hidden"
+                              }`}
+                            >
+                              {child.children?.map((grandchild) => (
+                                <li
+                                  key={grandchild.id}
+                                  className="mb-1 last:mb-0"
+                                >
+                                  <SidebarLink href={grandchild.href || "#"}>
+                                    <span className="text-sm font-medium lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
+                                      {grandchild.title}
+                                    </span>
+                                  </SidebarLink>
+                                </li>
+                              ))}
+                            </ul>
+                          </li>
+                        );
+                      }
+
+                      // Render other nested expandable items with SidebarLinkGroup
                       return (
                         <li key={child.id} className="mb-1 last:mb-0">
                           <SidebarLinkGroup open={childIsActive}>
