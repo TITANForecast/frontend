@@ -240,7 +240,7 @@ export default function AIEvaluationModal({
 
       // Use batch endpoint
       const response = await fetch(
-        `/api/dealer-settings/operations/batch-evaluate-ai?dealerId=${dealerId}`,
+        `/api/dealer-settings/operations/batch-evaluate-ai/?dealerId=${dealerId}`,
         {
           method: "POST",
           headers,
@@ -361,7 +361,7 @@ export default function AIEvaluationModal({
       }
 
       const response = await fetch(
-        `/api/warranty/ai-evaluations/${evalToConfirm.id}/confirm`,
+        `/api/warranty/ai-evaluations/${evalToConfirm.id}/confirm/`,
         {
           method: "POST",
           headers,
