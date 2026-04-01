@@ -75,13 +75,13 @@ variable "staging_domain_name" {
 variable "staging_cpu" {
   description = "CPU units for the staging ECS task"
   type        = number
-  default     = 256
+  default     = 512
 }
 
 variable "staging_memory" {
   description = "Memory for the staging ECS task"
   type        = number
-  default     = 512
+  default     = 1024
 }
 
 variable "staging_desired_count" {
