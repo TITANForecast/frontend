@@ -19,15 +19,22 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // For non-GET requests (POST, PUT, PATCH, DELETE), rewrite instead of redirect
-  // This preserves the request body
+  // For API routes, always rewrite (never redirect)
+  // This avoids POST body loss and redirect loops with query params
+  if (pathname.startsWith("/api/")) {
+    const url = request.nextUrl.clone();
+    url.pathname = pathname + "/";
+    return NextResponse.rewrite(url);
+  }
+
+  // For non-GET requests, rewrite to preserve the request body
   if (request.method !== "GET") {
     const url = request.nextUrl.clone();
     url.pathname = pathname + "/";
     return NextResponse.rewrite(url);
   }
 
-  // For GET requests, redirect (308) as normal for SEO
+  // For page GET requests, redirect (308) for SEO
   const url = request.nextUrl.clone();
   url.pathname = pathname + "/";
   return NextResponse.redirect(url, 308);
