@@ -202,6 +202,10 @@ resource "aws_ecs_task_definition" "frontend" {
           {
             name      = "NEXT_PUBLIC_APP_URL"
             valueFrom = "${aws_secretsmanager_secret.frontend_config.arn}:NEXT_PUBLIC_APP_URL::"
+          },
+          {
+            name      = "NEXT_PUBLIC_BACKEND_API_URL"
+            valueFrom = "${aws_secretsmanager_secret.frontend_config.arn}:NEXT_PUBLIC_BACKEND_API_URL::"
           }
         ],
         var.database_secrets
