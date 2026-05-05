@@ -12,8 +12,14 @@ import {
 } from "@/lib/types/admin";
 import { UserRole } from "@/lib/types/auth";
 
-// Initialize Prisma Client
-const prisma = new PrismaClient();
+// Initialize Prisma Client as a singleton.
+// In Next.js standalone (ECS), each route module would otherwise spawn its own
+// PrismaClient on first import, accumulating connection pools over the
+// lifetime of the container. Reusing one instance across the process avoids
+// pool exhaustion under load.
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+const prisma = globalForPrisma.prisma ?? new PrismaClient();
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
 // Helper to convert Prisma Dealer to DealerExtended
 const convertToExtendedDealer = (dealer: any): DealerExtended => {
