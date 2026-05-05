@@ -343,88 +343,67 @@ export default function OperationsManagement({
         headers["Authorization"] = `Bearer ${token}`;
       }
 
-      // Fetch all IDs in batches
-      const batchSize = 5000;
-      let allIds: string[] = [];
-      let currentPage = 1;
-      let hasMoreData = true;
+      const params = new URLSearchParams({
+        dealerId,
+        page: "1",
+        limit: "10000", // Large limit to get all IDs
+        sortColumn,
+        sortDirection,
+      });
 
-      while (hasMoreData) {
-        const params = new URLSearchParams({
-          dealerId,
-          page: currentPage.toString(),
-          limit: batchSize.toString(),
-          sortColumn,
-          sortDirection,
-        });
-
-        if (serviceFilter.length > 0) {
-          params.append("serviceIds", serviceFilter.join(","));
-        }
-
-        if (warrantyFilter !== "all") {
-          params.append("warrantyEligible", warrantyFilter);
-        }
-
-        if (startDate) {
-          params.append("startDate", startDate);
-        }
-
-        if (endDate) {
-          params.append("endDate", endDate);
-        }
-
-        if (payTypeFilter.length > 0) {
-          params.append("payTypes", payTypeFilter.join(","));
-        }
-
-        if (eligibleMakesOnly) {
-          params.append("eligibleMakesOnly", "true");
-        }
-
-        if (eligibleOpcodesOnly) {
-          params.append("eligibleOpcodesOnly", "true");
-        }
-
-        if (laborPartsFilter) {
-          params.append("laborPartsFilter", laborPartsFilter);
-        }
-
-        if (laborFieldsFilter.length > 0) {
-          params.append("laborFields", laborFieldsFilter.join(","));
-        }
-
-        if (debouncedSearchQuery.trim()) {
-          params.append("search", debouncedSearchQuery.trim());
-        }
-
-        const response = await fetch(
-          `/api/dealer-settings/operations?${params.toString()}`,
-          {
-            headers,
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch all operation IDs");
-        }
-
-        const result = await response.json();
-        const batchIds = result.data.map((op: Operation) => op.id);
-        allIds = allIds.concat(batchIds);
-
-        // Check if we've fetched all data
-        if (
-          batchIds.length < batchSize ||
-          currentPage >= result.pagination.totalPages
-        ) {
-          hasMoreData = false;
-        } else {
-          currentPage++;
-        }
+      if (serviceFilter.length > 0) {
+        params.append("serviceIds", serviceFilter.join(","));
       }
 
-      return allIds;
+      if (warrantyFilter !== "all") {
+        params.append("warrantyEligible", warrantyFilter);
+      }
+
+      if (startDate) {
+        params.append("startDate", startDate);
+      }
+
+      if (endDate) {
+        params.append("endDate", endDate);
+      }
+
+      if (payTypeFilter.length > 0) {
+        params.append("payTypes", payTypeFilter.join(","));
+      }
+
+      if (eligibleMakesOnly) {
+        params.append("eligibleMakesOnly", "true");
+      }
+
+      if (eligibleOpcodesOnly) {
+        params.append("eligibleOpcodesOnly", "true");
+      }
+
+      if (laborPartsFilter) {
+        params.append("laborPartsFilter", laborPartsFilter);
+      }
+
+      if (laborFieldsFilter.length > 0) {
+        params.append("laborFields", laborFieldsFilter.join(","));
+      }
+
+      if (debouncedSearchQuery.trim()) {
+        params.append("search", debouncedSearchQuery.trim());
+      }
+
+      const response = await fetch(
+        `/api/dealer-settings/operations?${params.toString()}`,
+        {
+          headers,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch all operation IDs");
+      }
+
+      const result = await response.json();
+      return result.data.map((op: Operation) => op.id);
     } catch (err: any) {
       console.error("Failed to fetch all operation IDs:", err);
       throw err;
@@ -622,14 +601,18 @@ export default function OperationsManagement({
     try {
       setExportLoading(true);
       const token = await getAuthToken();
-      const fetchHeaders: HeadersInit = {};
+      const fetchHeaders: HeadersInit = {
+        "Content-Type": "application/json",
+      };
       if (token) {
         fetchHeaders["Authorization"] = `Bearer ${token}`;
       }
 
-      // Build params with same filters as current view
+      // Build params with same filters but no pagination (fetch all)
       const params = new URLSearchParams({
         dealerId,
+        page: "1",
+        limit: "10000", // Large limit to get all records
         sortColumn,
         sortDirection,
       });
@@ -674,22 +657,134 @@ export default function OperationsManagement({
         params.append("search", searchQuery.trim());
       }
 
-      // Use streaming export endpoint for efficient large dataset handling
       const response = await fetch(
-        `/api/dealer-settings/operations/export?${params.toString()}`,
+        `/api/dealer-settings/operations?${params.toString()}`,
         {
           headers: fetchHeaders,
         }
       );
 
       if (!response.ok) {
-        throw new Error("Failed to export operations");
+        throw new Error("Failed to fetch operations for export");
       }
 
-      // Get the blob directly from streaming response
-      const blob = await response.blob();
+      const result = await response.json();
+      const allOperations: Operation[] = result.data || [];
 
-      // Trigger download
+      // Convert to CSV
+      const csvHeaders = [
+        "Service Record Open Date",
+        "RO Number",
+        "Operation Code",
+        "Operation Description",
+        "Pay Type",
+        "Service Name",
+        "Service Category",
+        "Service Subcategory",
+        "Warranty Eligible",
+        "AI Confidence Service (%)",
+        "AI Confidence Warranty (%)",
+        "AI Reasoning Summary",
+        "Customer Name",
+        "Customer Phone",
+        "Customer Email",
+        "Customer Address",
+        "Vehicle Year",
+        "Vehicle Make",
+        "Vehicle Model",
+        "Vehicle Trim",
+        "Vehicle VIN",
+        "Labor Hours",
+        "Labor Sale Total",
+        "Labor Cost",
+        "Parts Sale Total",
+        "Parts Cost",
+        "Parts Count",
+        "Parts List",
+        "ELR (Effective Labor Rate)",
+        "Part Markup %",
+        "Labor Complaint",
+        "Labor Cause",
+        "Labor Correction",
+        "Labor Comments",
+        "Eligibility Notes",
+        "Updated At",
+      ];
+
+      const csvRows = [csvHeaders.join(",")];
+
+      for (const op of allOperations) {
+        const laborHours = parseDecimal(op.total_labor_hours);
+        const laborSale = parseDecimal(op.total_labor_sale);
+        const partsSale = parseDecimal(op.total_parts_sale);
+        const partsCost = parseDecimal(op.total_parts_cost);
+
+        const elr = laborHours > 0 ? laborSale / laborHours : null;
+        const partMarkup =
+          partsCost > 0 ? ((partsSale - partsCost) / partsCost) * 100 : null;
+
+        const row = [
+          op.service_record_open_date
+            ? new Date(op.service_record_open_date).toLocaleDateString()
+            : "",
+          escapeCSV(op.ro_number || op.service_record_id || ""),
+          escapeCSV(op.operation_code || ""),
+          escapeCSV(op.operation_description || ""),
+          op.pay_type === "C"
+            ? "Customer Pay"
+            : op.pay_type === "W"
+            ? "Warranty"
+            : op.pay_type === "I"
+            ? "Internal"
+            : "",
+          escapeCSV(op.service_name || ""),
+          escapeCSV(op.service_category_name || ""),
+          escapeCSV(op.service_subcategory_name || ""),
+          op.is_warranty_eligible === null
+            ? "Unset"
+            : op.is_warranty_eligible
+            ? "Yes"
+            : "No",
+          op.ai_confidence_service !== null &&
+          op.ai_confidence_service !== undefined
+            ? (op.ai_confidence_service * 100).toFixed(1)
+            : "",
+          op.ai_confidence_warranty !== null &&
+          op.ai_confidence_warranty !== undefined
+            ? (op.ai_confidence_warranty * 100).toFixed(1)
+            : "",
+          escapeCSV(op.ai_reasoning_summary || ""),
+          escapeCSV(op.customer_name || ""),
+          escapeCSV(op.customer_phone || ""),
+          escapeCSV(op.customer_email || ""),
+          escapeCSV(op.customer_address || ""),
+          escapeCSV(op.vehicle_year || ""),
+          escapeCSV(op.vehicle_make || ""),
+          escapeCSV(op.vehicle_model || ""),
+          escapeCSV(op.vehicle_trim || ""),
+          escapeCSV(op.vehicle_vin || ""),
+          laborHours > 0 ? laborHours.toFixed(2) : "0.00",
+          laborSale.toFixed(2),
+          parseDecimal(op.total_labor_cost).toFixed(2),
+          partsSale.toFixed(2),
+          partsCost.toFixed(2),
+          op.parts_count || 0,
+          escapeCSV(op.parts_list || ""),
+          elr !== null ? `$${elr.toFixed(2)}` : "N/A",
+          partMarkup !== null ? `${partMarkup.toFixed(2)}%` : "N/A",
+          escapeCSV(op.labor_complaint || ""),
+          escapeCSV(op.labor_cause || ""),
+          escapeCSV(op.labor_correction || ""),
+          escapeCSV(op.labor_comments || ""),
+          escapeCSV(op.eligibility_notes || ""),
+          op.updated_at ? new Date(op.updated_at).toLocaleString() : "",
+        ];
+
+        csvRows.push(row.join(","));
+      }
+
+      const csvContent = csvRows.join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const link = document.createElement("a");
       const url = URL.createObjectURL(blob);
       link.setAttribute("href", url);
@@ -701,13 +796,26 @@ export default function OperationsManagement({
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(url);
     } catch (err: any) {
       console.error("Failed to export CSV:", err);
       setError(err.message || "Failed to export CSV");
     } finally {
       setExportLoading(false);
     }
+  };
+
+  const escapeCSV = (value: string): string => {
+    if (value === null || value === undefined) return "";
+    const stringValue = String(value);
+    // If value contains comma, newline, or quote, wrap in quotes and escape quotes
+    if (
+      stringValue.includes(",") ||
+      stringValue.includes("\n") ||
+      stringValue.includes('"')
+    ) {
+      return `"${stringValue.replace(/"/g, '""')}"`;
+    }
+    return stringValue;
   };
 
   const renderPartsList = (partsList: string | null, operationId: string) => {
